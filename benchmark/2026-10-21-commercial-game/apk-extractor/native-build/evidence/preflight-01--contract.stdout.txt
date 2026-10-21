@@ -1,0 +1,52 @@
+# Task Contract: G09 narrow reproducible installer build for ZIP comments
+
+## Intent
+把已通过原源码host复演的ZIP注释修复构建为可审查的libinstalls候选，推进原神真实安装。只重编实际消费的zip_file.o并重链接，保留源码、补丁、工具链与真实执行日志，避免改源码却链接旧对象。
+
+## Must
+- t1至t4为输入定位与静态复用，无设备操作；t5仅只读5ea预检；后继t6在外环核精确包、fresh状态、锁和恢复计划后执行5ea最小启动。61b保持演示版。
+- 原始argv/rc/stdout/stderr及输入SHA保存在持久私有目录；公开仓库仅小证据及别名，不提交APK、资产、凭据或账号信息。所有失败保留。
+- CC仅包定位/普通静态工具；REA如需使用只交Codex或octoscode，并先给精确对象与问题。不开绕过授权、反作弊或保护机制任务。
+- 独立worktree与analysis分支，内环只提交不推送、不修改主树；旧知识和失败记录不覆盖。不扫整盘或递归grep二进制。
+
+## Decisions
+- t1现有CC窗口执行；t2现有octoscode执行；外环观测正信号与负状态、复核与合入。无需为没有输入的动态任务提前占用板。
+- 优先本地已有索引及manifest，再OrbStack a2hlab，再hw248，再仓库已记载的macserver制品路径。t1/t2不下载新游戏；t3可从官方公开入口获取安装集，不登录、不运行APK、不下载完整游戏资源。
+- 开始候选构建前核G08最终源码SHA4068fdbae99b602062311b1f477b14b8702b07814bba44d09ffdbfa792c601c1和对应patch；peer已独立验证原神Open1567项、8边界及坏包拒绝。仅host通过，不宣称安装通过。
+- 复用G08-BUILD-PREFLIGHT(0906511581)的真实检查及JAVA042归档61ff2def4508cafa6c1acd30c0c8436a5a760d5869a3520a140a216e39548bb6，478511698B。使用现成OrbStack a2hlab Linux x86_64、Python3.12、原编译器SHA b107ce0366299ba5ace7095c19dfed65004415c09c57597fdf5c2b7c79ff3913和原246参数zip_file.cmd；新独立目录，不覆盖旧kit。
+- installs.ninja没有zip_file.o编译边；先用verified-seed原source及原命令显式编译zip_file.o，再ninja仅链接libinstalls.z.so。CCACHE_DISABLE=1；确认对象进入实际rsp/链接输入。不要运行仅touch另外两文件的旧build.py并宣称ZIP修复生效。
+- 先无补丁基线编译/链接，期望对象2e2a6247前缀与产物51e1b52538b3198d2a8a3236a9479bf8512f51acc74c0d68e34acca358f39be5；不一致则保留差异并定位构建/源码输入，不能强行标等价或继续部署。随后在隔离副本应用单补丁，编译/链接新候选，核函数/符号/NEEDED及APK未改变。
+- 每步实际运行时捕获argv、stdout、stderr、rc、开始结束时间到持久私有build-runs；公开小回执使用别名与SHA，不提交大产物/个人路径。构建前check_frozen；源码/补丁/可执行构建配方及结果进入本卡路径供外环合主线。源/链接失败如实报告，环境失败修好可重跑，不替换失败原件。
+- 本卡不设备、不重启、不安装、不部署、不REA、不修改既有冻结源，不构建libbms或整代runtime。首片20分钟，只有缺确切工具链/源码闭包才报精确缺项，不能拿归档旧产物当本次成功。
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-10-21-commercial-game/apk-extractor/native-build/**
+- tools/spec-checks/tests/commercial_game_extractor_build.rs
+- 私有$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-runs/**
+- a2hlab下本卡新建的独立构建目录
+Forbidden:
+- 不改原kit、主树、APK、冻结文件、设备或其他agent文件；不push，不用缓存或归档产物冒充实际编译成功，不丢原始日志。
+
+## Completion Criteria
+Scenario: 无补丁基线真实重编
+  Test:
+    Filter: commercial_game_extractor_build_receipt
+  Given 输入归档工具链及源pin匹配
+  When 显式编译原zip_file.o并重链接libinstalls
+  Then 实际日志rc为0且输出匹配原SHA，或如实记录不等价及具体差异并拒绝候选准入
+
+Scenario: 单补丁候选与复现配方
+  Test:
+    Filter: commercial_game_extractor_build_receipt
+  Given 无补丁基线已等价且G08候选SHA已采认
+  When 应用精确patch并执行同编译链接命令
+  Then 新对象和产物SHA与真实rc0日志绑定，配方可从归档及仓库patch重放，唯一修改源为zip_file.cpp且APK原SHA不变
+
+Scenario: 缺输入及失败不得升级
+  Test:
+    Filter: commercial_game_extractor_build_receipt
+  Given 归档源工具链pin不匹配或编译链接返回非零
+  When 整理本轮结果
+  Then 保留失败argv和双流日志、结果为失败或UNKNOWN，不以旧产物存在判通过，不执行任何设备动作
+

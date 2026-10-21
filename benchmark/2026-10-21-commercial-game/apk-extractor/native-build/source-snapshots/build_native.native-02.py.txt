@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+"""One-TU Linux rebuild from the exact b79 archive; baseline equality gates the candidate."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import platform
+import re
+import shlex
+import shutil
+import subprocess
+import time
+
+ARCHIVE='61ff2def4508cafa6c1acd30c0c8436a5a760d5869a3520a140a216e39548bb6'
+COMPILER='b107ce0366299ba5ace7095c19dfed65004415c09c57597fdf5c2b7c79ff3913'
+ORIGINAL='1fa70c835bf756ec3c5a3a8729ba0049cf1075f7b680857c9b7e25a95698eca2'
+CANDIDATE='4068fdbae99b602062311b1f477b14b8702b07814bba44d09ffdbfa792c601c1'
+COMMAND='693b47cf85304d6663e54cd5f7e611c946259e597eb1f04ee9de16243ce6c0f0'
+OBJECT='2e2a6247d73b981cc530653a411f7b29f531eabac19a1c564e8c30391eb8481b'
+LIBRARY='51e1b52538b3198d2a8a3236a9479bf8512f51acc74c0d68e34acca358f39be5'
+SRC='foundation/bundlemanager/bundle_framework/services/bundlemgr/src/zip_file.cpp'
+OBJ='obj/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/parser_common/zip_file.o'
+TARGET='bundlemanager/bundle_framework/libinstalls.z.so'
+DEBUG_DIRECTORY='/opt/build-trees/oh610_lts_source/out/wukong100'
+
+def effective_compile_argv(original):
+    # Match the proven outer metadata probe; preserve all 246 original arguments.
+    result=list(original)
+    result.insert(2, '-fdebug-compilation-dir='+DEBUG_DIRECTORY)
+    return result
+
+def sha(p):
+    digest=hashlib.sha256()
+    with Path(p).open('rb') as f:
+        for block in iter(lambda:f.read(1024*1024),b''):digest.update(block)
+    return digest.hexdigest()
+def dump(p,v):p.write_text(json.dumps(v,indent=2)+'\n')
+def require(ok,msg):
+    if not ok:raise RuntimeError(msg)
+
+def elf_interface(text):
+    symbols=[]
+    for line in text.splitlines():
+        parts=line.split()
+        if len(parts)>=8 and re.fullmatch(r'\d+:',parts[0]):
+            # Values/sizes may move; ABI comparison keeps name/version/type/bind/visibility/definedness.
+            symbols.append((parts[7],parts[3],parts[4],parts[5],parts[6]=='UND'))
+    needed=sorted(re.findall(r'\(NEEDED\).*?\[([^\]]+)\]',text))
+    require(bool(symbols) and bool(needed),'ELF output parser empty; cannot accept ABI')
+    return {'symbols':sorted(symbols),'needed':needed,'textrel':'(TEXTREL)' in text}
+
+class Run:
+    def __init__(self,out):
+        self.out=out;out.mkdir(parents=True,exist_ok=False);self.steps=[]
+    def command(self,tag,argv,cwd=None,env=None):
+        require(not (self.out/(tag+'.argv.json')).exists(),'duplicate command tag')
+        record={'argv':[str(x) for x in argv],'cwd':str(cwd) if cwd else None,
+                'env':{k:env[k] for k in ['CCACHE_DISABLE','LD_LIBRARY_PATH'] if env and k in env},'start':time.time()}
+        dump(self.out/(tag+'.argv.json'),record)
+        with (self.out/(tag+'.stdout')).open('xb') as stdout,(self.out/(tag+'.stderr')).open('xb') as stderr:
+            try:rc=subprocess.run(record['argv'],cwd=cwd,env=env,stdout=stdout,stderr=stderr).returncode
+            except OSError as ex:stderr.write((repr(ex)+'\n').encode());rc=127
+        (self.out/(tag+'.rc')).write_text(str(rc)+'\n');record.update(end=time.time(),rc=rc,tag=tag)
+        self.steps.append(record);dump(self.out/'steps.json',self.steps)
+        print(tag,'rc='+str(rc),flush=True)
+        require(rc==0,tag+' failed rc='+str(rc))
+        return (self.out/(tag+'.stdout')).read_text(errors='replace')
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__)
+    for key in ['archive','scratch','logs','g08-dir','frozen-receipt','apk']:p.add_argument('--'+key,type=Path,required=True)
+    a=p.parse_args();a.archive=a.archive.resolve();a.scratch=a.scratch.absolute();a.logs=a.logs.absolute();a.g08_dir=a.g08_dir.resolve()
+    r=Run(a.logs);state={'status':'INCOMPLETE','steps':[],'device_operations':0,'recipe_sha256':sha(Path(__file__))}
+    try:
+        require(platform.system()=='Linux' and platform.machine() in ['x86_64','amd64'],'requires Linux x86_64')
+        require('30 checked, 0 violation(s)' in a.frozen_receipt.read_text(),'missing actual frozen gate receipt')
+        state['frozen_receipt_sha256']=sha(a.frozen_receipt)
+        require(sha(a.apk)=='abd3c4d59217d78745a65aaa952367872354298bff5bc1ba2faae00b8f37a9cc','APK identity mismatch')
+        state['apk_before_sha256']=sha(a.apk)
+        require(sha(a.archive)==ARCHIVE and a.archive.stat().st_size==478511698,'archive mismatch')
+        require(sha(a.g08_dir/'sources/zip_file.comment-compatible.cpp')==CANDIDATE,'candidate source mismatch')
+        require(sha(a.g08_dir/'sources/zip_file.cpp')==ORIGINAL,'original source mismatch')
+        state.update(archive_sha256=ARCHIVE,candidate_source_sha256=CANDIDATE,original_source_sha256=ORIGINAL,
+                     patch_sha256=sha(a.g08_dir/'comment-compatibility.patch'))
+        require(not a.scratch.exists(),'scratch must be new')
+        a.scratch.mkdir(parents=True)
+        r.command('01-extract',['tar','-xzf',a.archive,'-C',a.scratch])
+        kit=a.scratch/'oh61-bms-kit-b79';out=kit/'out/wukong100';bin=kit/'prebuilts/clang/ohos/linux-x86_64/llvm/bin'
+        require(sha(bin/'clang-15')==COMPILER,'compiler mismatch')
+        cmd=kit/'verified-seed/metadata/narrow-commands/zip_file.cmd'
+        require(sha(cmd)==COMMAND,'compile command mismatch')
+        argv=shlex.split(cmd.read_text());require(len(argv)==246,'argc mismatch')
+        require(argv[0]=='/usr/bin/ccache' and argv[-1]==OBJ and argv[argv.index('-c')+1]=='../../'+SRC,'wrong TU/output')
+        effective_argv=effective_compile_argv(argv)
+        dump(a.logs/'compile-argv-delta.json',{'original':argv,'effective':effective_argv,
+             'original_argc':len(argv),'effective_argc':len(effective_argv),
+             'reason':'Restore archived DIFile directory; metadata-probe-01 reproduced exact baseline object.'})
+        source=kit/SRC;seed=kit/'verified-seed/private-source/oh'/SRC
+        require(sha(seed)==ORIGINAL,'seed mismatch')
+        require(not source.exists(),'unexpected archive source at destination')
+        source.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(seed,source)
+        pins={}
+        for name in ['clang-15','ld.lld','llvm-strip','llvm-readelf','llvm-readobj','llvm-objdump','llvm-dis']:
+            f=bin/name
+            if f.exists():pins[str(f.relative_to(kit))]={'sha256':sha(f),'bytes':f.stat().st_size,'link':os.readlink(f) if f.is_symlink() else None}
+        for f in [kit/'tool-bin/ninja',cmd,out/'installs.ninja',out/'rules.ninja',out/'build.ninja']:
+            pins[str(f.relative_to(kit))]={'sha256':sha(f),'bytes':f.stat().st_size}
+        dump(a.logs/'tool-command-pins.json',pins);state['tools']=pins
+        env=dict(os.environ);env['CCACHE_DISABLE']='1';env['LD_LIBRARY_PATH']=str(bin.parent/'lib')
+        r.command('02-compiler-version',[bin/'clang++','--version'],out,env)
+        require(sha(out/OBJ)==OBJECT and sha(out/TARGET)==LIBRARY,'archived baseline mismatch')
+        archive=a.logs/'archived-before';archive.mkdir()
+        shutil.copyfile(out/OBJ,archive/'zip_file.o');shutil.copyfile(out/TARGET,archive/'libinstalls.z.so')
+        original_rsp=(out/(TARGET+'.rsp')).read_text()
+        require(shlex.split(original_rsp).count(OBJ)==1,'zip object not unique in original link response')
+        state['archived_rsp_sha256']=sha(out/(TARGET+'.rsp'))
+        # Preserve every actual rsp file input, including unchanged object dependencies.
+        inputs={}
+        for arg in shlex.split(original_rsp):
+            f=out/arg
+            if not arg.startswith('-') and f.is_file():inputs[arg]={'sha256':sha(f),'bytes':f.stat().st_size}
+        dump(a.logs/'link-inputs-before.json',inputs)
+        abi={}
+        for variant in ['baseline','candidate']:
+            if variant=='candidate':
+                r.command('20-patch',['patch','--batch','--fuzz=0',source,a.g08_dir/'comment-compatibility.patch'],out,env)
+                require(sha(source)==CANDIDATE,'patched bytes differ from accepted G08')
+            dest=a.logs/variant;dest.mkdir()
+            # Old object cannot accidentally stand in for a newly compiled result.
+            (out/OBJ).unlink()
+            r.command(variant+'-compile',effective_argv,out,env)
+            require((out/OBJ).is_file(),'compiler produced no object')
+            objsha=sha(out/OBJ);shutil.copyfile(out/OBJ,dest/'zip_file.o')
+            dep=out/(OBJ+'.d')
+            if dep.exists():shutil.copyfile(dep,dest/'zip_file.o.d')
+            if variant=='baseline':
+                state['baseline_object_sha256']=objsha
+                require(objsha==OBJECT,'BASELINE_OBJECT_MISMATCH; no candidate build allowed')
+            # Do not consume an archived ThinLTO cache. This is only the new scratch tree.
+            cache=out/'thinlto-cache'
+            if cache.exists():
+                require(cache.resolve().is_relative_to(a.scratch.resolve()),'cache escapes new scratch')
+                shutil.rmtree(cache)
+            plan=r.command(variant+'-link-preview',[kit/'tool-bin/ninja','-n','-v',TARGET],out,env)
+            require('-shared' in plan and ' -c ' not in plan,'unexpected ninja compile/no solink; retain preview')
+            r.command(variant+'-link',[kit/'tool-bin/ninja','-d','keeprsp','-v','-j2',TARGET],out,env)
+            rsp=out/(TARGET+'.rsp');require(shlex.split(rsp.read_text()).count(OBJ)==1,'actual link rsp lost zip object')
+            for arg,old in inputs.items():
+                if arg!=OBJ:require(sha(out/arg)==old['sha256'],'unchanged link input drift: '+arg)
+            shutil.copyfile(rsp,dest/'libinstalls.z.so.rsp')
+            for f in [out/TARGET,out/'lib.unstripped'/TARGET]:
+                shutil.copyfile(f,dest/('libinstalls.unstripped.z.so' if 'lib.unstripped' in f.parts else 'libinstalls.z.so'))
+            libsha=sha(out/TARGET)
+            state[variant]={'object_sha256':objsha,'library_sha256':libsha,'library_bytes':(out/TARGET).stat().st_size,
+                            'source_sha256':sha(source),'rsp_sha256':sha(rsp)}
+            dump(a.logs/'receipt.json',state)
+            if variant=='baseline':require(libsha==LIBRARY,'BASELINE_LIBRARY_MISMATCH; no candidate build allowed')
+            elf=r.command(variant+'-elf',[bin/'llvm-readobj','--elf-output-style=GNU','--file-headers','--dynamic-table','--dyn-symbols',out/TARGET],out,env)
+            abi[variant]=elf_interface(elf)
+        dump(a.logs/'abi-comparison.json',abi)
+        require(abi['baseline']==abi['candidate'],'ABI/NEEDED/TEXTREL delta; review required')
+        state['status']='BASELINE_IDENTICAL_CANDIDATE_BUILT'
+        state['apk_after_sha256']=sha(a.apk)
+        require(state['apk_before_sha256']==state['apk_after_sha256'],'APK bytes changed during build')
+    except Exception as ex:
+        state['error']=str(ex);state['status']='FAILED_OR_BLOCKED';raise
+    finally:
+        state['steps']=r.steps;dump(a.logs/'receipt.json',state)
+
+if __name__=='__main__':main()

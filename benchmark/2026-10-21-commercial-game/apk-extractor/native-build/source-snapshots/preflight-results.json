@@ -1,0 +1,386 @@
+{
+ "token": "G08-BUILD-PREFLIGHT",
+ "status": "RECIPE_READY_NOT_BUILT",
+ "build_performed": false,
+ "device_ops": 0,
+ "rea": false,
+ "contract": "specs/commercial-game-round1/t8-apk-extractor.spec.md @ 536d7d0038 (build preparation only)",
+ "inputs": {
+  "archive": {
+   "path": "$WORKSPACES/oh61-bms-kit-b79-r3-final.tar.gz",
+   "sha256": "61ff2def4508cafa6c1acd30c0c8436a5a760d5869a3520a140a216e39548bb6",
+   "bytes": 478511698,
+   "check": "JAVA-042 build.py --check-only rc0 (source pins + archive SHA)",
+   "hw248_copy": "/home/alvin/westlake-oh6.1-b79-bms-2220df48-installs-51e1b525/ (same byte size; SHA not re-read here)",
+   "members": 8873
+  },
+  "compiler": {
+   "member": "oh61-bms-kit-b79/prebuilts/clang/ohos/linux-x86_64/llvm/bin/clang-15",
+   "pinned_sha256": "b107ce0366299ba5ace7095c19dfed65004415c09c57597fdf5c2b7c79ff3913",
+   "note": "build.py verifies after extraction; not re-hashed here"
+  },
+  "zip_file_source": {
+   "archive_member": "oh61-bms-kit-b79/verified-seed/private-source/oh/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/zip_file.cpp",
+   "sha256": "1fa70c835bf756ec3c5a3a8729ba0049cf1075f7b680857c9b7e25a95698eca2",
+   "line_71": "APP_LOGE(\"endDir.numDisk != 0\") inside ZipFile::CheckEndDir — matches device log zip_file.cpp(CheckEndDir:71)",
+   "kit_main_tree_path": "foundation/bundlemanager/bundle_framework/services/bundlemgr/src/zip_file.cpp — ABSENT from the archive (headers only); must be placed from the seed before compiling"
+  },
+  "compile_command": {
+   "archive_member": "oh61-bms-kit-b79/verified-seed/metadata/narrow-commands/zip_file.cmd",
+   "sha256": "693b47cf85304d6663e54cd5f7e611c946259e597eb1f04ee9de16243ce6c0f0",
+   "argc": 246,
+   "argv0": "/usr/bin/ccache",
+   "cwd": "out/wukong100",
+   "input": "../../foundation/bundlemanager/bundle_framework/services/bundlemgr/src/zip_file.cpp",
+   "output": "obj/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/parser_common/zip_file.o",
+   "target": "--target=aarch64-linux-ohos -march=armv8-a",
+   "prefix_map": "none"
+  },
+  "objects": {
+   "zip_file.o (out and verified-seed out-overlay, identical)": "2e2a6247d73b981cc530653a411f7b29f531eabac19a1c564e8c30391eb8481b",
+   "base_extractor.o (out, prebuilt, Jul)": "1f650cb88a8d03bba58158cb2aaf45e557aa0a68836a3531709b011c4eab6b37"
+  },
+  "link": {
+   "rsp": "out/wukong100/bundlemanager/bundle_framework/libinstalls.z.so.rsp lists parser_common/zip_file.o, parser_common/base_extractor.o, installs/bundle_extractor.o, installd/installs/installd_operator.o",
+   "installs.ninja": {
+    "sha256": "9952d7d493dcad9839ef46f99177691e8b6be27ea850e09fb34478fbd9cd55f6",
+    "build_edges": 2,
+    "edges": [
+     "cxx installd_operator.o",
+     "solink libinstalls.z.so"
+    ]
+   },
+   "rules.ninja_sha256": "e201ef0c7aa5e4c8be606cd40afc37f979b0997694dbbfef7ebb983ab5c3d964",
+   "build.ninja_sha256": "dd2df537678f4a2b257ba5b6bce777c535252c5a73b2e2b856342c626fe6d433",
+   "deployed_target": "libinstalls.z.so 51e1b52538b3198d2a8a3236a9479bf8512f51acc74c0d68e34acca358f39be5"
+  }
+ },
+ "finding": "build.py alone cannot apply a zip_file.cpp fix: installs.ninja has no compile edge for zip_file.o (it is a prebuilt link input), and build.py only touches base_bundle_installer.cpp / installd_operator.cpp. The fix needs the narrow zip_file.cmd compile, then the existing ninja solink.",
+ "environment": {
+  "use": "OrbStack a2hlab (x86_64, Python 3.12.3, /usr/bin/ccache present, archive readable at /mnt/mac/...)",
+  "reject": "hw248 Python 3.10.12: build.py uses tarfile filter='fully_trusted' (3.12+)",
+  "rule": "a2hlab runs one heavy build at a time (RUNBOOK); this narrow build is one TU + one link"
+ },
+ "recipe": [
+  {
+   "step": 0,
+   "what": "fresh scratch + persistent log dir",
+   "argv": [
+    "mkdir",
+    "$SCRATCH (new, on a2hlab)",
+    "$LOG=$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-runs/<run-id> (Mac path, via /mnt/mac from a2hlab)"
+   ],
+   "note": "tee every step's stdout/stderr/rc into $LOG"
+  },
+  {
+   "step": 1,
+   "what": "verify + extract kit (no build)",
+   "argv": [
+    "python3",
+    "sources/api-implementations/JAVA-042-installer/build.py",
+    "--archive",
+    "$ARCHIVE",
+    "--check-only"
+   ],
+   "then": [
+    "tar",
+    "-xzf",
+    "$ARCHIVE",
+    "-C",
+    "$SCRATCH"
+   ],
+   "verify": "sha256 of clang-15 == b107ce03…; of zip_file.cmd and seed zip_file.cpp as above"
+  },
+  {
+   "step": 2,
+   "what": "place seed source at the kit path the command expects",
+   "argv": [
+    "cp",
+    "$KIT/verified-seed/private-source/oh/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/zip_file.cpp",
+    "$KIT/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/zip_file.cpp"
+   ]
+  },
+  {
+   "step": 3,
+   "what": "BASELINE compile reproducibility (unpatched), cache off",
+   "cwd": "$KIT/out/wukong100",
+   "env": {
+    "CCACHE_DISABLE": "1",
+    "LD_LIBRARY_PATH": "$KIT/prebuilts/clang/ohos/linux-x86_64/llvm/lib"
+   },
+   "argv": [
+    "sh",
+    "-c",
+    "$(cat $KIT/verified-seed/metadata/narrow-commands/zip_file.cmd)"
+   ],
+   "accept": "sha256(zip_file.o) == 2e2a6247… ; if not, record and treat downstream binary equality as unproven"
+  },
+  {
+   "step": 4,
+   "what": "BASELINE relink",
+   "cwd": "$KIT/out/wukong100",
+   "argv": [
+    "$KIT/tool-bin/ninja",
+    "-d",
+    "keeprsp",
+    "-v",
+    "-j2",
+    "bundlemanager/bundle_framework/libinstalls.z.so"
+   ],
+   "accept": "sha256(libinstalls.z.so) == 51e1b525… (else link reproducibility unproven)"
+  },
+  {
+   "step": 5,
+   "what": "apply cx patch (only after cx delivers it)",
+   "argv": [
+    "patch",
+    "-p1",
+    "-d",
+    "$KIT",
+    "<",
+    "<cx patch for services/bundlemgr/src/zip_file.cpp>"
+   ]
+  },
+  {
+   "step": 6,
+   "what": "patched compile + relink (same argv as steps 3-4)",
+   "outputs": [
+    "obj/.../parser_common/zip_file.o",
+    "bundlemanager/bundle_framework/libinstalls.z.so",
+    "lib.unstripped/bundlemanager/bundle_framework/libinstalls.z.so"
+   ]
+  },
+  {
+   "step": 7,
+   "what": "offline receipts only",
+   "note": "record SHAs of both libinstalls outputs and strings check that the patched literal path is present; no deployment from this card"
+  }
+ ],
+ "gaps": [
+  "cx patch (not yet delivered)",
+  "base_extractor.cpp source absent from the archive (only prebuilt base_extractor.o 1f650cb8): a fix that must touch base_extractor cannot be built from this kit",
+  "compile reproducibility of zip_file.cmd vs 2e2a6247 and relink equality vs 51e1b525 are unproven until steps 3-4 run",
+  "seed zip_file.cpp (1fa70c83) is not pinned in JAVA-042 source.lock; its correspondence is evidenced by line 71 and the identical seed/out zip_file.o, not by a recorded compile log",
+  "hw248 copy of the archive not SHA-verified in this slice"
+ ],
+ "command_receipts": [
+  {
+   "id": "b01-build-check-only",
+   "argv": [
+    "python3",
+    "$HOME/orca/workspaces/westlake-harness/sources/api-implementations/JAVA-042-installer/build.py",
+    "--archive",
+    "$HOME/orca/workspaces/oh61-bms-kit-b79-r3-final.tar.gz",
+    "--check-only"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b01-build-check-only.argv.json",
+     "sha256": "a57a1b7babae1f2fc7b359b47fd907bc235594c5afd13b1c7f59ccc00a3b53e1",
+     "size": 215
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b01-build-check-only.stdout",
+     "sha256": "0fa4d5629826d4c3d91b2cc6f4b653396ab238b52a8f24d2d0f3605687903c21",
+     "size": 66
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b01-build-check-only.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b01-build-check-only.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "b02-archive-list",
+   "argv": [
+    "gtimeout",
+    "120",
+    "tar",
+    "-tzvf",
+    "$HOME/orca/workspaces/oh61-bms-kit-b79-r3-final.tar.gz"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b02-archive-list.argv.json",
+     "sha256": "937a28bb98f9f7300c160e5b420e8ca45882895d291b1cef1e10d268054c9908",
+     "size": 103
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b02-archive-list.stdout",
+     "sha256": "e63fcf2596ddb5c9e9fc909b07fe8b00bd04e779acb1495cad351355b4823e70",
+     "size": 1340527
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b02-archive-list.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b02-archive-list.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "b03-extract-recipe-members",
+   "argv": [
+    "gtimeout",
+    "180",
+    "tar",
+    "-xzf",
+    "$HOME/orca/workspaces/oh61-bms-kit-b79-r3-final.tar.gz",
+    "-C",
+    "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/extract",
+    "oh61-bms-kit-b79/out/wukong100/bundlemanager/bundle_framework/libinstalls.z.so.rsp",
+    "oh61-bms-kit-b79/out/wukong100/build.ninja",
+    "oh61-bms-kit-b79/verified-seed/private-source/oh/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/zip_file.cpp"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b03-extract-recipe-members.argv.json",
+     "sha256": "fcd51a7a9a5dc31899c9d6ea939efc4018cb9229b1a0292d06cfc85c1cc60d28",
+     "size": 473
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b03-extract-recipe-members.stdout",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b03-extract-recipe-members.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b03-extract-recipe-members.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "b04-extract-ninja-seed",
+   "argv": [
+    "gtimeout",
+    "180",
+    "tar",
+    "-xzf",
+    "$HOME/orca/workspaces/oh61-bms-kit-b79-r3-final.tar.gz",
+    "-C",
+    "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/extract",
+    "oh61-bms-kit-b79/out/wukong100/installs.ninja",
+    "oh61-bms-kit-b79/out/wukong100/rules.ninja",
+    "oh61-bms-kit-b79/verified-seed/metadata/narrow-commands/zip_file.cmd",
+    "oh61-bms-kit-b79/verified-seed/out-overlay/obj/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/parser_common/zip_file.o",
+    "oh61-bms-kit-b79/out/wukong100/obj/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/parser_common/zip_file.o",
+    "oh61-bms-kit-b79/out/wukong100/obj/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/parser_common/base_extractor.o"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b04-extract-ninja-seed.argv.json",
+     "sha256": "66264a96cda187f7a501c96f737f28ee1815bb430ccc7c1609a03fa49898e32c",
+     "size": 780
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b04-extract-ninja-seed.stdout",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b04-extract-ninja-seed.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b04-extract-ninja-seed.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "b05-a2hlab-env",
+   "argv": [
+    "gtimeout",
+    "40",
+    "orb",
+    "-m",
+    "a2hlab",
+    "sh",
+    "-c",
+    "uname -m; python3 --version; ls -l /usr/bin/ccache 2>&1; df -h $HOME | tail -1; ls -l /mnt/mac$HOME/orca/workspaces/oh61-bms-kit-b79-r3-final.tar.gz 2>&1"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b05-a2hlab-env.argv.json",
+     "sha256": "4b59489311b803f91635fe17f6c012f871a913aee526680a1204931130a88f19",
+     "size": 220
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b05-a2hlab-env.stdout",
+     "sha256": "7add1614061b158fef057ff7b8df92a22f7ba6845108da7381f74a9623e4948b",
+     "size": 245
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b05-a2hlab-env.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b05-a2hlab-env.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "b06-hw248-env",
+   "argv": [
+    "gtimeout",
+    "40",
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=15",
+    "hw248",
+    "uname -m; python3 --version; ls -l /usr/bin/ccache 2>&1; df -h /home/alvin | tail -1; ls -l /home/alvin/westlake-oh6.1-b79-bms-2220df48-installs-51e1b525/ 2>&1 | head"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b06-hw248-env.argv.json",
+     "sha256": "b84b30837fc55e2295fe9052612c57b2ac090ca7d4c617edfdc1cd1fb874c0b7",
+     "size": 255
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b06-hw248-env.stdout",
+     "sha256": "774f96512e42c6392b1ab38e594fff6008a4974726db241b6696b2c8b3eee3c7",
+     "size": 214
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b06-hw248-env.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/commercial-game-20261021/apk-extractor/build-preflight/raw/b06-hw248-env.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,33 @@
+#!/usr/bin/env python3
+"""Small actual control-path tests; these do not substitute for the Linux build."""
+import json
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+from build_native import Run,elf_interface,effective_compile_argv,DEBUG_DIRECTORY
+
+class RecipeTests(unittest.TestCase):
+    def test_only_debug_directory_is_inserted(self):
+        import shlex
+        original=shlex.split((Path(__file__).parent/'source-snapshots/zip_file.cmd').read_text())
+        self.assertEqual(len(original),246)
+        effective=effective_compile_argv(original)
+        self.assertEqual(len(effective),247)
+        self.assertEqual(effective[2],'-fdebug-compilation-dir='+DEBUG_DIRECTORY)
+        self.assertEqual(effective[:2]+effective[3:],original)
+    def test_nonzero_preserves_both_streams_and_rc(self):
+        with tempfile.TemporaryDirectory(prefix='g09-recipe-') as root:
+            r=Run(Path(root)/'run')
+            with self.assertRaisesRegex(RuntimeError,'rc=7'):
+                r.command('bad',[sys.executable,'-c','import sys; print("out"); print("err",file=sys.stderr);sys.exit(7)'])
+            self.assertEqual((r.out/'bad.stdout').read_text(),'out\n')
+            self.assertEqual((r.out/'bad.stderr').read_text(),'err\n')
+            self.assertEqual((r.out/'bad.rc').read_text(),'7\n')
+            self.assertEqual(json.loads((r.out/'steps.json').read_text())[0]['rc'],7)
+    def test_no_existing_run_overwrite(self):
+        with tempfile.TemporaryDirectory(prefix='g09-recipe-') as root:
+            with self.assertRaises(FileExistsError):Run(Path(root))
+    def test_empty_elf_output_is_not_an_empty_abi_pass(self):
+        with self.assertRaisesRegex(RuntimeError,'parser empty'):elf_interface('Symbol {\n Name: something\n}')
+if __name__=='__main__':unittest.main()

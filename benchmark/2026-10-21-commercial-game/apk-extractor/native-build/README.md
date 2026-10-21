@@ -1,0 +1,20 @@
+# G09: real baseline reproduction and ZIP-comment candidate
+
+The original recipe first compiled successfully but embedded a new debug directory, producing a different object. The next run reproduced the object but stopped before linking because the frozen linker required a missing host `libxml2.so.16`. Both failures and the earlier transport failures remain intact. Neither was counted as a successful candidate build.
+
+The outer executed the inner's final recipe in **native-03**, with 13 actual stages returning rc0. The explicitly recompiled baseline object is `2e2a6247d73b981cc530653a411f7b29f531eabac19a1c564e8c30391eb8481b`; its newly linked library exactly reproduces `51e1b52538b3198d2a8a3236a9479bf8512f51acc74c0d68e34acca358f39be5`.
+
+The single-patch candidate is **`7c24bd11190b0728b81ecd958519f01c688efb2533ef26c9b7ae4eefc82151db`, 1286024 bytes**. Its source is accepted G08 `4068fdba…`, explicitly compiled to object `b0108546…`; the actual ordered response file contains that object. All other recorded link-file inputs remain unchanged. ELF comparisons preserve 1539 dynamic-symbol ABI tuples and all 28 NEEDED entries, with no TEXTREL. Both patched functions were separately disassembled from the resulting library. The input APK remains exact `abd3c4d5…` before and after.
+
+## Reproducibility and failures
+
+- Original command SHA `693b47cf…` and all 246 arguments are retained. Effective compilation inserts exactly one argument after the compiler: `-fdebug-compilation-dir=/opt/build-trees/oh610_lts_source/out/wukong100` (247 arguments). The actual native-01 IR comparison found 90 DIFile directory differences; all other IR differences were input-file labels produced by llvm-dis. Outer metadata-probe-01 then recompiled and reproduced the complete original object SHA. No object/hash gate was weakened.
+- Compiler `b107ce03…`, linker `8583bdc8…`, source and ordered link flags were not replaced. The real SONAME-16 x86_64 libxml2 from the previously verified R10 toolchain supplies the missing linker dependency. It is not an ABI alias to system SONAME-2. Native-03 records actual `ldd` resolution and host dependency hashes.
+- The archive supplies `llvm-readobj`, not `llvm-readelf`. Inspection uses its GNU output mode; empty symbol/NEEDED parsing is rejected. This affects inspection only.
+- Source, patch and recipe are public. [inputs.lock.json](inputs.lock.json) identifies the durable original kit and host-library archive. [raw-index.json](evidence/production-03/raw-index.json) binds every native-03 file to its original SHA/size; public text copies replace private path prefixes. Full original stdout/stderr/argv/rc, intermediate objects, ELF outputs and failure runs remain in the private archive.
+
+[COMMANDS.md](COMMANDS.md) describes reproduction. `check_receipt.py` and the Rust selector validate the public actual receipts; `--build-run` / `G09_BUILD_RUN` additionally rehashes private binary outputs. The frozen gate checked 8 entries/30 Git objects with zero violations. Four host recipe tests passed; they are not native-build substitutes.
+
+**This is an offline installer candidate, not installation/gameplay acceptance.** Expected affected key: `genshin`, whose recorded first installer failure is the commented-ZIP EOCD path. No device, APK modification, REA call, libbms build, deployment or push occurred in G09. A device window requires a separate decision.
+
+The local durable bundle contains 552 members (551 SHA-checked payload members), SHA `c7ad618645f8a7b80486b51b5a95ec43a20f5dc0abb098826719d4ee3d7c4965`, 10867480 bytes. It contains no APK. The original kit remains an exact durable input reference, not duplicated. Remote upload is pending; see [archive-receipt.json](archive-receipt.json). The packer itself is preserved inside the private bundle.
