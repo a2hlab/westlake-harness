@@ -1,0 +1,9 @@
+# G24 independent closure review
+
+The original rollback completed rc0/rolled_back at20:41:19.453208 +08:00, after starting at20:37:26.285764. All32 operations are restored and32 unmount commands returned remote0. Direct, parent4331-root and control-child5018-root hashes each match all319 baseline targets. Final closure repeats the319 matches and exact mount-stack comparison; Boat's three private libraries retain their prior SHA. Label after-audit is295 PASS, and the recorded maps gate and runtime/boot fingerprints return to the original baseline.
+
+The actual restored control image was independently viewed: Hello World title/body/buttons are visible. Final ps has the unique system parent4331 and no direct children or any of the four control/game UIDs. This verifies baseline/control recovery, not game success; the separate fixed launch-review-01 retains white→desktop/exit1 and the newly exposed __register_atfork loader error.
+
+Only closure-power/result.json and power.txt are accepted as power evidence: same boot, SLEEP, Timeout30000ms and Override10000ms, backed by remote0 receipts. The earlier closure-final/power.txt and final-state.json.power_raw are help text from a dump missing -s and are explicitly NOT accepted for power. That failed observation is retained and indexed.
+
+The outer closure receipt records unlock at20:43:19.590276 +08:00, elapsed1007.590276s and held_returncode1; unlock stdout/stderr are empty. The held return code is attributed to that outer receipt, not a fabricated independent lock command. Large logs/journals and images are referenced by durable private alias/SHA only. The gzip holds only a SHA/size index. No device call or primary-source edit was performed by this reviewer. Shared Git writes remain restricted: this is a fixed file handoff for outer landing, not a claimed commit.

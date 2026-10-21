@@ -1,0 +1,233 @@
+FILE $REPO/bms/src/adapter/framework/appspawn-x/bionic_compat/src/unity_libc_stubs.c SHA256 20ceddfc3c3b68d6873a9c1ed2a028f3111d283c8418ced501dc2fab61b8a8a2
+84: // 5) __register_atfork  (swappy)
+85: //    bionic: int __register_atfork(void(*prepare)(void), void(*parent)(void),
+86: //                                  void(*child)(void), void* dso);
+87: //    The 4th arg (dso handle, for unregister-on-dlclose) has no musl analogue;
+88: //    ignore it and forward to pthread_atfork (musl does not export
+89: //    __register_atfork, but pthread_atfork has identical prepare/parent/child).
+90: // ---------------------------------------------------------------------------
+91: int __register_atfork(void (*prepare)(void),
+92:                       void (*parent)(void),
+93:                       void (*child)(void),
+94:                       void* dso) {
+95:     (void)dso;
+96:     return pthread_atfork(prepare, parent, child);
+97: }
+
+FILE $REPO/benchmark/2026-10-21-commercial-game/runtime-loader-triage/sources/benchmark/2026-09-30-n3-native/src/native_abi.c SHA256 ed948e8217198447e1f9d446cecd54c52a6038132d0d6e97c653623d8d50c5b5
+10: /* Copied functions: Westlake 532633da webview_bionic_shim.c. */
+11: int __register_atfork(void (*prepare)(void), void (*parent)(void),
+12:                       void (*child)(void), void *dso)
+13: {
+14:     (void)dso;
+15:     fprintf(stderr, "[WESTLAKE-WEBVIEW-BIONIC] __register_atfork\n");
+16:     return pthread_atfork(prepare, parent, child);
+17: }
+
+FILE $MAIN/benchmark/2026-10-03-u15-compat-v3/README.md SHA256 4f0e93244c33c9bf6c3aadddbf585e9a51a1eaf540cdd50f967eeba10c710f42
+92: ## 5. `__register_atfork` semantics (for whichever provider carries it; `evidence/register-atfork-semantics.txt`)
+93: 
+94: **AOSP 14 r1 `bionic/libc/bionic/pthread_atfork.cpp`.**
+95: - `__register_atfork(prepare, parent, child, dso)` stores `dso` as the entry's `dso_handle`. The handlers are kept in
+96:   bionic's own list.
+97: - `__unregister_atfork(dso)`, called from `__cxa_finalize` on `dlclose`, removes every entry with that `dso_handle`.
+98:   A library that registered fork handlers can therefore be unloaded safely.
+99: 
+100: **route-A native_abi** (`native_abi.c:12-18`, unchanged since d2053066).
+101: - It forwards to OH musl `pthread_atfork(prepare, parent, child)` and **drops `dso`**.
+102: - musl has no per-DSO unregister, so the handlers of a library that is later `dlclose`d stay registered. The next
+103:   `fork()` would call into unmapped code.
+104: - For Hermes/React Native/Crashlytics this never happens: SoLoader never unloads.
+105: - Recorded limitation: a faithful `__unregister_atfork` would need its own handler list (AOSP's), not a forward. It is
+
+FILE $MAIN/bms/src/adapter/framework/app-native-loader/src/app_native_loader.c SHA256 aa1cd7c09164f1e6eefb928e8bc856ecb4df3ce22f81842d6595911c5c1f1d06
+60: /* Exact package components from the N03/N04/N05 native-cluster records.
+61:  * Non-members retain the baseline namespace and loading path. */
+62: static bool native_cluster_path(const char* text) {
+63:     const char* packages[] = {"com.ichi2.anki", "com.unciv.app", "app.organicmaps",
+64:         "com.nextcloud.client", "com.mcdonalds.app", "io.anuke.mindustry",
+65:         "com.emn8.mobilem8.nativeapp.bk", "im.vector.app",
+66:         "org.mozilla.firefox", "org.mozilla.fennec_fdroid", "org.videolan.vlc", "org.ppsspp.ppsspp", "com.shatteredpixel.shatteredpixeldungeon"};
+67:     for (size_t i=0; i<sizeof(packages)/sizeof(packages[0]); ++i) {
+68:         const char* q=text;
+69:         while ((q=strstr(q, packages[i])) != NULL) {
+70:             size_t n=strlen(packages[i]);
+71:             if ((q==text || q[-1]=='/') && (q[n]=='/' || q[n]==':' || q[n]=='\0')) return true;
+72:             q+=n;
+73:         }
+74:     }
+75:     return false;
+76: }
+
+FILE $MAIN/bms/src/adapter/framework/app-native-loader/src/app_native_loader.c SHA256 aa1cd7c09164f1e6eefb928e8bc856ecb4df3ce22f81842d6595911c5c1f1d06
+447:     if (strcmp(base, "libflutter.so") == 0 &&
+448:         (flutter_package_path(path) || flutter_package_path(domain->app_paths) ||
+449:          flutter_package_path(domain->app_permitted_paths))) domain->flutter_selected = true;
+450:     if (!domain->flutter_selected &&
+451:         (native_cluster_path(path) || native_cluster_path(domain->app_paths) ||
+452:          native_cluster_path(domain->app_permitted_paths))) domain->native_selected = true;
+453:     bool selected = domain->flutter_selected || domain->native_selected;
+454:     if (selected && domain->flutter_state == 0 && path[0] == '/') {
+455:         const char* slash = strrchr(path, '/');
+456:         size_t length = slash == NULL ? 0 : (size_t)(slash - path);
+457:         if (length >= sizeof(domain->selected_load_dir)) {
+458:             pthread_mutex_unlock(&domain->flutter_mutex);
+459:             failf("selected native load directory exceeds limits");
+460:             return NULL;
+461:         }
+462:         memcpy(domain->selected_load_dir, path, length);
+463:         domain->selected_load_dir[length] = '\0';
+464:     }
+465:     int prepared = selected ? flutter_prepare(domain) : 0;
+466:     pthread_mutex_unlock(&domain->flutter_mutex);
+467:     if (prepared != 0) return NULL;
+468:     dlerror();
+469:     void* handle = selected
+470:         ? domain->runtime_gate.namespace_host_ops.open_namespace(
+471:             &domain->flutter, path, mode | RTLD_LOCAL)
+472:         : domain->runtime_gate.namespace_host_ops.open_namespace(
+473:             &domain->app, path, mode | RTLD_LOCAL);
+474:     if (handle == NULL) {
+475:         const char* error = dlerror();
+
+FILE $U13_NATIVE/native-checks/n4-host.c SHA256 8be12abcb99ccc5f7fbd01f31d04b41a0b47db83d0ceac7f6bfda872b34e7b90
+184:         dlns_init(bridge_namespace, bridge_name);
+185:         result = dlns_create2(bridge_namespace, bridge_search_paths,
+186:                               CREATE_INHERIT_DEFAULT);
+187:         if (result != 0) {
+188:             return NamespaceResultFence(result);
+189:         }
+190:         result = dlns_set_namespace_separated(bridge_namespace->name, true);
+191:         if (result != 0) {
+192:             return NamespaceResultFence(result);
+193:         }
+194:         result = dlns_set_namespace_permitted_paths(
+195:             bridge_namespace->name, bridge_permitted_paths);
+196:         if (result != 0) {
+197:             return NamespaceResultFence(result);
+198:         }
+199:         result = dlns_set_namespace_allowed_libs(
+200:             bridge_namespace->name, bridge_shared_sonames);
+201:         if (result != 0) {
+202:             return NamespaceResultFence(result);
+203:         }
+204: 
+205:         if (bridge_bootstrap_soname != NULL) {
+206:             typedef int (*InstallBridgeOps)(const WlpbHostOpsV1 *ops);
+207:             InstallBridgeOps install = NULL;
+208:             void *symbol;
+209: 
+210:             dlerror();
+211:             bootstrap_handle = dlopen_ns(
+212:                 bridge_namespace, bridge_bootstrap_soname,
+213:                 RTLD_NOW | RTLD_LOCAL);
+214:             if (bootstrap_handle == NULL) {
+215:                 return NamespaceResultFence(ENOENT);
+216:             }
+217:             dlerror();
+218:             symbol = dlsym(bootstrap_handle, "WLPB_InstallHostOps");
+219:             if (symbol == NULL || dlerror() != NULL ||
+220:                 sizeof(symbol) != sizeof(install)) {
+221:                 (void)dlclose(bootstrap_handle);
+222:                 return NamespaceResultFence(ENOEXEC);
+223:             }
+224:             (void)memcpy(&install, &symbol, sizeof(install));
+225:             result = install(pthread_bridge_ops);
+226:             if (result != 0) {
+227:                 (void)dlclose(bootstrap_handle);
+228:                 return NamespaceResultFence(result);
+229:             }
+230:             *out_bridge_bootstrap_handle = bootstrap_handle;
+
+FILE $U13_NATIVE/native-checks/n4-host.c SHA256 8be12abcb99ccc5f7fbd01f31d04b41a0b47db83d0ceac7f6bfda872b34e7b90
+263:      * request this branch; baseline control domains do not.
+264:      * No system search roots and no extra DFX/runtime instances in the app. */
+265:     const bool flutter_private = wants_bridge &&
+266:         strncmp(app_search_paths, "/system/android/lib64/westlake_flutter:",
+267:                 strlen("/system/android/lib64/westlake_flutter:")) == 0 &&
+268:         (flutter_package_path(app_search_paths) || flutter_package_path(app_permitted_paths));
+269:     const bool native_private = wants_bridge &&
+270:         strncmp(u11_original_search, "/system/android/lib64/westlake_native:",
+271:                 strlen("/system/android/lib64/westlake_native:")) == 0 &&
+272:         (native_cluster_path(app_search_paths) || native_cluster_path(app_permitted_paths));
+273:     if (flutter_private || native_private) {
+274:         Dl_namespace system_owner, runtime_owner;
+275:         result = dlns_get("default", &system_owner);
+276:         if (result != 0) return NamespaceResultFence(result);
+277:         result = dlns_get("westlake.sealed.child", &runtime_owner);
+278:         if (result != 0) return NamespaceResultFence(result);
+279:         result = dlns_inherit(app_namespace, &system_owner,
+280:             "libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:libstdc++.so:libOpenSLES.so");
+281:         if (result != 0) return NamespaceResultFence(result);
+282:         result = dlns_inherit(app_namespace, &runtime_owner,
+283:             "liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so");
+284:         if (result != 0) return NamespaceResultFence(result);
+285:         const bool needs_runtime = flutter_private ||
+286:             strstr(app_search_paths, "/com.emn8.mobilem8.nativeapp.bk/") ||
+287:             strstr(app_search_paths, "/com.mcdonalds.app/") ||
+288:             strstr(app_search_paths, "/app.organicmaps/") ||
+289:             strstr(app_search_paths, "/im.vector.app/") ||
+290:             strstr(app_search_paths, "/org.ppsspp.ppsspp/");
+291:         if (needs_runtime) {
+
+FILE $U13_NATIVE/native-checks/n4-host.c SHA256 8be12abcb99ccc5f7fbd01f31d04b41a0b47db83d0ceac7f6bfda872b34e7b90
+345:     if (flutter_private || native_private) {
+346:         /* OH 6.1 musl ignores DF_1_GLOBAL: its add_syms/removal is controlled
+347:          * by dlopen mode. Promote only the declared ABI DSO in selected app
+348:          * domains, not arbitrary app libraries or system providers. */
+349:         const char* abi = flutter_private
+350:             ? "/system/android/lib64/westlake_flutter/libwestlake_native_abi.so"
+351:             : "/system/android/lib64/westlake_native/libwestlake_native_abi.so";
+352:         void* handle = dlopen_ns(app_namespace, abi, RTLD_NOW | RTLD_GLOBAL);
+353:         if (handle == NULL) return NamespaceResultFence(ENOENT);
+354:         fprintf(stderr, "[N2-OWNER] %s ABI global ready; search=%s permitted=%s\n",
+355:                 app_name, app_search_paths, app_permitted_paths);
+356:     }
+357:     if (u11_zlib_root != NULL) APPSPAWN_LOGI("[U11-ZLIB-ROUTE] ns=%{public}s root=%{public}s", app_name, u11_zlib_root);
+358:     return NamespaceResultFence(0);
+
+FILE $MAIN/benchmark/2026-10-21-commercial-game/gles-loader-candidate/sources/candidate/include/nativeloader/native_bridge_policy.h SHA256 b5d3f6c18f417dd5b7c10274fe908e72569f289297c074fd11e795009dae0622
+15: inline constexpr std::string_view kArchitecture = "arm64";
+16: inline constexpr std::string_view kBridgeBootstrapSoname =
+17:     "libwestlake_bionic_pthread_bridge.so";
+18: 
+19: inline constexpr std::array<std::string_view, 2> kBridgeSearchPaths = {
+20:     "/system/android/lib64",
+21:     "/system/lib64/platformsdk",
+22: };
+23: 
+24: inline constexpr std::array<std::string_view, 2> kBridgePermittedPaths = {
+25:     "/system/android/lib64",
+26:     "/system/lib64/platformsdk",
+27: };
+28: 
+29: inline constexpr std::array<std::string_view, 3> kSystemCallerRoots = {
+30:     "/apex/",
+31:     "/system/android/framework/",
+32:     "/system/framework/",
+33: };
+34: 
+35: inline constexpr std::array<SystemLibrary, 7> kSystemLibraries = {{
+36:     {"libsoundpool.so", "/system/android/lib64/libsoundpool.so"},
+37:     {"libicu_jni.so", "/system/android/lib64/libicu_jni.so"},
+38:     {"libjavacore.so", "/system/android/lib64/libjavacore.so"},
+39:     {"libopenjdk.so", "/system/android/lib64/libopenjdk.so"},
+40:     {"liboh_adapter_bridge.so", "/system/android/lib64/liboh_adapter_bridge.so"},
+41:     {"libmediandk.so", "/system/android/lib64/libmediandk.so"},
+42:     {"libmedia_jni.so", "/system/android/lib64/liboh_android_runtime.so"},
+43: }};
+44: 
+45: // This is adapter policy, not an app-provided allowlist. A generation is not
+46: // deployable until the closure gate binds every provider and transitive edge.
+47: inline constexpr std::array<std::string_view, 8> kBridgeSharedSonames = {
+48:     "libandroid.so",
+49:     "libEGL.so",
+50:     "liblog.so",
+51:     "libmediandk.so",
+52:     "libz.so",
+53:     "libwestlake_bionic_pthread_bridge.so",
+54:     "libstdc++.so",
+55:     "libGLESv2.so",
+56: };
+57: 
+58: }  // namespace westlake::nativeloader::policy
