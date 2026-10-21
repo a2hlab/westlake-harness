@@ -1,0 +1,223 @@
+{
+  "id": "OBS-20261021-G28-NATIVE-ROUTE-TRIAL",
+  "kind": "原生命名空间路由候选实测（不是新增安卓公共API，不是公共API冻结）",
+  "name": "G28 原神精确native域路由候选实测：主库首终止错误推进到_ctype_@LIBC，游戏白屏后回桌面",
+  "status": "CANDIDATE_TRIAL_GAME_FAILED；无游戏帧；candidate_currently_deployed=false；已恢复基线",
+  "method": "G26离线候选（host ee5649f2…、ANL 640b3c87…）加G24加载器策略，经外环持锁按原U7 apply（rc0，active_verified）；Hello World对照截图已认；普通桌面图标点击原神一次；随后同一journal原rollback（rc0）恢复基线并解锁。",
+  "platform": "OH 5ea / arm64；boot a1d869b4-69a2-40a4-937e-4860f5b54239；parent 12781、child 14857（birth 1768375）、UID 20011077。只覆盖本次窗口，不外推其它版本或其它板。",
+  "apps": "com.miHoYo.Yuanshen：首图白屏、后图为桌面，child exit code 1；game_frames_observed=false，无首帧、无可玩结论。仅一个app，不满足2app冻结条件。",
+  "limitations": "本轮主库实际首终止为libyuanshen.so重定位缺OBJECT _ctype_@LIBC（22:02:08.430，hilog L3259），随后Unity加载失败、UnityPlayer.nativeRestartActivityIndicator未绑定、child exit1（L3722）。更早的libMHYComboCrypto.so __assert2缺失（L3118/3119/3144/3145）之后仍继续执行，未证为终止原因。G24的__register_atfork报错在本轮为0条，只表示报错点推进，不证明atfork provider/GOT赢家、完整atfork语义或主库完整重定位成功。maps采样（22:02:06.658）早于本次失败，不能认定最终namespace可见性或provider赢家。下一簇为_ctype_（实际失败）及strtoll_l、strtoull_l（同一locale模块的静态导入，未称当前失败），待独立定源与归属。",
+  "deployment": "当前设备为已恢复基线：apply rc0、rollback rc0，外环独立复核319个直接与319个父视图基线哈希、mount栈、Boat3私有库与控制图一致，power恢复SLEEP/30000/10000，测试child不在，318条窗口例外退回原registry；锁于22:09:19.404534释放，闭窗978.404534秒。闭窗时held检查未单独留原始回执，postclose-held.json为其后22:13:48的独立只读复查（rc1、空），不补造原unlock rc。候选不是当前部署；不冻结。G28原始窗口归档8844053f…（69799110 B）已远端SHA核验（22:22:56），其快照早于后续held复查与最终peer审查。addendum检查器原内环46项实跑PASS；主树缺私有dynsym输入，不能独立重跑全部私有检查。",
+  "source": [
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/candidate.patch",
+      "sha256": "d85f22af68afda382f20d0928aa994ada40e33c95466b650fd7c17988d144937",
+      "bytes": 3979
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/source-pins.json",
+      "sha256": "743060db1eacd25f60e5a7e55794288d0d5df036e5c7dd4fdf77bba519fcefd9",
+      "bytes": 4066
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/anl/flutter_domain.inc",
+      "sha256": "7422698e38f40f0a26e583d602c8826f5d7c4fb47059e1c114b4d3d825fdd99f",
+      "bytes": 4183
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/anl/app_native_loader.c",
+      "sha256": "946064aac445faff916d83d000f285c014bed3e6b5e23612884a73a085e52c41",
+      "bytes": 21918
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/host/candidate-stock-host.c",
+      "sha256": "ea50c2d052c9f53d653cb3691726304b54fc33494427d1326c5ad47113505c20",
+      "bytes": 27836
+    }
+  ],
+  "build": [
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/build_host.py",
+      "sha256": "e2c21f85af52afe4f9d6a7cee923623cf3d28cec13f849c4d84563e4b735d35c",
+      "bytes": 2875
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/build_anl.py",
+      "sha256": "dd7c11f3ed4ada95a0f1b466b1f7fba5b91e4c2046c09ca36026bcb861da172f",
+      "bytes": 3925
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/results.json",
+      "sha256": "f5c880fa8632657c493a2d6af02a83dbc137474fe3c5979df4f5d1dbed7adb15",
+      "bytes": 4715
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-build-archive/remote-archive.json",
+      "sha256": "96df07152c3aba0ef2ab9c9b802960c4b076fc1d4eabdc6713feb2f818005056",
+      "bytes": 862
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-build-archive/README.md",
+      "sha256": "268a10b8d7d272e40e6b90281f43c50bfc8d610dae6eb756a38055e960b628f4",
+      "bytes": 712
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/admission-01/README.md",
+      "sha256": "8c374f26262945b9f5a604da8df8a6d7edef045fa23bfe45b8198b6dde6cae30",
+      "bytes": 1181
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/admission-01/decisions.json",
+      "sha256": "17a1bda4ace43c57508b6151143385b1bd496c8a95617cf2e7178f4bc9b49b98",
+      "bytes": 3510278
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/admission-01/native-exceptions.json",
+      "sha256": "fd4fd4af1fddb2370a4169d8649d9f9a82a17046b60502a03d135b25de4b9e32",
+      "bytes": 553879
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/admission-01/preflight-receipt.json",
+      "sha256": "b589d448c4fe3a46b4a5c4db4d4481ea558c811a84c7f659f60cb679afc33ced",
+      "bytes": 1471
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/admission-01/static-policy.json",
+      "sha256": "9c7a51b9e853e34e8043713b176667ea130f37e1c0d6a07f2a4413b0b17f80b4",
+      "bytes": 2051
+    }
+  ],
+  "evidence": [
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/README.md",
+      "sha256": "8284fccf009eb781a7cac2d6460aef8d29731812b5f06e821d09885bb6bf18a5",
+      "bytes": 3535
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/results.json",
+      "sha256": "8236b976681e596fd5733a516400ad395cb947adff6616a05a2413c8ef93b187",
+      "bytes": 815
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/remote-archive.json",
+      "sha256": "a8179ebd5f888b69f0b059c75063126ce34da2518dc28198ed8a6c4eccb4fe62",
+      "bytes": 1065
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/independent-review.json",
+      "sha256": "1d25bcd7469c5aab58407db75b7beb759d1d4eea3b80ad642233561ac4aa0a09",
+      "bytes": 4609
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/postclose-held.json",
+      "sha256": "c811d6abd6833ca1120a0455c65e27ce29a4755a71f0758b41099a63924318d6",
+      "bytes": 636
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/exception-retirement.json",
+      "sha256": "ee4eac15f74e725624ad0064ffcd57c4d3a2a45a0ca41677eb719280c8e842a1",
+      "bytes": 154
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/original-evidence-index.json",
+      "sha256": "dadce6b30a7a8e8a72407c93571998250decc5430b3b9043e7bf6fc7490e9d78",
+      "bytes": 1854468
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/facts.txt",
+      "sha256": "29696474c9d6c7607b77b3bf1745924da3946ff112ae6e5920aec359e7222427",
+      "bytes": 334
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/power-after.txt",
+      "sha256": "6f9924b41f9a6c266968827e435ef5e52e294d08518aebc531005b583406fdd8",
+      "bytes": 1211
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/candidate-control.jpeg",
+      "sha256": "5225441fb382a223b3d149893969e2070dcd28a3a81e8e94a8c97f4b55c26a7c",
+      "bytes": 77575
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/game-first.jpeg",
+      "sha256": "a7cb1d8f4cd3f1e4406af5e7cba4e2070703461a801b495dd0d0b176110023b1",
+      "bytes": 37948
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/game-later.jpeg",
+      "sha256": "8d3d3da48bfcafb9afb8c1422f9177063aa4fb6329d945d0e431dd2b57e4c8d2",
+      "bytes": 101123
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/native-route-window/closed/restored-control.jpeg",
+      "sha256": "e0dea001c17069019021595b6c167a7766cbffb876773b9cf13f0b6da3a567ab",
+      "bytes": 77569
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/README.md",
+      "sha256": "79467fdb7c5723a8317cb428901732552403ce2780f71de7be4e5e0126024a6c",
+      "bytes": 6220
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/ACK.md",
+      "sha256": "e05beee88277b7e7a0c38e871772d313524322185e422be449713e09574d52c1",
+      "bytes": 787
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/results.json",
+      "sha256": "29253e2efdff4250bf28d182e77a8ee958e08776c1472a905bc8e92937ba5ef7",
+      "bytes": 2713
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/excerpts.txt",
+      "sha256": "09f6f3ecb1504ac4a00f2a018385578ed6efb1bfdb8fbd994bcfb6630ca30941",
+      "bytes": 3677
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/maps-excerpts.json",
+      "sha256": "b03de48d6691d693e73d17ef4b116b644e6676cf773deec1fc738fa8bb1b9700",
+      "bytes": 4410
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/provider-matrix.json",
+      "sha256": "6bb584c3b728311a267973d7cb1460aeb93f4136f4542ab695b98eaf9cdd6b2b",
+      "bytes": 2529
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/next-candidates.json",
+      "sha256": "6207bae3fa9a336c47b38219b2802c13e1da02291d6f1cbdc4b8986b3060a021",
+      "bytes": 1303
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/source-excerpts.json",
+      "sha256": "a57d69f4e2c4778e71bab260d72c0b515b099380279a4c3aa8c143203abc7d14",
+      "bytes": 16041
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/validation.json",
+      "sha256": "2d33eab6366606267eb2c4a32e24618233f29d7f0042ace166a1be76be231e3e",
+      "bytes": 703
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/manifest.json",
+      "sha256": "475c0407cf5100a7aaffe49548e96cbbeda83d7ed9d592b529787e206c14ca2d",
+      "bytes": 2528
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/input-sha.json",
+      "sha256": "3e1c5563c4a696f0965ed1171477593187fcf9d4eaa7f28dd11cad8aab442e85",
+      "bytes": 11880
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/check.py",
+      "sha256": "f82abf7f221bf44c9b0d1a754b5a581b0f6f385c240191d192951631c2ea2894",
+      "bytes": 1299
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/runtime-loader-triage/g28-launch-addendum/SHA256SUMS",
+      "sha256": "ab795d3499d83fe2685bb101bdf94090a75d77dc32ac61dfccdc2a09bd620713",
+      "bytes": 1760
+    }
+  ],
+  "frozen": false
+}

@@ -2,8 +2,8 @@
 """Check G29's one-row append (61st observation, G26 native-route candidate); no device, REA, build or cited-code run.
 
 Reuses the G25 checker (G15 58 / G17 59 / G25 60 strict prefixes, original-renderer byte equality of
-index.html/observations.csv/results.json, G24 failure semantics) and adds: exactly 61 rows, row 61 equals
-added-row.json, independent semantic guards (offline only, not deployed, not frozen, not a clean rebuild,
+index.html/observations.csv/results.json, G24 failure semantics) and adds: the 61-row prefix, row 61 equals
+added-row.json (G31: the 61-row prefix is strict and later rows may follow), independent semantic guards (offline only, not deployed, not frozen, not a clean rebuild,
 no game evidence), cross-checks against the G26 receipts, and negative cases.
 """
 import argparse, copy, importlib.util, json, sys
@@ -32,7 +32,7 @@ def check(data, source_root, rendered=True):
     count = g25.check(data, source_root, rendered)
     base = old.read(HERE / 'original-60.json')
     old.require(len(base['rows']) == 60 and data['rows'][:60] == base['rows'], 'original60 objects changed')
-    old.require(len(data['rows']) == 61, 'G29 requires exactly 61 rows')
+    old.require(len(data['rows']) >= 61, 'G29 requires the 61-row prefix')
     row = data['rows'][60]
     semantic(row)
     for g in ('source', 'build', 'evidence'):
@@ -75,8 +75,9 @@ def main():
         ('G24 row changed', lambda: check(mut(lambda d: d['rows'][59].__setitem__('status', 'GAME_STARTED')), source_root, False), 'game success'),
         ('HTML-only success forgery', lambda: g25.rendered_equal(data, source_root, dict(files(), **{'index.html': forged_html()})), 'index.html differs'),
         ('CSV-only edit', lambda: g25.rendered_equal(data, source_root, dict(files(), **{'observations.csv': files()['observations.csv'] + b'x'})), 'observations.csv differs'),
-        ('truncated to 60', lambda: check(mut(lambda d: d['rows'].pop()), source_root, False), 'exactly 61 rows'),
-        ('62nd row appended', lambda: check(mut(lambda d: d['rows'].append(dict(d['rows'][60], id='OBS-FUTURE'))), source_root, False), 'exactly 61 rows'),
+        ('rows truncated below 61', lambda: check(mut(lambda d: d['rows'].__delitem__(slice(60, None))), source_root, False), '61-row prefix'),
+        ('appended row with unverified missing reference', lambda: g25.rendered_equal(mut(lambda d: d['rows'].append(dict(d['rows'][60], id='OBS-FUTURE',
+            evidence=[dict(item, path=f'{C}/native-route-candidate/intentionally-missing.json')]))), source_root, {}), 'renderer refused'),
         ('row61 edited', lambda: check(mut(lambda d: d['rows'][60].__setitem__('name', 'changed')), source_root, False), 'G29 observation changed'),
         ('evidence dropped', lambda: check(mut(lambda d: d['rows'][60].__setitem__('evidence', [])), source_root, False), 'evidence references dropped'),
         ('claimed frozen', lambda: guard('frozen', True), 'freeze'),
@@ -86,6 +87,8 @@ def main():
         ('missing reference', lambda: old.check_ref(source_root, dict(item, path=f'{C}/native-route-candidate/intentionally-missing.json')), 'missing/nonregular'),
         ('reference SHA drift', lambda: old.check_ref(source_root, dict(item, sha256='0' * 64)), 'SHA drift'),
     ]
+    later = mut(lambda d: d['rows'].append(dict(d['rows'][60], id='OBS-FUTURE')))
+    old.require(check(later, source_root, False) == count, 'G29 allows a later append')
     refusals = []
     for name, call, expected in cases:
         try: call()
