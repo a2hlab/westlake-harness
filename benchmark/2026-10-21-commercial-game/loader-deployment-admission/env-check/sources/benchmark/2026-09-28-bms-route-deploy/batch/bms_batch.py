@@ -1,0 +1,1204 @@
+#!/usr/bin/env python3
+"""Offline plan or explicit OH6.1 BMS install -> desktop tap -> evidence collection.
+
+Device execution is opt-in. Nothing here deploys R130/R155 or changes the ROM.
+Desktop ID/bounds conventions derive from cts_entry_launch.py; cold process and
+capture provenance derive from run-r151d.sh. See README for exact source spans.
+"""
+import argparse
+import datetime
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import shlex
+import subprocess
+import sys
+import time
+import uuid
+import zipfile
+
+def _board_whitelist():
+    """OH boards this tool may touch: knowledge/boards.json via scripts/lab/lab_paths.py (data, not code, so a
+    new board is one JSON entry). Found from this file's repo, else from the main checkout in WORKSPACES /
+    the nearest ancestor holding westlake-inputs/ (copies of this file inside generation packages)."""
+    here = Path(__file__).resolve()
+    roots = [d for d in here.parents if (d / 'scripts/lab/lab_paths.py').is_file()]
+    ws = os.environ.get('WORKSPACES') or next((str(d) for d in here.parents if (d / 'westlake-inputs').is_dir()), None)
+    if ws:
+        roots.append(Path(ws) / 'westlake-harness')
+    for r in roots:
+        if (r / 'scripts/lab/lab_paths.py').is_file():
+            sys.path.insert(0, str(r / 'scripts/lab'))
+            import lab_paths
+            return set(lab_paths.boards('oh'))
+    sys.exit('bms_batch: cannot find scripts/lab/lab_paths.py for the board whitelist; set WORKSPACES')
+
+
+SERIALS = _board_whitelist()
+import installation_chain
+IDENT = re.compile(r'[A-Za-z_][A-Za-z0-9_.]*\Z')
+ACTIVITY = re.compile(r'[A-Za-z_][A-Za-z0-9_.$]*\Z')
+KEY = re.compile(r'[A-Za-z0-9_-]+\Z')
+SHA = re.compile(r'[0-9a-f]{64}\Z')
+BOUNDS = re.compile(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]\Z')
+ICON_PREFIX = 'AppIconCommonView_'
+LAUNCHER = 'com.ohos.sceneboard'
+BLACK_FRAME_BYTES = 36627
+FAULT_ROOT = '/data/log/faultlog/faultlogger'
+# Uniform board settings every batch starts from (see preflight). A reboot resets hilog to 256K with
+# privacy masking on; at 256K an app's child-process lines are overwritten before collection (#71).
+HILOG_MIN_BYTES = 16 << 20
+SCREEN_OFF_MS = 86400000
+CLOCK_TOLERANCE_S = 120
+
+
+class AppFailure(RuntimeError):
+    """A single app failed; its evidence can still be recorded."""
+
+
+class BatchStop(RuntimeError):
+    """Identity, lock or transport lost: no more device writes."""
+
+
+class StaleEvidence(BatchStop):
+    """Existing evidence belongs to an earlier attempt and must not be reused."""
+
+
+class FocusMismatch(AppFailure):
+    """Scheduled screenshot lacks target window ownership; retain the failed probe."""
+
+
+class SandboxPreparationFailure(AppFailure):
+    """The restore preparation command failed; desktop launch is forbidden."""
+
+
+def save(path, value):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(path.suffix + '.tmp')
+    temp.write_text(json.dumps(value, indent=2, ensure_ascii=False) + '\n')
+    temp.replace(path)
+
+
+def sha(path):
+    h = hashlib.sha256()
+    with Path(path).open('rb') as f:
+        for b in iter(lambda: f.read(1024 * 1024), b''):
+            h.update(b)
+    return h.hexdigest()
+
+
+def load_apps(path, phase='all', keys=None):
+    apps = json.loads(Path(path).read_text())['apps']
+    if len({a['key'] for a in apps}) != len(apps):
+        raise ValueError('duplicate app key')
+    ranks = {'controls': 0, 'blocked': 1, 'tail': 2}
+    for a in apps:
+        if not KEY.fullmatch(a['key']) or a['phase'] not in ranks:
+            raise ValueError('invalid key or phase')
+    apps.sort(key=lambda a: ranks[a['phase']])
+    if keys:
+        wanted = keys.split(',')
+        if len(set(wanted)) != len(wanted) or set(wanted) - {a['key'] for a in apps}:
+            raise ValueError('unknown or duplicate requested key')
+        apps = [a for a in apps if a['key'] in wanted]
+    if phase != 'all':
+        apps = [a for a in apps if a['phase'] == phase]
+    if not apps:
+        raise ValueError('empty selection')
+    return apps
+
+
+def resolve_input(root, entry):
+    directory = Path(root).expanduser() / entry['key']
+    meta_path = directory / 'app-input.json'
+    meta = json.loads(meta_path.read_text())
+    app = meta['application']
+    package = app['package']
+    digest = meta['apk_sha256']
+    ability = app.get('launch_activity') or entry.get('launch_activity')
+    if not isinstance(package, str) or not isinstance(digest, str) or not IDENT.fullmatch(package) or not SHA.fullmatch(digest):
+        raise AppFailure('invalid package or APK digest in app-input')
+    if ability is not None and not isinstance(ability, str):
+        raise AppFailure('invalid activity type')
+    if ability and ability.startswith('.'):
+        ability = package + ability
+    if ability and not ACTIVITY.fullmatch(ability):
+        raise AppFailure('invalid activity')
+    for field, observed in [('package', package), ('apk_sha256', digest)]:
+        if entry.get(field) and entry[field] != observed:
+            raise AppFailure('pinned identity changed: ' + field)
+    # Filename/layout-independent: select the original APK by its recorded bytes.
+    candidates = list(directory.rglob('*.apk'))
+    for field in ('apk', 'apk_path', 'source_apk'):
+        value = meta.get(field)
+        if isinstance(value, str):
+            p = Path(value).expanduser()
+            p = p if p.is_absolute() else directory / p
+            if p.is_file() and p not in candidates:
+                candidates.append(p)
+    matches = [p for p in candidates if sha(p) == digest]
+    if not matches:
+        raise AppFailure('original APK with app-input hash not found')
+    # Split APK requirements are evidence, not silently installed as a monolithic app.
+    split_hint = bool(meta.get('splits') or app.get('splits') or 'with-splits' in str(app.get('kind', '')))
+    apk = sorted(matches)[0].resolve()
+    sidecars = resolve_native_sidecars(directory, apk, entry, meta)
+    return dict(entry, package=package, apk_sha256=digest, launch_activity=ability,
+                apk=str(sorted(matches)[0].resolve()), input_sha256=sha(meta_path),
+                split_hint=split_hint, apk_candidates=len(candidates), native_sidecars=sidecars)
+
+
+def resolve_native_sidecars(directory, apk, entry, meta):
+    """Inventory extracted input libraries; never rewrite or re-sign the APK."""
+    libdir = directory / 'lib' / 'arm64-v8a'
+    files = sorted(libdir.glob('*.so'))
+    declared = meta.get('native_libraries') or {}
+    if not isinstance(declared, dict):
+        raise AppFailure('invalid native_libraries metadata')
+    declared = {k: v for k, v in declared.items() if k.startswith('lib/arm64-v8a/')}
+    if declared and (files or entry.get('native_sidecar_count')) and set(declared) != {'lib/arm64-v8a/' + p.name for p in files}:
+        raise AppFailure('native sidecar inventory differs from app-input')
+    expected = entry.get('native_sidecar_count')
+    if expected is not None and (type(expected) is not int or expected < 1):
+        raise AppFailure('invalid native_sidecar_count')
+    if expected is not None and len(files) != expected:
+        raise AppFailure(f'native sidecar count differs: expected {expected}, found {len(files)}')
+    if not files:
+        return []
+    rows = []
+    for p in files:
+        if not re.fullmatch(r'[A-Za-z0-9_.+-]+\.so', p.name) or not p.is_file() or p.is_symlink() or not p.resolve().is_relative_to(directory.resolve()):
+            raise AppFailure('invalid native sidecar file: ' + p.name)
+        with p.open('rb') as stream:
+            header = stream.read(64)
+        if (len(header) != 64 or header[:6] != b'\x7fELF\x02\x01'
+                or int.from_bytes(header[16:18], 'little') != 3
+                or int.from_bytes(header[18:20], 'little') != 183):
+            raise AppFailure('native sidecar is not an AArch64 shared ELF: ' + p.name)
+        digest = sha(p)
+        pin = declared.get('lib/arm64-v8a/' + p.name)
+        if pin is not None and (not isinstance(pin, dict) or pin.get('sha256') != digest or pin.get('bytes', p.stat().st_size) != p.stat().st_size):
+            raise AppFailure('native sidecar hash/size differs from app-input: ' + p.name)
+        rows.append({'name': p.name, 'path': str(p.resolve()), 'sha256': digest,
+                     'bytes': p.stat().st_size, 'abi': 'arm64-v8a'})
+    try:
+        with zipfile.ZipFile(apk) as archive:
+            for row in rows:
+                name = 'lib/arm64-v8a/' + row['name']
+                if name in archive.namelist() and hashlib.sha256(archive.read(name)).hexdigest() != row['sha256']:
+                    raise AppFailure('sidecar conflicts with embedded APK library: ' + row['name'])
+    except zipfile.BadZipFile as exc:
+        raise AppFailure('sidecar APK is not a valid ZIP') from exc
+    return rows
+
+
+def assemble_native_sidecars(board, app, remote, out, record):
+    """Called only after BMS readback and a verified cold stop; fail before click."""
+    rows = app.get('native_sidecars') or []
+    receipt = {'status': 'not_needed' if not rows else 'started', 'files': [],
+               'split_dex_resources': 'not_installed_by_this_step'}
+    record['native_assembly'] = receipt
+    if not rows:
+        return
+    code = '/data/app/el1/bundle/public/' + app['package'] + '/android'
+    dest = code + '/lib/arm64-v8a'
+    receipt.update(installed_apk=code+'/base.apk', destination=dest,
+                   lookup='B7BindFixes.fixNativeLibraryDir: APK-parent/lib/arm64-v8a')
+    save(out/'native-assembly.json', receipt)
+    try:
+        _, text = board.shell('sha256sum ' + shlex.quote(code+'/base.apk'))
+        if not text.split() or text.split()[0] != app['apk_sha256']:
+            raise AppFailure('sidecar installed APK hash differs')
+        # Stage and verify every file before changing the package's library directory.
+        stage = remote + '/native-sidecars'
+        board.shell('mkdir -p ' + shlex.quote(stage))
+        for row in rows:
+            if sha(row['path']) != row['sha256']:
+                raise AppFailure('native sidecar input changed: ' + row['name'])
+            staged = stage + '/' + row['name']
+            board.send(row['path'], staged)
+            _, text = board.shell('sha256sum ' + shlex.quote(staged))
+            if not text.split() or text.split()[0] != row['sha256']:
+                raise AppFailure('staged native sidecar hash differs: ' + row['name'])
+        board.shell('mkdir -p ' + shlex.quote(dest) + ' && chmod 755 ' + shlex.quote(code+'/lib') + ' ' + shlex.quote(dest))
+        for row in rows:
+            target = dest + '/' + row['name']
+            # Never silently replace an existing different library from BMS/a prior install.
+            rc, text = board.shell('if test -e ' + shlex.quote(target) + '; then sha256sum ' + shlex.quote(target) + '; else (exit 44); fi', required=False)
+            if rc == 0:
+                if not text.split() or text.split()[0] != row['sha256']:
+                    raise AppFailure('installed native sidecar conflicts: ' + row['name'])
+            elif rc == 44:
+                board.shell('cp ' + shlex.quote(stage+'/'+row['name']) + ' ' + shlex.quote(target))
+            else:
+                raise AppFailure('cannot inspect installed native sidecar: ' + row['name'])
+            board.shell('chmod 755 ' + shlex.quote(target))
+            _, text = board.shell('sha256sum ' + shlex.quote(target))
+            if not text.split() or text.split()[0] != row['sha256']:
+                raise AppFailure('installed native sidecar hash differs: ' + row['name'])
+            receipt['files'].append(dict(row, installed_path=target, verified=True))
+            save(out/'native-assembly.json', receipt)
+        receipt['status'] = 'verified'
+    except (AppFailure, BatchStop, OSError) as exc:
+        receipt.update(status='failed', error=str(exc))
+        raise
+    finally:
+        save(out/'native-assembly.json', receipt)
+
+
+def attributes(layout):
+    stack = [layout]
+    while stack:
+        node = stack.pop()
+        yield node.get('attributes') or {}
+        stack.extend(node.get('children') or [])
+
+
+def box(bounds):
+    m = BOUNDS.fullmatch(str(bounds or ''))
+    if not m:
+        raise AppFailure('invalid UI bounds')
+    x1, y1, x2, y2 = map(int, m.groups())
+    if x2 <= x1 or y2 <= y1:
+        raise AppFailure('empty UI bounds')
+    return x1, y1, x2, y2
+
+
+def panel(layout, known=None):
+    choices = [known] if known else []
+    for a in attributes(layout):
+        try:
+            b = box(a.get('bounds'))
+        except AppFailure:
+            continue
+        w, h = b[2] - b[0], b[3] - b[1]
+        if min(w, h) * 3 >= max(w, h):
+            choices.append(b)
+    return max(choices, key=lambda b: (b[2]-b[0])*(b[3]-b[1])) if choices else None
+
+
+def select_icon(layout, package, ability=None):
+    prefix = ICON_PREFIX + package + '.'
+    exact = prefix + ability if ability else None
+    matches = []
+    def visit(node, launcher=False, visible=True):
+        a = node.get('attributes') or {}
+        if a.get('bundleName'):
+            launcher = a['bundleName'] == LAUNCHER
+        visible = visible and a.get('visible') not in (False, 'false') and a.get('enabled') not in (False, 'false')
+        ids = [a.get('id', ''), a.get('key', '')]
+        matched = exact in ids if exact else any(str(i).startswith(prefix) for i in ids)
+        if launcher and matched:
+            matches.append((a, visible))
+        for c in node.get('children') or []:
+            visit(c, launcher, visible)
+    visit(layout)
+    if not matches:
+        return None
+    if len(matches) != 1:
+        raise AppFailure('ambiguous exact desktop icon')
+    a, visible = matches[0]
+    if not visible or not all(a.get(k) in (True, 'true') for k in ('visible', 'enabled', 'clickable')):
+        raise AppFailure('desktop icon not actionable')
+    b = box(a.get('bounds'))
+    return {'id': a.get('id') or a.get('key'), 'bounds': a['bounds'],
+            'center': [(b[0]+b[2])//2, (b[1]+b[3])//2]}
+
+
+def parse_bundle(text, package):
+    # bm may prefix JSON with a human-readable header.
+    start = text.find('{')
+    if start < 0:
+        raise AppFailure('bm dump has no JSON record')
+    try:
+        data, _ = json.JSONDecoder().raw_decode(text[start:])
+    except ValueError as exc:
+        raise AppFailure('bm dump malformed JSON') from exc
+    def walk(obj):
+        if isinstance(obj, dict):
+            yield obj
+            for v in obj.values(): yield from walk(v)
+        elif isinstance(obj, list):
+            for v in obj: yield from walk(v)
+    nodes = list(walk(data))
+    if not any(n.get('name') == package or n.get('bundleName') == package for n in nodes):
+        raise AppFailure('bm dump does not identify requested package')
+    uids = {n['uid'] for n in nodes if type(n.get('uid')) is int and n['uid'] > 10000}
+    # BMS projects Android aliases (e.g. Wikipedia DefaultIcon, Termux HomeActivity)
+    # as the desktop mainAbility; the old direct-launch activity is not that icon.
+    modules = data.get('hapModuleInfos') or []
+    entry_name = data.get('entryModuleName')
+    entries = [m for m in modules if isinstance(m, dict) and
+               (not entry_name or m.get('name') == entry_name)]
+    launcher = {m.get('mainAbility') or m.get('mainElementName') for m in entries}
+    launcher.discard(None)
+    launcher.discard('')
+    if any(not isinstance(a, str) or not ACTIVITY.fullmatch(a) for a in launcher):
+        raise AppFailure('invalid BMS desktop mainAbility')
+    if len(launcher) > 1:
+        raise AppFailure('ambiguous BMS desktop mainAbility')
+    return {'queryable': True, 'uid': next(iter(uids)) if len(uids) == 1 else None,
+            'uid_candidates': sorted(uids),
+            'desktop_activity': next(iter(launcher)) if launcher else None}
+
+
+def processes(text):
+    rows = []
+    for line in text.splitlines():
+        fields = line.split()
+        if len(fields) >= 4 and all(x.isdigit() for x in fields[:3]):
+            rows.append({'pid': int(fields[0]), 'ppid': int(fields[1]), 'uid': int(fields[2]), 'name': fields[3]})
+    return rows
+
+
+def focused_window(wm):
+    focus = re.search(r'^Focus window:\s*(\d+)', wm, re.M)
+    if not focus:
+        return {'confirmed': False, 'reason': 'focus window missing'}
+    wid = int(focus.group(1))
+    # WMS names contain spaces; anchor on the full numeric column tail.
+    row = re.compile(r'^.+?\s+\d+\s+(?P<pid>\d+)\s+(?P<wid>\d+)'
+                     r'\s+\d+\s+\d+\s+\d+\s+-?\d+(?:\s|$)')
+    owners = set()
+    for line in wm.splitlines():
+        m = row.match(line)
+        if m and int(m['wid']) == wid:
+            owners.add(int(m['pid']))
+    if len(owners) != 1:
+        return {'confirmed': False, 'window_id': wid, 'reason': 'focus row missing or ambiguous'}
+    return {'window_id': wid, 'pid': owners.pop()}
+
+
+def foreground(wm, pids):
+    result = focused_window(wm)
+    if 'pid' not in result:
+        return result
+    confirmed = result['pid'] in pids
+    return dict(result, confirmed=confirmed,
+                reason='focused PID belongs to observed target UID' if confirmed else 'focused PID is not target')
+
+
+class Board:
+    def __init__(self, serial, hdc_cmd, lock_cmd, lane, out):
+        if serial not in SERIALS:
+            raise BatchStop('serial not in campaign whitelist')
+        self.serial, self.lane = serial, lane
+        self.hdc = shlex.split(hdc_cmd)
+        self.lock = shlex.split(lock_cmd)
+        if not self.hdc or not self.lock or not lane:
+            raise BatchStop('hdc, lock command and lane required')
+        self.out = Path(out)
+        self.boot = None
+        self.index = 0
+
+    def command(self, argv, timeout=60):
+        self.index += 1
+        prefix = self.out / f'command-{self.index:05d}'
+        save(prefix.with_suffix('.json'), {'argv': argv, 'started': time.time()})
+        try:
+            p = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            prefix.with_suffix('.error.txt').write_text(str(exc))
+            raise BatchStop('transport timeout or unavailable command') from exc
+        prefix.with_suffix('.stdout.txt').write_bytes(p.stdout)
+        prefix.with_suffix('.stderr.txt').write_bytes(p.stderr)
+        save(prefix.with_suffix('.json'), {'argv': argv, 'exit_code': p.returncode, 'finished': time.time()})
+        return p.returncode, p.stdout.decode('utf-8', 'replace') + p.stderr.decode('utf-8', 'replace')
+
+    def raw_shell(self, command, timeout=60):
+        # Lost responses do not establish whether a write executed. Never
+        # replay a write or an arbitrary shell fragment. Only these simple
+        # reads can be repeated (including the activation mountinfo read).
+        readonly = (command == 'ps -A -o PID,PPID,UID,NAME' or
+                    re.fullmatch(r'(?:cat|sha256sum)(?: /[A-Za-z0-9_./:+@-]+)+', command) is not None)
+        attempts = 3 if readonly else 1
+        deadline = time.monotonic() + timeout
+        for attempt in range(attempts):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            marker = '__BMS_REMOTE_RC_' + uuid.uuid4().hex + '__'
+            wrapped = command + '; bms_rc=$?; printf "\\n' + marker + '%s\\n" "$bms_rc"'
+            rc, text = self.command(self.hdc + ['-t', self.serial, 'shell', wrapped], remaining)
+            m = re.search(re.escape(marker) + r'(\d+)\s*$', text)
+            if rc == 0 and m:
+                # A real remote nonzero result is definitive, not retryable.
+                return int(m.group(1)), text[:m.start()].rstrip()
+            if attempt + 1 < attempts and deadline - time.monotonic() > 1:
+                save(self.out / f'marker-retry-{self.index:05d}.json',
+                     {'command': command, 'attempt': attempt + 1,
+                      'max_attempts': attempts, 'readonly': True,
+                      'reason': 'HDC lost remote status marker'})
+                time.sleep(1)
+            else:
+                break
+        raise BatchStop('HDC lost remote status marker')
+
+    def ready(self):
+        rc, held = self.command(self.lock + ['held', self.serial], 10)
+        # OrbStack 'mac' bridge transiently returns rc=0 with empty output.
+        # Retry once after 2 s only for that empty-output case; a real
+        # other-lane holder name stops immediately as before.
+        if not rc and not held.split():
+            time.sleep(2)
+            rc, held = self.command(self.lock + ['held', self.serial], 10)
+        if rc or not held.split() or held.split()[0] != self.lane:
+            raise BatchStop('invoking lane does not hold board lock')
+        rc, targets = self.command(self.hdc + ['list', 'targets'], 15)
+        if not rc and not targets.split():
+            time.sleep(2)
+            rc, targets = self.command(self.hdc + ['list', 'targets'], 15)
+        if rc or self.serial not in targets.split():
+            raise BatchStop('assigned serial detached')
+        rc, boot = self.raw_shell('cat /proc/sys/kernel/random/boot_id')
+        if rc or not re.fullmatch(r'[0-9a-f-]{36}', boot.strip()):
+            raise BatchStop('cannot read boot identity')
+        if self.boot is not None and boot != self.boot:
+            raise BatchStop('boot changed; stop batch')
+        self.boot = boot
+
+    def shell(self, command, required=True, timeout=60):
+        self.ready()  # Guards reads too; no command can drift to another session/board.
+        rc, text = self.raw_shell(command, timeout)
+        if required and rc:
+            raise AppFailure(f'remote command failed ({rc}): {command}: {text[-300:]}')
+        return rc, text
+
+    def send(self, local, remote):
+        self.ready()
+        rc, text = self.command(self.hdc + ['-t', self.serial, 'file', 'send', str(local), remote], 180)
+        if rc:
+            raise BatchStop('HDC file send failed: ' + text[-200:])
+
+    def receive(self, remote, local):
+        self.ready()
+        local = Path(local)
+        if local.exists():
+            raise AppFailure('refuse stale local evidence: ' + str(local))
+        rc, text = self.command(self.hdc + ['-t', self.serial, 'file', 'recv', remote, str(local)], 60)
+        if rc or not local.is_file():
+            raise BatchStop('HDC receive failed: ' + text[-200:])
+
+
+def layout(board, remote, out, tag):
+    target = remote + '/' + tag + '.json'
+    board.shell('rm -f ' + shlex.quote(target))
+    board.shell('uitest dumpLayout -p ' + shlex.quote(target), timeout=45)
+    local = out / (tag + '.json')
+    board.receive(target, local)
+    try:
+        return json.loads(local.read_text())
+    except ValueError as exc:
+        raise AppFailure('invalid layout dump') from exc
+
+
+
+def launcher_focused(board, attempts=3):
+    """#38 gate: refuse to click unless the desktop (sceneboard) holds focus.
+
+    Bounded retry for the transient 'focus row missing' state observed right
+    after bm uninstall/reinstall (run2258 termux: row missing once, present on
+    manual re-check seconds later). Unknown-state retries wake+Home first;
+    after `attempts` tries the gate still BatchStops — no weakening.
+    """
+    last = None
+    for attempt in range(attempts):
+        board.shell('power-shell wakeup')
+        board.shell('uitest uiInput keyEvent Home')
+        _, wm = board.shell("hidumper -s WindowManagerService -a '-a'")
+        observation = focused_window(wm)
+        pid = observation.get('pid')
+        if pid is None:
+            last = observation['reason'] + '; desktop state unknown'
+            if attempt + 1 < attempts:
+                time.sleep(2)
+            continue
+        _, ps = board.shell('ps -A -o PID,PPID,UID,NAME')
+        name = next((r['name'] for r in processes(ps) if r['pid'] == pid), '')
+        if name != 'com.ohos.sceneboard':
+            raise BatchStop('launcher not focused (pid %d is %s); not clicking' % (pid, name or 'unknown'))
+        return pid
+    raise BatchStop(last)
+
+def desktop_launch(board, app, remote, out, record, pages=10):
+    board.shell('power-shell wakeup')
+    record['launcher_focus_gate'] = launcher_focused(board)
+    # No global timeout mutation: wake before each UI step and capture.
+    board.shell('uitest uiInput keyEvent Home')
+    screen = None
+    for attempt in range(6):
+        tree = layout(board, remote, out, 'settle-' + str(attempt))
+        attrs = list(attributes(tree))
+        ids = [str(a.get('id') or a.get('key') or '') for a in attrs]
+        screen = panel(tree, screen)
+        if any(i.startswith(ICON_PREFIX) for i in ids):
+            break
+        dismiss = [a for a in attrs if (a.get('id') or a.get('key')) == 'advanced_dialog_button_0']
+        if any('UsbFunctionSwitchExtAbility' in i for i in ids) and len(dismiss) == 1:
+            b = box(dismiss[0].get('bounds'))
+            board.shell(f'uitest uiInput click {(b[0]+b[2])//2} {(b[1]+b[3])//2}')
+        elif screen and ('ScreenLockRootComponent' in ids or attempt % 2):
+            x1, y1, x2, y2 = screen
+            board.shell(f'uitest uiInput swipe {(x1+x2)//2} {y2-(y2-y1)//10} {(x1+x2)//2} {y1+(y2-y1)//5}')
+        else:
+            board.shell('uitest uiInput keyEvent Home')
+    else:
+        raise AppFailure('desktop not reached')
+    # Home can retain the current page: search both directions with bounded swipes.
+    recoveries = 0
+    for direction in (-1, 1):
+        page = 0
+        while page < pages:
+            tag = f'icons-{direction}-{page}' + (f'-retry{recoveries}' if recoveries else '')
+            tree = layout(board, remote, out, tag)
+            if not any(str(a.get('id') or a.get('key') or '').startswith(ICON_PREFIX) for a in attributes(tree)):
+                # A dump without a single app tile is not evidence that the icon is absent: right after an overlay
+                # restart the app grid was not drawn yet (2026-10-01 U8 5cd: page-bizzle and clipboardeditor, the
+                # first two keys of the run, saw 20 tile-less dumps each and were failed; the third key saw 228 tiles).
+                if recoveries >= 3:
+                    raise AppFailure('desktop not ready: layout dumps carry no app tiles')
+                recoveries += 1
+                board.shell('uitest uiInput keyEvent Home')
+                time.sleep(5)
+                continue
+            page += 1
+            screen = panel(tree, screen)
+            chosen = select_icon(tree, app['package'], app.get('launch_activity'))
+            if chosen:
+                record['selected_icon'] = chosen
+                save(out / 'record.json', record)  # Intent durable before input.
+                x, y = chosen['center']
+                board.shell(f'uitest uiInput click {x} {y}')
+                record['clicked'] = True
+                record['click_monotonic'] = time.monotonic()
+                record['clicked_at'] = time.time()
+                # Every uitest call leaves the screen-off override at 10 s (5cd/5ea/61b:
+                # "OverrideTimeout=10000ms"), so without this the lock screen covers the
+                # app before a t+20 capture. The click is the last uitest call of a launch.
+                board.shell('power-shell timeout -o 86400000', required=False)
+                return
+            if screen is None:
+                raise AppFailure('cannot determine screen size for page search')
+            x1, y1, x2, y2 = screen
+            left, right, cy = x1+(x2-x1)//5, x2-(x2-x1)//5, (y1+y2)//2
+            start, end = (right, left) if direction == -1 else (left, right)
+            board.shell(f'uitest uiInput swipe {start} {cy} {end} {cy}')
+    raise AppFailure('exact desktop icon absent across searched pages')
+
+
+def capture(board, remote, local, before_snapshot=None):
+    board.shell('rm -f ' + shlex.quote(remote))
+    board.shell('power-shell wakeup')
+    if before_snapshot is not None:
+        before_snapshot()
+    board.shell('snapshot_display -f ' + shlex.quote(remote), timeout=45)
+    _, info = board.shell('stat -c "%s %Y" ' + shlex.quote(remote))
+    _, remote_hash = board.shell('sha256sum ' + shlex.quote(remote))
+    digest = remote_hash.split()[0] if remote_hash.split() else ''
+    if not SHA.fullmatch(digest):
+        raise AppFailure('invalid screenshot hash')
+    board.receive(remote, local)
+    data = local.read_bytes()
+    if len(data) < 4 or data[:2] != b'\xff\xd8' or sha(local) != digest:
+        raise AppFailure('screenshot malformed or receive hash mismatch')
+    return {'path': str(local), 'sha256': digest, 'remote_stat': info,
+            'bytes': len(data), 'known_black_frame': len(data) == BLACK_FRAME_BYTES,
+            'captured_at': time.time(), 'visual_verdict': 'pending_review'}
+
+
+def cold_stop(board, package, uid, out, tag='before'):
+    board.shell('aa force-stop ' + shlex.quote(package))
+    _, ps = board.shell('ps -A -o PID,PPID,UID,NAME')
+    (out / ('processes-'+tag+'.txt')).write_text(ps)
+    rows = processes(ps)
+    parents = [r['pid'] for r in rows if r['uid'] == 0 and r['ppid'] == 1 and r['name'] == 'appspawn-x']
+    # A Route B byte-copy spawner at /data/local/tmp/asx/appspawn-x also runs uid0/ppid1/NAME=appspawn-x
+    # (#91 2026-10-11, same as verify_identity / demo_seal post-parent); count only the real U13 ondemand daemon
+    # whose exe is /system/bin/appspawn-x, else a running Route B feed poisons `parents` (len 2) and no root classifies.
+    parents = [pid for pid in parents
+               if board.shell('readlink /proc/%s/exe' % pid)[1].split(' (deleted)')[0].strip() == '/system/bin/appspawn-x']
+    target = [r for r in rows if uid is not None and r['uid'] == uid]
+    if target:
+        # Roots are the daemon's app-UID children; an app may fork its own helpers (VLC runs `sh`), which carry the
+        # app UID and have a root as parent. Anything else with the app UID is not ours to kill. A root's comm may be
+        # the bundle name after SetProcessName (not "appspawn-x"), so classify by parent==daemon, not by comm.
+        roots = [r for r in target if len(parents) == 1 and r['ppid'] == parents[0]]
+        root_pids = {r['pid'] for r in roots}
+        helpers = [r for r in target if r['pid'] not in root_pids and r['ppid'] in root_pids]
+        if not roots or len(roots) + len(helpers) != len(target):
+            raise AppFailure('target still alive; cannot safely identify cold-stop child')
+        for row in helpers + roots:
+            pid, ppid = row['pid'], row['ppid']
+            # Re-check kernel identity in the same command immediately before kill. required=False: a pid that exited
+            # between the ps snapshot and this command leaves no /proc/<pid>/status, the sed is empty, the `test` fails
+            # and the whole command returns rc=1 -- but a vanished pid is already dead, our goal, not an error. Raising
+            # here aborted the round mid-rollback (cc-t3 window8 2026-10-11). Survivors are re-checked by the loop below.
+            board.shell(f'test "$(sed -n \'s/^Uid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {uid} && '
+                        f'test "$(sed -n \'s/^PPid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {ppid} && kill -9 {pid}',
+                        required=False)
+    if uid is None:
+        return False
+    # Heavy apps (maps/media like fd-organicmaps: 14 procs) keep forking helpers that outlive the first kill sweep, and
+    # 14 kill -9 do not all reap within 2 s. Re-kill app-UID survivors each pass instead of only polling: an OHOS app UID
+    # is unique to one app, so any process still carrying it is the target's (kernel-verify Uid before kill, same as the
+    # initial sweep). #91 2026-10-11: fd-organicmaps tripped the old 2 s poll-only path with a late fork and returned
+    # False -> "target cleanup could not be verified", stopping the round after all records were already captured.
+    deadline = time.time() + 15
+    while True:
+        _, ps = board.shell('ps -A -o PID,PPID,UID,NAME')
+        survivors = [r for r in processes(ps) if r['uid'] == uid]
+        if not survivors:
+            return True
+        if time.time() >= deadline:
+            return False
+        for row in survivors:
+            pid = row['pid']
+            # required=False for the same reason as the first sweep: a survivor that exits between the ps snapshot and
+            # this command makes the `test` fail (rc=1); that is success (it is gone), not a cause to abort the round.
+            board.shell(f'test "$(sed -n \'s/^Uid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {uid} && kill -9 {pid}',
+                        required=False)
+        time.sleep(.3)
+
+
+def prepare_sandbox(board, package, uid, out):
+    """Run the accepted restore command body, changing only package and UID."""
+    if not isinstance(package, str) or not IDENT.fullmatch(package) or '.' not in package:
+        raise AppFailure('invalid sandbox package')
+    if type(uid) is not int or uid < 20000000:
+        raise AppFailure('invalid sandbox app UID')
+    recipe = Path(__file__).with_name('prepare_sandbox.sh')
+    command = 'set -e\nD() { sh -c "$1"; }\n' + recipe.read_text()
+    command += '\nprepare_sandbox ' + shlex.quote(package) + ' ' + str(uid)
+    command_path = Path(out)/'sandbox-command.sh'
+    command_path.write_text(command + '\n')
+    rc, output = board.shell(command, required=False)
+    Path(out, 'sandbox-preparation.txt').write_text(output)
+    receipt = {'package': package, 'uid': uid, 'recipe_sha256': sha(recipe), 'return_code': rc,
+               'command_path': str(command_path), 'command_sha256': sha(command_path)}
+    save(Path(out)/'sandbox-preparation.json', receipt)
+    if rc:
+        raise SandboxPreparationFailure(f'sandbox preparation failed ({rc}); command: {command_path}')
+    return receipt
+
+
+def bm_success(rc, text, action):
+    """BMS can return rc=0 with an error; require its positive operation receipt."""
+    return (rc == 0 and bool(re.search(r'\b' + action + r'\s+bundle\s+success(?:fully)?\b', text, re.I))
+            and not re.search(r'\b(?:error|failed|failure)\b', text, re.I))
+
+
+def uninstall_existing(board, app, out):
+    rc, text = board.shell('bm dump -n ' + shlex.quote(app['package']), required=False)
+    (out/'bundle-before-reinstall.txt').write_text(text)
+    try:
+        current = parse_bundle(text, app['package'])
+        if rc:
+            raise AppFailure('BMS pre-reinstall query failed')
+    except AppFailure:
+        # Only a named BMS absence response is absence; malformed JSON is not.
+        if not re.search(r'failed to get (?:bundle )?information|bundle (?:does not exist|not found)|\b9568386\b', text, re.I):
+            raise
+        return {'attempted': False, 'reason': 'not installed', 'query_return_code': rc}
+    if current['uid'] is None or not cold_stop(board, app['package'], current['uid'], out, 'uninstall'):
+        raise AppFailure('cannot identify installed target for reinstall')
+    rc, text = board.shell('bm uninstall -n ' + shlex.quote(app['package']), required=False, timeout=180)
+    (out/'uninstall.txt').write_text(text)
+    receipt = {'attempted': True, 'return_code': rc, 'success_text': bm_success(rc, text, 'uninstall'),
+               'output': str(out/'uninstall.txt')}
+    save(out/'uninstall.json', receipt)
+    if not receipt['success_text']:
+        raise AppFailure('uninstall failed; refusing reinstall')
+    return receipt
+
+
+def fault_files(board, out, tag):
+    _, text = board.shell('find ' + FAULT_ROOT + ' -maxdepth 1 -type f -print')
+    (out/('faults-'+tag+'.txt')).write_text(text)
+    files = set()
+    for path in text.splitlines():
+        if not path.startswith(FAULT_ROOT + '/') or not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]*', path[len(FAULT_ROOT)+1:]):
+            raise AppFailure('invalid faultlog listing')
+        files.add(path)
+    return files
+
+
+def finish_diagnostics(board, out, remote, before):
+    target = remote + '/hilog.txt'
+    rc, text = board.shell('hilog -x > ' + shlex.quote(target) + ' 2>&1', required=False, timeout=60)
+    board.receive(target, out/'hilog.txt')
+    result = {'return_code': rc, 'path': str(out/'hilog.txt'), 'sha256': sha(out/'hilog.txt'),
+              'complete': False, 'faultlogs': [], 'attribution': 'new since prelaunch; not proof target caused each fault'}
+    save(out/'diagnostics.json', result)
+    if rc:
+        raise AppFailure('hilog dump failed')
+    after = fault_files(board, out, 'after')
+    (out/'faultlogs').mkdir(exist_ok=True)
+    for path in sorted(after - before):
+        local = out/'faultlogs'/Path(path).name
+        board.receive(path, local)
+        result['faultlogs'].append({'remote': path, 'path': str(local), 'sha256': sha(local)})
+        save(out/'diagnostics.json', result)
+    result['complete'] = True
+    save(out/'diagnostics.json', result)
+    return result
+
+
+def timed_collection(board, uid, out, remote, rec, wait_seconds, shots, focus_check, hilog_seconds, faults_before):
+    start = rec['click_monotonic']
+    selected = shots if shots is not None else [3.0, wait_seconds]
+    # Keep legacy t3/final filenames even when --wait=3 requests two captures.
+    schedule = [(offset, 'shot', ('t'+str(float(offset)).removesuffix('.0')) if shots is not None else ('t3' if i == 0 else 'final'))
+                for i, offset in enumerate(selected)]
+    if hilog_seconds is not None:
+        schedule.append((hilog_seconds, 'hilog', 'hilog'))
+    schedule.append((max(wait_seconds, max(selected)), 'observe', 'after'))
+    for offset, event, tag in sorted(schedule, key=lambda x: x[0]):
+        time.sleep(max(0, offset - (time.monotonic() - start)))
+        if event == 'hilog':
+            rec['diagnostics'] = finish_diagnostics(board, out, remote, faults_before)
+            rec['diagnostics']['elapsed_seconds'] = time.monotonic() - start
+        else:
+            observation = {}
+            def observe():
+                _, ps = board.shell('ps -A -o PID,PPID,UID,NAME')
+                (out/('processes-'+tag+'.txt')).write_text(ps)
+                pids = [r['pid'] for r in processes(ps) if r['uid'] == uid]
+                _, wm = board.shell("hidumper -s WindowManagerService -a '-a'")
+                (out/('windows-'+tag+'.txt')).write_text(wm)
+                observation.update(foreground(wm, pids), observed_pids=pids,
+                                   checked_at=time.time(), elapsed_seconds=time.monotonic()-start)
+            if event == 'shot':
+                def check_focus():
+                    observe()
+                    if (focus_check or shots is not None) and not observation['confirmed']:
+                        raise FocusMismatch(observation['reason'])
+                try:
+                    shot = capture(board, remote+'/'+tag+'.jpeg', out/(tag+'.jpeg'), before_snapshot=check_focus)
+                    shot.update(captured=True, accepted=observation['confirmed'] and not shot['known_black_frame'])
+                except FocusMismatch as exc:
+                    # The focus gate misses real screens (AppManager/Droid-ify were on screen in #78 with 0
+                    # captures), so still take the picture: it is not accepted, but the outer loop can read it.
+                    try:
+                        shot = capture(board, remote+'/'+tag+'.jpeg', out/(tag+'.jpeg'))
+                        shot.update(captured=True, accepted=False, focus_unconfirmed=True, reason=str(exc))
+                    except (AppFailure, BatchStop) as capture_exc:
+                        if isinstance(capture_exc, BatchStop):
+                            raise
+                        shot = {'captured': False, 'accepted': False, 'known_black_frame': False,
+                                'reason': f'{exc}; unconfirmed capture failed: {capture_exc}',
+                                'visual_verdict': 'pending_review'}
+                shot.update(scheduled_seconds=offset, elapsed_seconds=time.monotonic()-start,
+                            foreground=observation)
+                rec['screenshots'].append(shot)
+                if len(rec['screenshots']) == 1:
+                    # 2026-10-01: which copy of a library an app maps (two bridges, a per-domain libandroid whose
+                    # AssetManager offsets were never filled) was only knowable from the HelloWorld probe; keep every
+                    # app's own maps once, right after its first screenshot, so it can be read offline.
+                    for pid in observation.get('observed_pids') or []:
+                        rc, maps = board.shell(f'cat /proc/{int(pid)}/maps', required=False)
+                        if rc == 0 and maps:
+                            (out/f'maps-{tag}-{int(pid)}.txt').write_text(maps)
+            else:
+                observe()
+                (out/'windows.txt').write_text((out/('windows-'+tag+'.txt')).read_text())
+            rec['foreground'] = observation
+            rec['observed_pids'] = observation['observed_pids']
+        save(out/'record.json', rec)
+    strict = focus_check or shots is not None
+    valid = (all(x['accepted'] for x in rec['screenshots']) if strict else
+             rec['foreground']['confirmed'] and not any(x['known_black_frame'] for x in rec['screenshots']))
+    rec['status'] = 'captured' if valid else 'foreground_unconfirmed'
+    if any(x['known_black_frame'] for x in rec['screenshots']):
+        rec['status'] = 'capture_rejected'
+
+
+def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
+                reinstall=False, hilog_seconds=None, shots=None, focus_check=False, launch_only=False):
+    out.mkdir(parents=True, exist_ok=True)
+    if any(out.iterdir()):
+        raise StaleEvidence('refuse stale app evidence: ' + str(out))
+    rec = dict(key=entry['key'], phase=entry['phase'], serial=board.serial, boot_id=board.boot,
+               package=entry.get('package'), apk_sha256=entry.get('apk_sha256'),
+               status='started', launch_method='desktop', clicked=False,
+               install=None, bms={'queryable': False}, screenshots=[], review='pending_review')
+    faults_before = None
+    try:
+        app = resolve_input(input_root, entry)
+        rec.update({k: v for k, v in app.items() if k != 'apk'})
+        rec['input_apk'] = app['apk']
+        save(out / 'record.json', rec)
+        board.shell('mkdir -p ' + shlex.quote(remote))
+        if launch_only:
+            # Only the runtime changed (e.g. a JAR swap): keep the installed app, skip the ~1 min reinstall.
+            rec['install'] = {'skipped': 'launch_only', 'return_code': 0, 'success_text': True}
+        else:
+            remote_apk = remote + '/original.apk'
+            board.send(app['apk'], remote_apk)
+            _, readback = board.shell('sha256sum ' + shlex.quote(remote_apk))
+            if not readback.split() or readback.split()[0] != app['apk_sha256']:
+                raise AppFailure('staged APK hash differs')
+            if reinstall:
+                rec['uninstall'] = uninstall_existing(board, app, out)
+            if hilog_seconds is not None:
+                # 2026-10-01: installer-side fixes log during bm install (B7 ICONLESS_APK_TEMPLATE_PLACEHOLDER), and the
+                # pre-launch `hilog -r` below wiped them before hilog.txt was dumped; keep the install window separately.
+                board.shell('hilog -r')
+            rc, response = board.shell('bm install -p ' + shlex.quote(remote_apk), required=False, timeout=180)
+            (out / 'install.txt').write_text(response)
+            rec['install'] = {'return_code': rc, 'success_text': bm_success(rc, response, 'install'), 'output': str(out / 'install.txt')}
+            if hilog_seconds is not None:
+                target = remote + '/install-hilog.txt'
+                hrc, _ = board.shell('hilog -x > ' + shlex.quote(target) + ' 2>&1', required=False, timeout=60)
+                if hrc == 0:
+                    board.receive(target, out / 'install-hilog.txt')
+                    rec['install']['hilog'] = str(out / 'install-hilog.txt')
+            save(out/'record.json', rec)
+            board.shell('rm -f ' + shlex.quote(remote_apk))
+        rc, response = board.shell('bm dump -n ' + shlex.quote(app['package']), required=False)
+        (out / 'bundle.txt').write_text(response)
+        rec['bms']['return_code'] = rc
+        if rc == 0:
+            try:
+                rec['bms'].update(parse_bundle(response, app['package']))
+            except AppFailure as exc:
+                if launch_only:
+                    raise AppFailure('--launch-only needs the app already installed: ' + str(exc)) from exc
+                raise
+        if launch_only and not rec['bms']['queryable']:
+            raise AppFailure('--launch-only needs the app already installed; BMS cannot find it')
+        if not rec['install']['success_text'] or rec['install']['return_code'] or not rec['bms']['queryable']:
+            raise AppFailure('install or BMS readback failed')
+        uid = rec['bms']['uid']
+        rec['cold_stop_verified'] = cold_stop(board, app['package'], uid, out)
+        if not rec['cold_stop_verified']:
+            raise AppFailure('cold start identity unconfirmed')
+        assemble_native_sidecars(board, app, remote, out, rec)
+        rec['sandbox_preparation'] = prepare_sandbox(board, app['package'], uid, out)
+        rec['desktop_activity'] = rec['bms'].get('desktop_activity') or app.get('launch_activity')
+        desktop_app = dict(app, launch_activity=rec['desktop_activity'])
+        if hilog_seconds is not None:
+            faults_before = fault_files(board, out, 'before')
+            _, text = board.shell('hilog -r')
+            (out/'hilog-reset.txt').write_text(text)
+        desktop_launch(board, desktop_app, remote, out, rec)
+        timed_collection(board, uid, out, remote, rec, wait_seconds,
+                         shots, focus_check, hilog_seconds, faults_before)
+        # App-specific stop only. Keep installed app and evidence for the reviewer.
+        rec['cleanup_stopped'] = cold_stop(board, app['package'], uid, out, 'cleanup')
+        if not rec['cleanup_stopped']:
+            raise BatchStop('target cleanup could not be verified; stop before next app')
+    except (BatchStop, KeyboardInterrupt) as exc:
+        rec.update(status='batch_interrupted', error=str(exc))
+        raise BatchStop(str(exc) or 'interrupted') from exc
+    except (AppFailure, OSError, ValueError, KeyError) as exc:
+        rec.update(status='sandbox_prep_failed' if isinstance(exc, SandboxPreparationFailure) else 'app_failed', error=str(exc))
+        if faults_before is not None and not (out/'diagnostics.json').exists():
+            try:
+                rec['diagnostics'] = finish_diagnostics(board, out, remote, faults_before)
+            except BatchStop as diagnostic_exc:
+                rec.update(status='batch_interrupted', diagnostic_error=str(diagnostic_exc))
+                raise
+            except (AppFailure, OSError) as diagnostic_exc:
+                rec['diagnostic_error'] = str(diagnostic_exc)
+        if (out/'uninstall.json').exists():
+            rec['uninstall'] = json.loads((out/'uninstall.json').read_text())
+        if rec['bms'].get('queryable') and rec['bms'].get('uid') is not None:
+            try:
+                rec['cleanup_stopped'] = cold_stop(board, rec['package'], rec['bms']['uid'], out, 'cleanup')
+                if not rec['cleanup_stopped']:
+                    raise BatchStop('failed app remains alive; stop before next app')
+            except (AppFailure, BatchStop) as cleanup_exc:
+                rec.update(status='batch_interrupted', cleanup_error=str(cleanup_exc))
+                raise BatchStop(str(cleanup_exc)) from cleanup_exc
+    finally:
+        if 'diagnostics' not in rec and (out/'diagnostics.json').exists():
+            rec['diagnostics'] = json.loads((out/'diagnostics.json').read_text())
+        rec['finished_at'] = time.time()
+        save(out / 'record.json', rec)
+    return rec
+
+
+def size_bytes(text):
+    m = re.fullmatch(r'([\d.]+)\s*([KMG]?)B?', text.strip(), re.I)
+    if not m:
+        return None
+    return int(float(m.group(1)) * {'': 1, 'K': 1 << 10, 'M': 1 << 20, 'G': 1 << 30}[m.group(2).upper()])
+
+
+def preflight(board, out, host_epoch=None):
+    """Set and read back hilog buffer, hilog privacy, screen-off timeout and board clock; refuse to run if unmet."""
+    host_epoch = int(time.time() if host_epoch is None else host_epoch)
+    result = {'host_epoch': host_epoch, 'problems': []}
+    for name, command in (('hilog_size_set', 'hilog -G 16M'), ('hilog_private_set', 'hilog -p off'),
+                          ('screen_off_set', f'power-shell timeout -o {SCREEN_OFF_MS}')):
+        rc, text = board.shell(command, required=False)
+        result[name] = {'command': command, 'return_code': rc, 'output': text[-300:]}
+    if result['screen_off_set']['return_code']:
+        result['problems'].append('power-shell timeout -o failed')
+
+    def clock():
+        _, text = board.shell('date +%s', required=False)
+        return int(text.strip()) - host_epoch if text.strip().isdigit() else None
+    skew = clock()
+    if skew is None or abs(skew) > CLOCK_TOLERANCE_S:
+        rc, text = board.shell(f'date -s @{host_epoch}', required=False)
+        result['clock_set'] = {'skew_before_s': skew, 'return_code': rc, 'output': text[-200:]}
+        skew = clock()
+    result['clock_skew_s'] = skew
+    if skew is None or abs(skew) > CLOCK_TOLERANCE_S:
+        result['problems'].append(f'board clock off by {skew} s after date -s')
+
+    _, sizes = board.shell('hilog -g', required=False)
+    buffers = dict(re.findall(r'Log type (\w+) buffer size is (\S+)', sizes))
+    result['hilog_buffers'] = buffers
+    small = [k for k, v in buffers.items() if (size_bytes(v) or 0) < HILOG_MIN_BYTES]
+    if not buffers or small:
+        result['problems'].append('hilog buffer below 16M: ' + (', '.join(f'{k}={buffers[k]}' for k in small) or 'unreadable'))
+    _, private = board.shell('param get hilog.private.on', required=False)
+    result['hilog_private_on'] = private.strip()
+    if private.strip() != 'false':
+        result['problems'].append('hilog privacy masking still on: ' + private.strip()[:40])
+    save(out/'preflight.json', result)
+    if result['problems']:
+        raise BatchStop('preflight not met: ' + '; '.join(result['problems']))
+    return {k: result[k] for k in ('hilog_buffers', 'hilog_private_on', 'clock_skew_s')} | {
+        'screen_off_ms': SCREEN_OFF_MS, 'path': str(out/'preflight.json')}
+
+
+# Every file on the child's load path that a single-file swap may have changed. Two boards give different
+# results for one key when these differ (auxio 5cd vs 61b, 2026-09-30), so each run records them.
+FINGERPRINT_PATHS = ('/system/bin/appspawn-x /system/android/framework/oh-adapter-runtime.jar '
+                     '/system/android/lib64/*.so /system/lib64/westlake/route-a/*/*.so '
+                     + ' '.join(installation_chain.PATHS))
+
+
+# The boot class path jars and the boot image are on the load path too, but they are not in FINGERPRINT_PATHS:
+# T6 (2026-09-30) bind-swapped all 27 boot-image files and runtime-fingerprint.txt stayed "unchanged", so a
+# whole-image swap passed for a single-variable run. They get their own file, which keeps the runtime
+# fingerprints already on record (0b81cdbe0ed9 ...) comparable; compare_runs.py counts a boot image change.
+BOOT_IMAGE_PATHS = ('/system/android/framework/arm64/* ' + ' '.join(
+    f'/system/android/framework/{j}.jar' for j in ('core-oj', 'core-libart', 'core-icu4j', 'okhttp', 'bouncycastle',
+                                                    'apache-xml', 'adapter-mainline-stubs', 'framework',
+                                                    'oh-adapter-framework')))
+
+
+def runtime_fingerprint(board, out, paths=FINGERPRINT_PATHS, name='runtime-fingerprint.txt'):
+    """sha256 of the runtime load path -> runtime-fingerprint.txt; returns a short hash of the whole set."""
+    _, text = board.shell(f'sha256sum {paths} 2>/dev/null', required=False)
+    lines = sorted(l.strip() for l in text.splitlines() if re.match(r'^[0-9a-f]{64}\s', l.strip()))
+    (Path(out)/name).write_text('\n'.join(lines) + '\n')
+    return hashlib.sha256('\n'.join(lines).encode()).hexdigest()[:12] if lines else None
+
+
+def boot_image_fingerprint(board, out):
+    """sha256 of the boot image and boot class path jars -> boot-image-fingerprint.txt."""
+    return runtime_fingerprint(board, out, BOOT_IMAGE_PATHS, 'boot-image-fingerprint.txt')
+
+
+def tool_identity(manifest=None):
+    """Which bms_batch.py (and manifest) produced a run. 2026-10-01: a lane ran a stale copy from an old worktree;
+    its facts silently lacked the BOOTIMAGE line and nothing said which script version wrote them."""
+    me = Path(__file__).resolve()
+    ident = {'bms_batch_sha256': hashlib.sha256(me.read_bytes()).hexdigest(), 'git_head': None}
+    try:
+        ident['git_head'] = subprocess.run(['git', '-C', str(me.parent), 'rev-parse', 'HEAD'], capture_output=True,
+                                           text=True, check=True).stdout.strip() or None
+    except (OSError, subprocess.CalledProcessError):
+        pass
+    if manifest is not None:
+        ident['manifest_sha256'] = hashlib.sha256(Path(manifest).read_bytes()).hexdigest()
+    return ident
+
+
+def write_facts(out):
+    """facts.txt = scripts/lab/run_facts.py over this run; ACKs quote it instead of counting by hand."""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'scripts'/'lab'))
+        import run_facts
+        rows = [run_facts.facts(d) for d in sorted(p for p in Path(out).iterdir() if (p/'record.json').is_file())]
+    except Exception as exc:  # the facts are a report; a missing helper must not hide the run's own result
+        (Path(out)/'facts.txt').write_text(f'facts unavailable: {exc}\n')
+        return None
+    lines, total = run_facts.format_rows(rows)
+    fp = Path(out)/'runtime-fingerprint.txt'
+    if fp.is_file():
+        body = fp.read_text().strip()
+        short = hashlib.sha256(body.encode()).hexdigest()[:12] if body else 'unknown'
+        lines.insert(0, f'RUNTIME fingerprint={short} files={len(body.splitlines()) if body else 0} '
+                        '(runtime-fingerprint.txt; compare before blaming the JAR across boards)')
+        try:  # frozen public-API fixes (AGENTS.md 做事方式 3): a run on a board that drifted from them says so
+            import check_frozen
+            checked, bad = check_frozen.check_artifacts(check_frozen.active(check_frozen.load(check_frozen.REPO/'knowledge/frozen/frozen.json')),
+                                                        check_frozen.fingerprint_hashes(fp), 'board')
+            lines.insert(1, f'FROZEN checked={len(checked)} violations={bad}'
+                            + ''.join(f'\n  {l}' for l in checked if l.startswith('FROZEN-VIOLATION')))
+        except Exception as exc:
+            lines.insert(1, f'FROZEN unavailable: {exc}')
+    bp = Path(out)/'boot-image-fingerprint.txt'
+    if bp.is_file():
+        body = bp.read_text().strip()
+        short = hashlib.sha256(body.encode()).hexdigest()[:12] if body else 'unknown'
+        lines.insert(2 if fp.is_file() else 0,  # after RUNTIME and FROZEN, which the block above always writes
+                     f'BOOTIMAGE fingerprint={short} files={len(body.splitlines()) if body else 0} '
+                     '(boot-image-fingerprint.txt; not part of RUNTIME)')
+    try:
+        tool = json.loads((Path(out)/'plan.json').read_text()).get('tool') or {}
+    except (OSError, ValueError):
+        tool = {}
+    if tool:
+        at = sum(1 for l in lines if l.startswith(('RUNTIME ', 'FROZEN ', 'BOOTIMAGE ')))
+        lines.insert(at, f"TOOL bms_batch={tool.get('bms_batch_sha256', '?')[:8]} head={(tool.get('git_head') or '?')[:9]} "
+                         f"manifest={tool.get('manifest_sha256', '?')[:8]} (plan.json tool)")
+    (Path(out)/'facts.txt').write_text('\n'.join(lines + [total]) + '\n')
+    return total
+
+
+def run_batch(board, entries, input_root, out, run_id, wait_seconds, stop_new_keys_at=None, **options):
+    records = []
+    board.ready()
+    settings = preflight(board, out)
+    _, version = board.shell('param get const.ohos.fullname')
+    if version.strip() not in ('OpenHarmony-6.1.0.31', 'OpenHarmony 6.1.0.31'):
+        raise BatchStop('expected OH6.1.0.31; this is not the OH7/T006 route')
+    _, baseline = board.shell('ls -ld /data/pr03-74e6-portable; ls -l /dev/unix/socket/AppSpawnX; '
+                              'sha256sum /system/bin/appspawn-x /system/android/framework/oh-adapter-runtime.jar')
+    installation = installation_chain.collect(board, out/'installation-chain')
+    if installation['verdict'] == 'mismatch':
+        raise BatchStop('installation chain identity mismatch; see installation-chain.json')
+    fingerprint = runtime_fingerprint(board, out)
+    save(out/'baseline.json', {'version': version, 'boot_id': board.boot, 'readback': baseline,
+                              'runtime_fingerprint': fingerprint,
+                              'installation_chain': installation,
+                              'boot_image_fingerprint': boot_image_fingerprint(board, out),
+                              'baseline_acceptance': 'executor must have accepted task19; these are observations'})
+    for i, entry in enumerate(entries):
+        # Finish the in-flight app; never begin another key after the window cutoff.
+        if stop_new_keys_at is not None and time.time() >= stop_new_keys_at:
+            save(out/'summary.json', {'records': records, 'not_run': [x['key'] for x in entries[i:]],
+                                      'stop_new_keys_at': stop_new_keys_at,
+                                      'stopped_at_new_key_deadline': True, 'review': 'pending_review'})
+            print('NEW-KEY CUTOFF: remaining keys are unknown', flush=True)
+            break
+        app_out = out/entry['key']
+        try:
+            record = collect_app(board, entry, input_root, app_out,
+                                 f'/data/local/tmp/bms-batch-{run_id}/{entry["key"]}', wait_seconds, **options)
+            record['preflight'] = settings
+            save(app_out/'record.json', record)
+            records.append(record)
+        except BatchStop as exc:
+            stale = isinstance(exc, StaleEvidence)
+            if not stale and (app_out/'record.json').exists():
+                records.append(json.loads((app_out/'record.json').read_text()))
+            remaining = entries[i:] if stale else entries[i+1:]
+            save(out/'summary.json', {'records':records,'not_run':[x['key'] for x in remaining],'batch_error':str(exc),'review':'pending_review'})
+            write_facts(out)
+            raise
+        save(out/'summary.json', {'records':records,'not_run':[x['key'] for x in entries[i+1:]],'review':'pending_review'})
+        print(f'{i+1}/{len(entries)} {entry["key"]}: {record["status"]}', flush=True)
+    total = write_facts(out)
+    if total:
+        print(total + '  (facts.txt; quote it verbatim in ACKs)', flush=True)
+    return records
+
+
+def shot_offsets(text):
+    try:
+        values = [float(x) for x in text.split(',')]
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError('shots must be comma-separated seconds') from exc
+    if not values or len(values) > 32 or any(not math.isfinite(x) or not 0 < x <= 300 for x in values) or values != sorted(set(values)):
+        raise argparse.ArgumentTypeError('shots must be 1..32 increasing unique offsets in (0, 300]')
+    return values
+
+
+def serial_process_lock(serial, lock_dir=None):
+    """Exclusive non-blocking flock on <lock_dir>/<serial>.bms_batch.lock; returns the open file or None if held."""
+    import fcntl
+    lock_dir = Path(lock_dir or os.environ.get('BMS_BATCH_LOCK_DIR') or Path.home() / '.octos/board-locks')
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    fh = open(lock_dir / f'{serial}.bms_batch.lock', 'a+')
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        return None
+    fh.seek(0); fh.truncate(); fh.write(f'{os.getpid()} {time.time():.0f}\n'); fh.flush()
+    return fh
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--manifest', type=Path, default=Path(__file__).with_name('apps.json'))
+    ap.add_argument('--phase', choices=['all','controls','blocked','tail'], default='all')
+    ap.add_argument('--keys', help='comma-separated subset, original phase order retained')
+    ap.add_argument('--input-root', default=str(Path.home()/'a2hlab/app-inputs'))
+    ap.add_argument('--resolve-inputs', action='store_true', help='offline plan: verify APK and inventory native sidecars from input-root')
+    ap.add_argument('--execute', action='store_true', help='perform device operations; absent = offline plan only')
+    ap.add_argument('--serial', choices=sorted(SERIALS))
+    ap.add_argument('--lane')
+    ap.add_argument('--hdc-cmd', default='hdc', help='executable or quoted command prefix')
+    ap.add_argument('--lock-cmd', default=str(Path.home()/'orca/workspaces/westlake-inputs/tools/board_note.sh'))
+    ap.add_argument('--out', type=Path)
+    ap.add_argument('--run-id', default=datetime.datetime.now().strftime('%Y%m%dT%H%M%S')+'-'+uuid.uuid4().hex[:8])
+    ap.add_argument('--wait', type=float, default=15)
+    ap.add_argument('--reinstall', action='store_true', help='uninstall a confirmed installed target before installation')
+    ap.add_argument('--launch-only', action='store_true', help='skip install; launch the already-installed app (runtime-only change)')
+    ap.add_argument('--hilog', nargs='?', const=True, type=float, metavar='SECONDS', help='reset before launch, dump after SECONDS (default: --wait) and pull new faultlogs')
+    ap.add_argument('--shots', type=shot_offsets, metavar='5,20', help='click-relative screenshot offsets; implies strict per-shot focus check')
+    ap.add_argument('--focus-check', action='store_true', help='require target focus for every screenshot')
+    ap.add_argument('--stop-new-keys-at', type=float, help='absolute Unix epoch; finish current key, leave remaining unknown')
+    ap.add_argument('--no-hilog', action='store_true', help='allow an executed sweep of 10+ keys without --hilog')
+    args = ap.parse_args(argv)
+    if args.stop_new_keys_at is not None and not math.isfinite(args.stop_new_keys_at):
+        ap.error('stop-new-keys-at must be finite')
+    if not math.isfinite(args.wait) or not 3 <= args.wait <= 300:
+        ap.error('wait must be finite and in 3..300')
+    hilog_seconds = args.wait if args.hilog is True else args.hilog
+    if hilog_seconds is not None and (not math.isfinite(hilog_seconds) or not 0 < hilog_seconds <= 300):
+        ap.error('hilog seconds must be finite and in (0, 300]')
+    if args.launch_only and args.reinstall:
+        ap.error('--launch-only and --reinstall are exclusive')
+    options = dict(reinstall=args.reinstall, launch_only=args.launch_only, hilog_seconds=hilog_seconds,
+                   shots=args.shots, focus_check=args.focus_check)
+    entries = load_apps(args.manifest,args.phase,args.keys)
+    if not args.execute:
+        if args.resolve_inputs:
+            entries = [resolve_input(args.input_root, entry) for entry in entries]
+        print(json.dumps({'execution':'not-requested','count':len(entries),'apps':entries,'options':options},indent=2))
+        return 0
+    if not args.serial or not args.lane or not args.out or not KEY.fullmatch(args.run_id) or not 3 <= args.wait <= 300:
+        ap.error('execution requires serial/lane/fresh out, safe run-id and wait 3..300')
+    # EVO-0056 (2026-10-01): the 100-key cv2 sweep ran without --hilog, so none of its 27 deaths could be clustered
+    # by first fatal and the 33 non-lit keys had to be re-run. A sweep must collect hilog unless waived explicitly.
+    if len(entries) >= 10 and hilog_seconds is None and not args.no_hilog:
+        ap.error(f'{len(entries)} keys without --hilog cannot be clustered by first fatal; add --hilog or pass --no-hilog')
+    # 2026-10-01 11:50: one lane started two bms_batch processes on the same board (v1 and cv2 shards in parallel);
+    # installs, launches and screenshots interleaved and the runs were discarded. One process per serial, enforced
+    # here (the board lock alone cannot tell two processes of the same lane apart). Held until this process exits.
+    proc_lock = serial_process_lock(args.serial)
+    if proc_lock is None:
+        ap.error(f'another bms_batch is already running on {args.serial}; one process per board, run shards one after another')
+    out=args.out.expanduser().resolve()/args.run_id/args.serial
+    out.mkdir(parents=True,exist_ok=False)
+    save(out/'plan.json',{'apps':entries,'run_id':args.run_id,'serial':args.serial,'options':options,
+                          'tool':tool_identity(args.manifest),'review':'pending_review'})
+    try:
+        board=Board(args.serial,args.hdc_cmd,args.lock_cmd,args.lane,out/'commands')
+        records=run_batch(board,entries,args.input_root,out,args.run_id,args.wait,stop_new_keys_at=args.stop_new_keys_at,**options)
+        return 0 if all(r['status']=='captured' for r in records) else 1
+    except (BatchStop,KeyboardInterrupt) as exc:
+        save(out/'batch-stop.json',{'error':str(exc),'review':'pending_review','device_result':'unverified'})
+        if not (out/'summary.json').exists():
+            save(out/'summary.json', {'records': [], 'not_run': [a['key'] for a in entries],
+                                      'batch_error': str(exc), 'review': 'pending_review'})
+        print('STOP: '+str(exc),file=sys.stderr)
+        return 2
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
