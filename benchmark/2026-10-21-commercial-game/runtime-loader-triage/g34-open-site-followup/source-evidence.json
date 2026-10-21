@@ -1,0 +1,987 @@
+[
+  {
+    "path": "$WORKSPACES/westlake-harness-bms-deploy/benchmark/2026-10-01-n5-native/source-evidence/oh61-dynlink.c",
+    "sha256": "b65e80b894e110c3f54cb7f84337c03e4ffb298656af52ac8fce70018452ed63",
+    "first": 1980,
+    "last": 2030,
+    "lines": [
+      {
+        "line": 1980,
+        "text": ""
+      },
+      {
+        "line": 1981,
+        "text": "\tif (!*name) {"
+      },
+      {
+        "line": 1982,
+        "text": "\t\terrno = EINVAL;"
+      },
+      {
+        "line": 1983,
+        "text": "\t\treturn 0;"
+      },
+      {
+        "line": 1984,
+        "text": "\t}"
+      },
+      {
+        "line": 1985,
+        "text": ""
+      },
+      {
+        "line": 1986,
+        "text": "\t/* Catch and block attempts to reload the implementation itself */"
+      },
+      {
+        "line": 1987,
+        "text": "\tif (name[0]=='l' && name[1]=='i' && name[2]=='b') {"
+      },
+      {
+        "line": 1988,
+        "text": "\t\tstatic const char reserved[] ="
+      },
+      {
+        "line": 1989,
+        "text": "\t\t\t\"c.pthread.rt.m.dl.util.xnet.\";"
+      },
+      {
+        "line": 1990,
+        "text": "\t\tconst char *rp, *next;"
+      },
+      {
+        "line": 1991,
+        "text": "\t\tfor (rp=reserved; *rp; rp=next) {"
+      },
+      {
+        "line": 1992,
+        "text": "\t\t\tnext = strchr(rp, '.') + 1;"
+      },
+      {
+        "line": 1993,
+        "text": "\t\t\tif (strncmp(name+3, rp, next-rp) == 0)"
+      },
+      {
+        "line": 1994,
+        "text": "\t\t\t\tbreak;"
+      },
+      {
+        "line": 1995,
+        "text": "\t\t}"
+      },
+      {
+        "line": 1996,
+        "text": "\t\tif (*rp) {"
+      },
+      {
+        "line": 1997,
+        "text": "\t\t\tif (ldd_mode) {"
+      },
+      {
+        "line": 1998,
+        "text": "\t\t\t\t/* Track which names have been resolved"
+      },
+      {
+        "line": 1999,
+        "text": "\t\t\t\t * and only report each one once. */"
+      },
+      {
+        "line": 2000,
+        "text": "\t\t\t\tstatic unsigned reported;"
+      },
+      {
+        "line": 2001,
+        "text": "\t\t\t\tunsigned mask = 1U<<(rp-reserved);"
+      },
+      {
+        "line": 2002,
+        "text": "\t\t\t\tif (!(reported & mask)) {"
+      },
+      {
+        "line": 2003,
+        "text": "\t\t\t\t\treported |= mask;"
+      },
+      {
+        "line": 2004,
+        "text": "\t\t\t\t\tdprintf(1, \"\\t%s => %s (%p)\\n\","
+      },
+      {
+        "line": 2005,
+        "text": "\t\t\t\t\t\tname, ldso.name,"
+      },
+      {
+        "line": 2006,
+        "text": "\t\t\t\t\t\tldso.base);"
+      },
+      {
+        "line": 2007,
+        "text": "\t\t\t\t}"
+      },
+      {
+        "line": 2008,
+        "text": "\t\t\t}"
+      },
+      {
+        "line": 2009,
+        "text": "\t\t\tis_self = 1;"
+      },
+      {
+        "line": 2010,
+        "text": "\t\t}"
+      },
+      {
+        "line": 2011,
+        "text": "\t}"
+      },
+      {
+        "line": 2012,
+        "text": "\tif (!strcmp(name, ldso.name)) is_self = 1;"
+      },
+      {
+        "line": 2013,
+        "text": "\tif (is_self) {"
+      },
+      {
+        "line": 2014,
+        "text": "\t\tif (!ldso.prev) {"
+      },
+      {
+        "line": 2015,
+        "text": "\t\t\ttail->next = &ldso;"
+      },
+      {
+        "line": 2016,
+        "text": "\t\t\tldso.prev = tail;"
+      },
+      {
+        "line": 2017,
+        "text": "\t\t\ttail = &ldso;"
+      },
+      {
+        "line": 2018,
+        "text": "\t\t\tldso.namespace = namespace;"
+      },
+      {
+        "line": 2019,
+        "text": "\t\t\tns_add_dso(namespace, &ldso);"
+      },
+      {
+        "line": 2020,
+        "text": "\t\t}"
+      },
+      {
+        "line": 2021,
+        "text": "\t\treturn &ldso;"
+      },
+      {
+        "line": 2022,
+        "text": "\t}"
+      },
+      {
+        "line": 2023,
+        "text": "\tif (strchr(name, '/')) {"
+      },
+      {
+        "line": 2024,
+        "text": "\t\tpathname = name;"
+      },
+      {
+        "line": 2025,
+        "text": ""
+      },
+      {
+        "line": 2026,
+        "text": "\t\tif (!is_accessible(namespace, pathname, g_is_asan, check_inherited)) {"
+      },
+      {
+        "line": 2027,
+        "text": "\t\t\tfd = -1;"
+      },
+      {
+        "line": 2028,
+        "text": "\t\t\tLD_LOGD(\"load_library is_accessible return false,fd = -1\");"
+      },
+      {
+        "line": 2029,
+        "text": "\t\t} else {"
+      },
+      {
+        "line": 2030,
+        "text": "\t\t\tfd = open(name, O_RDONLY|O_CLOEXEC);"
+      }
+    ],
+    "deployed_identity": "G26 candidate ANL source lineage where applicable; OH musl snapshot not proven byte-identical to deployed loader"
+  },
+  {
+    "path": "$WORKSPACES/westlake-harness-bms-deploy/benchmark/2026-10-01-n5-native/source-evidence/oh61-dynlink.c",
+    "sha256": "b65e80b894e110c3f54cb7f84337c03e4ffb298656af52ac8fce70018452ed63",
+    "first": 3358,
+    "last": 3368,
+    "lines": [
+      {
+        "line": 3358,
+        "text": "\t__inhibit_ptc();"
+      },
+      {
+        "line": 3359,
+        "text": "\ttrace_marker_reset();"
+      },
+      {
+        "line": 3360,
+        "text": "\ttrace_marker_begin(HITRACE_TAG_MUSL, \"dlopen: \", file);"
+      },
+      {
+        "line": 3361,
+        "text": ""
+      },
+      {
+        "line": 3362,
+        "text": "\t/* When namespace does not exist, use caller's namespce"
+      },
+      {
+        "line": 3363,
+        "text": "\t * and when caller does not exist, use default namespce. */"
+      },
+      {
+        "line": 3364,
+        "text": "\tcaller = (struct dso *)addr2dso((size_t)caller_addr);"
+      },
+      {
+        "line": 3365,
+        "text": "\tns = find_ns_by_name(namespace);"
+      },
+      {
+        "line": 3366,
+        "text": "\tif (!ns) ns = ((caller && caller->namespace) ? caller->namespace : get_default_ns());"
+      },
+      {
+        "line": 3367,
+        "text": ""
+      },
+      {
+        "line": 3368,
+        "text": "\tp = 0;"
+      }
+    ],
+    "deployed_identity": "G26 candidate ANL source lineage where applicable; OH musl snapshot not proven byte-identical to deployed loader"
+  },
+  {
+    "path": "$WORKSPACES/westlake-harness-bms-deploy/benchmark/2026-10-01-n5-native/source-evidence/oh61-dynlink.c",
+    "sha256": "b65e80b894e110c3f54cb7f84337c03e4ffb298656af52ac8fce70018452ed63",
+    "first": 3808,
+    "last": 3846,
+    "lines": [
+      {
+        "line": 3808,
+        "text": "static void *do_dlsym(struct dso *p, const char *s, const char *v, void *ra)"
+      },
+      {
+        "line": 3809,
+        "text": "{"
+      },
+      {
+        "line": 3810,
+        "text": "\tint use_deps = 0;"
+      },
+      {
+        "line": 3811,
+        "text": "\tbool ra2dso = false;"
+      },
+      {
+        "line": 3812,
+        "text": "\tns_t *ns = NULL;"
+      },
+      {
+        "line": 3813,
+        "text": "\tstruct dso *caller = NULL;"
+      },
+      {
+        "line": 3814,
+        "text": "\tif (p == head || p == RTLD_DEFAULT) {"
+      },
+      {
+        "line": 3815,
+        "text": "\t\tp = head;"
+      },
+      {
+        "line": 3816,
+        "text": "\t\tra2dso = true;"
+      },
+      {
+        "line": 3817,
+        "text": "\t} else if (p == RTLD_NEXT) {"
+      },
+      {
+        "line": 3818,
+        "text": "\t\tp = addr2dso((size_t)ra);"
+      },
+      {
+        "line": 3819,
+        "text": "\t\tif (!p) p=head;"
+      },
+      {
+        "line": 3820,
+        "text": "\t\tp = p->next;"
+      },
+      {
+        "line": 3821,
+        "text": "\t\tra2dso = true;"
+      },
+      {
+        "line": 3822,
+        "text": "#ifndef HANDLE_RANDOMIZATION"
+      },
+      {
+        "line": 3823,
+        "text": "\t} else if (__dl_invalid_handle(p)) {"
+      },
+      {
+        "line": 3824,
+        "text": "\t\treturn 0;"
+      },
+      {
+        "line": 3825,
+        "text": "#endif"
+      },
+      {
+        "line": 3826,
+        "text": "\t} else {"
+      },
+      {
+        "line": 3827,
+        "text": "\t\tuse_deps = 1;"
+      },
+      {
+        "line": 3828,
+        "text": "\t\tns = p->namespace;"
+      },
+      {
+        "line": 3829,
+        "text": "\t}"
+      },
+      {
+        "line": 3830,
+        "text": "\tif (ra2dso) {"
+      },
+      {
+        "line": 3831,
+        "text": "\t\tcaller = (struct dso *)addr2dso((size_t)ra);"
+      },
+      {
+        "line": 3832,
+        "text": "\t\tif (caller && caller->namespace) {"
+      },
+      {
+        "line": 3833,
+        "text": "\t\t\tns = caller->namespace;"
+      },
+      {
+        "line": 3834,
+        "text": "\t\t}"
+      },
+      {
+        "line": 3835,
+        "text": "\t}"
+      },
+      {
+        "line": 3836,
+        "text": "\ttrace_marker_begin(HITRACE_TAG_MUSL, \"dlsym: \", (s == NULL ? \"(NULL)\" : s));"
+      },
+      {
+        "line": 3837,
+        "text": "\tstruct verinfo verinfo = { .s = s, .v = v, .use_vna_hash = false };"
+      },
+      {
+        "line": 3838,
+        "text": "\tstruct symdef def = use_deps ? find_sym_by_deps(p, &verinfo, 0, ns) :"
+      },
+      {
+        "line": 3839,
+        "text": "\t\tfind_sym2(p, &verinfo, 0, use_deps, ns);"
+      },
+      {
+        "line": 3840,
+        "text": "\ttrace_marker_end(HITRACE_TAG_MUSL);"
+      },
+      {
+        "line": 3841,
+        "text": "\tif (!def.sym) {"
+      },
+      {
+        "line": 3842,
+        "text": "\t\tLD_LOGW(\"do_dlsym failed: symbol not found. so=%{public}s s=%{public}s v=%{public}s\","
+      },
+      {
+        "line": 3843,
+        "text": "\t\t\t(p == NULL ? \"NULL\" : p->name), s, v);"
+      },
+      {
+        "line": 3844,
+        "text": "\t\terror(\"do_dlsym failed: Symbol not found: %s, version: %s so=%s\","
+      },
+      {
+        "line": 3845,
+        "text": "\t\t\ts, strlen(v) > 0 ? v : \"null\", (p == NULL ? \"NULL\" : p->name));"
+      },
+      {
+        "line": 3846,
+        "text": "\t\treturn 0;"
+      }
+    ],
+    "deployed_identity": "G26 candidate ANL source lineage where applicable; OH musl snapshot not proven byte-identical to deployed loader"
+  },
+  {
+    "path": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/anl/app_native_loader.c",
+    "sha256": "946064aac445faff916d83d000f285c014bed3e6b5e23612884a73a085e52c41",
+    "first": 445,
+    "last": 515,
+    "lines": [
+      {
+        "line": 445,
+        "text": ""
+      },
+      {
+        "line": 446,
+        "text": "void* ANL_Dlopen(AnlDomain* domain, const char* path, int mode) {"
+      },
+      {
+        "line": 447,
+        "text": "    if (domain == NULL || !path_is_in_app_domain(domain, path)) {"
+      },
+      {
+        "line": 448,
+        "text": "        failf(\"path is outside app domain: %s\", path == NULL ? \"(null)\" : path);"
+      },
+      {
+        "line": 449,
+        "text": "        return NULL;"
+      },
+      {
+        "line": 450,
+        "text": "    }"
+      },
+      {
+        "line": 451,
+        "text": "    if ((mode & RTLD_GLOBAL) != 0) {"
+      },
+      {
+        "line": 452,
+        "text": "        failf(\"RTLD_GLOBAL is forbidden for app domains\");"
+      },
+      {
+        "line": 453,
+        "text": "        return NULL;"
+      },
+      {
+        "line": 454,
+        "text": "    }"
+      },
+      {
+        "line": 455,
+        "text": "    if (verify_runtime_ready(&domain->runtime_gate, \"dlopen\") != 0) {"
+      },
+      {
+        "line": 456,
+        "text": "        return NULL;"
+      },
+      {
+        "line": 457,
+        "text": "    }"
+      },
+      {
+        "line": 458,
+        "text": "    pthread_mutex_lock(&domain->flutter_mutex);"
+      },
+      {
+        "line": 459,
+        "text": "    const char* base = strrchr(path, '/');"
+      },
+      {
+        "line": 460,
+        "text": "    base = base == NULL ? path : base + 1;"
+      },
+      {
+        "line": 461,
+        "text": "    if (strcmp(base, \"libflutter.so\") == 0 &&"
+      },
+      {
+        "line": 462,
+        "text": "        (flutter_package_path(path) || flutter_package_path(domain->app_paths) ||"
+      },
+      {
+        "line": 463,
+        "text": "         flutter_package_path(domain->app_permitted_paths))) domain->flutter_selected = true;"
+      },
+      {
+        "line": 464,
+        "text": "    if (!domain->flutter_selected &&"
+      },
+      {
+        "line": 465,
+        "text": "        (native_cluster_path(path) || native_cluster_path(domain->app_paths) ||"
+      },
+      {
+        "line": 466,
+        "text": "         native_cluster_path(domain->app_permitted_paths))) domain->native_selected = true;"
+      },
+      {
+        "line": 467,
+        "text": "    if (!domain->flutter_selected &&"
+      },
+      {
+        "line": 468,
+        "text": "        (genshin_package_path(path) || genshin_package_path(domain->app_paths) ||"
+      },
+      {
+        "line": 469,
+        "text": "         genshin_package_path(domain->app_permitted_paths))) domain->genshin_selected = true;"
+      },
+      {
+        "line": 470,
+        "text": "    bool selected = domain->flutter_selected || domain->native_selected;"
+      },
+      {
+        "line": 471,
+        "text": "    if (selected && domain->flutter_state == 0 && path[0] == '/') {"
+      },
+      {
+        "line": 472,
+        "text": "        const char* slash = strrchr(path, '/');"
+      },
+      {
+        "line": 473,
+        "text": "        size_t length = slash == NULL ? 0 : (size_t)(slash - path);"
+      },
+      {
+        "line": 474,
+        "text": "        if (length >= sizeof(domain->selected_load_dir)) {"
+      },
+      {
+        "line": 475,
+        "text": "            pthread_mutex_unlock(&domain->flutter_mutex);"
+      },
+      {
+        "line": 476,
+        "text": "            failf(\"selected native load directory exceeds limits\");"
+      },
+      {
+        "line": 477,
+        "text": "            return NULL;"
+      },
+      {
+        "line": 478,
+        "text": "        }"
+      },
+      {
+        "line": 479,
+        "text": "        memcpy(domain->selected_load_dir, path, length);"
+      },
+      {
+        "line": 480,
+        "text": "        domain->selected_load_dir[length] = '\\0';"
+      },
+      {
+        "line": 481,
+        "text": "    }"
+      },
+      {
+        "line": 482,
+        "text": "    int prepared = selected ? flutter_prepare(domain) : 0;"
+      },
+      {
+        "line": 483,
+        "text": "    pthread_mutex_unlock(&domain->flutter_mutex);"
+      },
+      {
+        "line": 484,
+        "text": "    if (prepared != 0) return NULL;"
+      },
+      {
+        "line": 485,
+        "text": "    dlerror();"
+      },
+      {
+        "line": 486,
+        "text": "    void* handle = selected"
+      },
+      {
+        "line": 487,
+        "text": "        ? domain->runtime_gate.namespace_host_ops.open_namespace("
+      },
+      {
+        "line": 488,
+        "text": "            &domain->flutter, path, mode | RTLD_LOCAL)"
+      },
+      {
+        "line": 489,
+        "text": "        : domain->runtime_gate.namespace_host_ops.open_namespace("
+      },
+      {
+        "line": 490,
+        "text": "            &domain->app, path, mode | RTLD_LOCAL);"
+      },
+      {
+        "line": 491,
+        "text": "    if (handle == NULL) {"
+      },
+      {
+        "line": 492,
+        "text": "        const char* error = dlerror();"
+      },
+      {
+        "line": 493,
+        "text": "        failf(\"%s: dlopen_ns failed for %s: %s\", classify_load_error(error),"
+      },
+      {
+        "line": 494,
+        "text": "              path,"
+      },
+      {
+        "line": 495,
+        "text": "              error == NULL ? \"linker produced no diagnostic\" : error);"
+      },
+      {
+        "line": 496,
+        "text": "    } else {"
+      },
+      {
+        "line": 497,
+        "text": "        g_error[0] = '\\0';"
+      },
+      {
+        "line": 498,
+        "text": "    }"
+      },
+      {
+        "line": 499,
+        "text": "    return handle;"
+      },
+      {
+        "line": 500,
+        "text": "}"
+      },
+      {
+        "line": 501,
+        "text": ""
+      },
+      {
+        "line": 502,
+        "text": "void* ANL_Dlsym(void* handle, const char* symbol) {"
+      },
+      {
+        "line": 503,
+        "text": "    if (handle == NULL || symbol == NULL || symbol[0] == '\\0') {"
+      },
+      {
+        "line": 504,
+        "text": "        failf(\"invalid dlsym argument\");"
+      },
+      {
+        "line": 505,
+        "text": "        return NULL;"
+      },
+      {
+        "line": 506,
+        "text": "    }"
+      },
+      {
+        "line": 507,
+        "text": "    dlerror();"
+      },
+      {
+        "line": 508,
+        "text": "    void* value = dlsym(handle, symbol);"
+      },
+      {
+        "line": 509,
+        "text": "    const char* error = dlerror();"
+      },
+      {
+        "line": 510,
+        "text": "    if (error != NULL) {"
+      },
+      {
+        "line": 511,
+        "text": "        failf(\"dlsym failed for %s: %s\", symbol, error);"
+      },
+      {
+        "line": 512,
+        "text": "        return NULL;"
+      },
+      {
+        "line": 513,
+        "text": "    }"
+      },
+      {
+        "line": 514,
+        "text": "    g_error[0] = '\\0';"
+      },
+      {
+        "line": 515,
+        "text": "    return value;"
+      }
+    ],
+    "deployed_identity": "G26 candidate ANL source lineage where applicable; OH musl snapshot not proven byte-identical to deployed loader"
+  },
+  {
+    "path": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/anl/flutter_domain.inc",
+    "sha256": "7422698e38f40f0a26e583d602c8826f5d7c4fb47059e1c114b4d3d825fdd99f",
+    "first": 1,
+    "last": 65,
+    "lines": [
+      {
+        "line": 1,
+        "text": "/* Westlake link_stubs_arm64.cc exact-target selection / owner inheritance,"
+      },
+      {
+        "line": 2,
+        "text": " * adapted to ANL per-domain ownership. Only these six package path components. */"
+      },
+      {
+        "line": 3,
+        "text": "static bool flutter_package_path(const char* text) {"
+      },
+      {
+        "line": 4,
+        "text": "    static const char* const packages[] = {"
+      },
+      {
+        "line": 5,
+        "text": "        \"chat.fluffy.fluffychat\", \"app.alextran.immich\", \"com.tombursch.kitchenowl\","
+      },
+      {
+        "line": 6,
+        "text": "        \"deckers.thibault.aves.libre\", \"com.adilhanney.saber\", \"org.localsend.localsend_app\""
+      },
+      {
+        "line": 7,
+        "text": "    };"
+      },
+      {
+        "line": 8,
+        "text": "    for (size_t i = 0; i < sizeof(packages)/sizeof(packages[0]); ++i) {"
+      },
+      {
+        "line": 9,
+        "text": "        const char* p = text;"
+      },
+      {
+        "line": 10,
+        "text": "        while ((p = strstr(p, packages[i])) != NULL) {"
+      },
+      {
+        "line": 11,
+        "text": "            size_t n = strlen(packages[i]);"
+      },
+      {
+        "line": 12,
+        "text": "            if ((p == text || p[-1] == '/') && (p[n] == '/' || p[n] == ':' || p[n] == '\\0')) return true;"
+      },
+      {
+        "line": 13,
+        "text": "            p += n;"
+      },
+      {
+        "line": 14,
+        "text": "        }"
+      },
+      {
+        "line": 15,
+        "text": "    }"
+      },
+      {
+        "line": 16,
+        "text": "    return false;"
+      },
+      {
+        "line": 17,
+        "text": "}"
+      },
+      {
+        "line": 18,
+        "text": "static int flutter_prepare(AnlDomain* domain) {"
+      },
+      {
+        "line": 19,
+        "text": "    if (domain->flutter_state != 0) return domain->flutter_state == 1 ? 0 : -1;"
+      },
+      {
+        "line": 20,
+        "text": "    domain->flutter_state = -1;"
+      },
+      {
+        "line": 21,
+        "text": "    if (!domain->has_bridge) return failf(\"Flutter pthread bridge configuration missing\");"
+      },
+      {
+        "line": 22,
+        "text": "    const char* private_root = domain->flutter_selected"
+      },
+      {
+        "line": 23,
+        "text": "        ? \"/system/android/lib64/westlake_flutter\" : \"/system/android/lib64/westlake_native\";"
+      },
+      {
+        "line": 24,
+        "text": "    char app_name[NS_NAME_MAX + 1], bridge_name[NS_NAME_MAX + 1];"
+      },
+      {
+        "line": 25,
+        "text": "    char search[3 * PATH_MAX], permitted[4 * PATH_MAX];"
+      },
+      {
+        "line": 26,
+        "text": "    unsigned long id = atomic_fetch_add_explicit(&g_domain_id, 1, memory_order_relaxed);"
+      },
+      {
+        "line": 27,
+        "text": "    /* Exact owned-name grammar required by the existing stock-host callbacks. */"
+      },
+      {
+        "line": 28,
+        "text": "    snprintf(app_name, sizeof(app_name), \"westlake.anl.app.%ld.%lu\", (long)getpid(), id);"
+      },
+      {
+        "line": 29,
+        "text": "    snprintf(bridge_name, sizeof(bridge_name), \"westlake.anl.bridge.%ld.%lu\", (long)getpid(), id);"
+      },
+      {
+        "line": 30,
+        "text": "    if (snprintf(search, sizeof(search), \"%s:%s%s%s\", private_root, domain->app_paths, domain->selected_load_dir[0] ? \":\" : \"\", domain->selected_load_dir) >= (int)sizeof(search) ||"
+      },
+      {
+        "line": 31,
+        "text": "        snprintf(permitted, sizeof(permitted), \"%s:%s:%s%s%s\", private_root,"
+      },
+      {
+        "line": 32,
+        "text": "                 domain->app_paths, domain->app_permitted_paths, domain->selected_load_dir[0] ? \":\" : \"\", domain->selected_load_dir) >= (int)sizeof(permitted))"
+      },
+      {
+        "line": 33,
+        "text": "        return failf(\"Flutter namespace paths exceed limits\");"
+      },
+      {
+        "line": 34,
+        "text": ""
+      },
+      {
+        "line": 35,
+        "text": "    /* Host owns all namespace operations in default. Its existing bridge has"
+      },
+      {
+        "line": 36,
+        "text": "     * CREATE_INHERIT_DEFAULT; the app gets only this explicit shared-name list."
+      },
+      {
+        "line": 37,
+        "text": "     * Do not call dlns_* directly from the sealed ANL DSO. */"
+      },
+      {
+        "line": 38,
+        "text": "    const char* shared ="
+      },
+      {
+        "line": 39,
+        "text": "        \"libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:\""
+      },
+      {
+        "line": 40,
+        "text": "        \"liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:\""
+      },
+      {
+        "line": 41,
+        "text": "        \"libwestlake_bionic_pthread_bridge.so\";"
+      },
+      {
+        "line": 42,
+        "text": "    /* Exact app -> bridge inheritance; no new owner or GLOBAL publication. */"
+      },
+      {
+        "line": 43,
+        "text": "    if (!domain->flutter_selected && domain->genshin_selected)"
+      },
+      {
+        "line": 44,
+        "text": "        shared = \"libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:\""
+      },
+      {
+        "line": 45,
+        "text": "                 \"liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:\""
+      },
+      {
+        "line": 46,
+        "text": "                 \"libwestlake_bionic_pthread_bridge.so:libmediandk.so\";"
+      },
+      {
+        "line": 47,
+        "text": "    int rc = domain->runtime_gate.namespace_host_ops.create_configured_namespaces("
+      },
+      {
+        "line": 48,
+        "text": "        &domain->flutter_bridge, bridge_name,"
+      },
+      {
+        "line": 49,
+        "text": "        domain->flutter_bridge_search, domain->flutter_bridge_permitted, shared,"
+      },
+      {
+        "line": 50,
+        "text": "        \"libwestlake_bionic_pthread_bridge.so\", &domain->runtime_gate.pthread_bridge_ops,"
+      },
+      {
+        "line": 51,
+        "text": "        &domain->flutter_bootstrap_handle, &domain->flutter, app_name, search, permitted);"
+      },
+      {
+        "line": 52,
+        "text": "    if (rc != 0) return failf(\"Flutter default-owner namespace configuration failed: %d\", rc);"
+      },
+      {
+        "line": 53,
+        "text": "    const char* preload[] = {\"libandroid.so\", \"libGLESv2.so\", \"libjnigraphics.so\"};"
+      },
+      {
+        "line": 54,
+        "text": "    for (size_t i = 0; domain->flutter_selected && i < sizeof(preload)/sizeof(preload[0]); ++i) {"
+      },
+      {
+        "line": 55,
+        "text": "        domain->flutter_handles[i] = domain->runtime_gate.namespace_host_ops.open_namespace("
+      },
+      {
+        "line": 56,
+        "text": "            &domain->flutter, preload[i], RTLD_NOW | RTLD_LOCAL);"
+      },
+      {
+        "line": 57,
+        "text": "        if (domain->flutter_handles[i] == NULL)"
+      },
+      {
+        "line": 58,
+        "text": "            return failf(\"Flutter private preload %s: %s\", preload[i], dlerror());"
+      },
+      {
+        "line": 59,
+        "text": "    }"
+      },
+      {
+        "line": 60,
+        "text": "    domain->flutter_state = 1;"
+      },
+      {
+        "line": 61,
+        "text": "    fprintf(stderr, \"[ANL-N2] kind=%s namespace=%s search=%s permitted=%s; providers ready\\n\", domain->flutter_selected ? \"flutter\" : \"native\", app_name, search, permitted);"
+      },
+      {
+        "line": 62,
+        "text": "    return 0;"
+      },
+      {
+        "line": 63,
+        "text": "}"
+      }
+    ],
+    "deployed_identity": "G26 candidate ANL source lineage where applicable; OH musl snapshot not proven byte-identical to deployed loader"
+  }
+]
