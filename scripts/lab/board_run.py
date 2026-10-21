@@ -12,7 +12,10 @@ deleted 198 never-committed screenshots, a fourth went to a full sweep with two 
   2. activation smoke gate (activation_smoke.py) with the plan's smoke spec: fingerprints = expected state,
      controls alive, every fix's activation marker, single-copy libraries and child-view hashes. FAIL = stop;
   3. shards run one after another, one bms_batch process at a time, each with --reinstall --hilog --shots 5,20,
-     each into its own new directory; nothing under the output root is ever deleted;
+     each into its own new directory; nothing under the output root is ever deleted. A shard may set
+     "wait_seconds" (finite, 0 < x <= 120) and/or "shots" (increasing unique offsets in (0, 120]) to observe a slow
+     first start once (2026-10-21 COMMERCIAL-G07); both are checked before the lock and passed to bms_batch as
+     --wait / --shots, and an explicit wait must not be shorter than the last shot;
   4. after each shard its facts.txt TOTAL line is appended to the board verbatim; screenshots are left for the
      outer loop to read and sign.
 
@@ -39,6 +42,7 @@ its infrastructure failure returns nonzero. Ordinary batch shots remain 5,20.
 """
 import argparse
 import json
+import math
 import os
 import re
 import signal
@@ -202,6 +206,50 @@ def observation_hook(argv, context, log):
         return {'rc': None, 'error': str(exc), 'log': str(log), 'record_only': True}
 
 
+SAMPLING_LIMIT_S = 120  # per-shard observation cap; bms_batch itself accepts shots up to 300 s
+
+
+def _sampling_seconds(value):
+    # bool is an int subclass; strings and NaN/Infinity (which json.loads accepts) are rejected too
+    return type(value) in (int, float) and math.isfinite(value) and 0 < value <= SAMPLING_LIMIT_S
+
+
+def shard_sampling_problem(shard):
+    """None when the shard's optional wait_seconds / shots are valid (or absent), else the field and reason."""
+    if not isinstance(shard, dict):
+        return 'shard must be an object'
+    wait, shots = shard.get('wait_seconds'), shard.get('shots')
+    if 'wait_seconds' in shard and not _sampling_seconds(wait):
+        return f'shard {shard.get("name")!r}: wait_seconds must be a finite number in (0, {SAMPLING_LIMIT_S}], got {wait!r}'
+    if 'shots' in shard:
+        if (not isinstance(shots, list) or not shots or len(shots) > 32
+                or not all(_sampling_seconds(x) for x in shots)):
+            return (f'shard {shard.get("name")!r}: shots must be a nonempty list of finite numbers in '
+                    f'(0, {SAMPLING_LIMIT_S}], got {shots!r}')
+        if any(b <= a for a, b in zip(shots, shots[1:])):
+            return f'shard {shard.get("name")!r}: shots must be strictly increasing without duplicates, got {shots!r}'
+        if 'wait_seconds' in shard and wait < shots[-1]:
+            return f'shard {shard.get("name")!r}: wait_seconds {wait!r} is shorter than the last shot {shots[-1]!r}'
+    return None
+
+
+def _seconds_arg(value):
+    return str(int(value)) if float(value).is_integer() else repr(float(value))
+
+
+def shard_command(plan, shard, keys, sout, cutoff):
+    """The bms_batch argv for one shard; without wait_seconds/shots this is the historical command unchanged."""
+    shots = ','.join(_seconds_arg(x) for x in shard['shots']) if 'shots' in shard else '5,20'
+    cmd = [sys.executable, str(BATCH), '--execute', '--serial', plan['serial'], '--lane', plan['lane'],
+           '--manifest', expand(shard['manifest']), '--input-root', expand(shard['input_root']),
+           '--keys', keys, '--reinstall', '--hilog', '--shots', shots, '--out', str(sout)]
+    if 'wait_seconds' in shard:
+        cmd += ['--wait', _seconds_arg(shard['wait_seconds'])]
+    if cutoff is not None:
+        cmd += ['--stop-new-keys-at', str(cutoff)]
+    return cmd
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('plan', type=Path)
@@ -220,6 +268,12 @@ def main(argv=None):
         if argv_ is not None and (not isinstance(argv_, list) or not argv_ or
                                   any(not isinstance(x, str) or not x for x in argv_)):
             sys.exit(f'{name} must be a nonempty argv list')
+    if not isinstance(plan['shards'], list):
+        sys.exit('REFUSE: shards must be a list; no lock taken')
+    for shard in plan['shards']:
+        problem = shard_sampling_problem(shard)
+        if problem:
+            sys.exit(f'REFUSE: {problem}; no lock taken')
     if 'execution_enabled' in plan and plan['execution_enabled'] is not True and not args.dispatch:
         sys.exit('REFUSE: execution_enabled is false; no lock taken')
     if args.dispatch:
@@ -278,11 +332,7 @@ def main(argv=None):
             keylist = [k for k in raw.replace(',', ' ').split() if not k.startswith('#')]
             keys = ','.join(keylist)
             sout = out / shard['name']
-            cmd = [sys.executable, str(BATCH), '--execute', '--serial', plan['serial'], '--lane', plan['lane'],
-                   '--manifest', expand(shard['manifest']), '--input-root', expand(shard['input_root']),
-                   '--keys', keys, '--reinstall', '--hilog', '--shots', '5,20', '--out', str(sout)]
-            if cutoff is not None:
-                cmd += ['--stop-new-keys-at', str(cutoff)]
+            cmd = shard_command(plan, shard, keys, sout, cutoff)
             with open(out / f'{shard["name"]}.log', 'w') as fh:
                 code = subprocess.run(cmd, cwd=REPO, stdout=fh, stderr=subprocess.STDOUT).returncode
             facts = sorted(sout.glob('*/*/facts.txt'))
