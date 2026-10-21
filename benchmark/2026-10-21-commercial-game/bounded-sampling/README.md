@@ -14,7 +14,7 @@ slow first start (Genshin initialization) was cold-stopped after the 20 s shot. 
 
 Validation runs for every shard right after plan loading — before `execution_enabled`, `--dispatch`, the lock or any
 subprocess — and refuses with the field name and `no lock taken`. `bool`, strings (e.g. `"5,20;reboot"`), `NaN`
-and `Infinity` (which `json.loads` accepts) are rejected. Argv construction moved into `shard_command()`; without
+and `Infinity` (which `json.loads` accepts) are rejected; the range test runs before `math.isfinite`, so a huge JSON integer such as `10**400` is refused with the field reason instead of raising `OverflowError` (review fix). Argv construction moved into `shard_command()`; without
 the new fields it returns exactly the old command (no `--wait`). The 120 s cap is stricter than bms_batch's own
 300 s `shot_offsets` limit. bms_batch, lock, smoke gate and restore wiring are unchanged.
 
@@ -24,7 +24,7 @@ original `--execute --reinstall --hilog --stop-new-keys-at`. Control groups keep
 ## Tests (real argv, offline)
 
 `test_board_run_sampling.py` (5/5): default argv equals the literal pre-G07 construction (with and without cutoff);
-60 s case argv and acceptance by `bms_batch.shot_offsets`; fractional/shots-only; 18 invalid values each refused
+60 s case argv and acceptance by `bms_batch.shot_offsets`; fractional/shots-only; 20 invalid values (incl. `10**400` for both fields) each refused
 naming the field, plus wait < last shot; `main()` and `main(--dispatch)` raise REFUSE with `subprocess.run/Popen`
 patched to fail, and no output directory is created. Existing `scripts/lab/tests/test_board_run.py` 25/25 (its
 detach test mocks `Popen`; the printed pid is fake). Rust: `cargo test --test commercial_game_bounded_sampling`.

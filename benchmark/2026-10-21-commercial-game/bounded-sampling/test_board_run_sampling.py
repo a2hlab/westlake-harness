@@ -51,7 +51,7 @@ class Sampling(unittest.TestCase):
                ('wait_seconds', math.nan), ('wait_seconds', math.inf), ('wait_seconds', '60'), ('wait_seconds', None),
                ('shots', [20, 5]), ('shots', [5, 5]), ('shots', []), ('shots', '5,20;reboot'), ('shots', [5, True]),
                ('shots', [5, 121]), ('shots', [5, math.nan]), ('shots', [-5, 20]), ('shots', ['5', '20']),
-               ('shots', list(range(1, 34)))]
+               ('shots', list(range(1, 34))), ('wait_seconds', 10**400), ('shots', [5, 10**400])]
         for field, value in bad:
             with self.subTest(field=field, value=value):
                 problem = board_run.shard_sampling_problem(dict(SHARD, **{field: value}))
@@ -61,7 +61,8 @@ class Sampling(unittest.TestCase):
 
     def test_main_refuses_before_lock_or_device(self):
         cases = [dict(SHARD, keys_file='/k', wait_seconds=121), dict(SHARD, keys_file='/k', shots=[60, 20]),
-                 dict(SHARD, keys_file='/k', wait_seconds=True)]
+                 dict(SHARD, keys_file='/k', wait_seconds=True), dict(SHARD, keys_file='/k', wait_seconds=10**400),
+                 dict(SHARD, keys_file='/k', shots=[5, 10**400])]
         for shard in cases:
             with self.subTest(shard=shard), tempfile.TemporaryDirectory() as tmp:
                 plan = dict(PLAN, entry='91', why='g07 test', board='/nonexistent/board.md', out=str(Path(tmp) / 'out'),

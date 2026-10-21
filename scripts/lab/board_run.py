@@ -210,8 +210,9 @@ SAMPLING_LIMIT_S = 120  # per-shard observation cap; bms_batch itself accepts sh
 
 
 def _sampling_seconds(value):
-    # bool is an int subclass; strings and NaN/Infinity (which json.loads accepts) are rejected too
-    return type(value) in (int, float) and math.isfinite(value) and 0 < value <= SAMPLING_LIMIT_S
+    # bool is an int subclass; strings and NaN/Infinity (which json.loads accepts) are rejected too. The range test
+    # comes before math.isfinite so a huge JSON integer (10**400) is refused instead of raising OverflowError.
+    return type(value) in (int, float) and 0 < value <= SAMPLING_LIMIT_S and math.isfinite(value)
 
 
 def shard_sampling_problem(shard):

@@ -12,8 +12,8 @@
  },
  "result_file": {
   "alias": "scripts/lab/board_run.py",
-  "sha256": "0102a1f0567bf6551834f16a8916aae19d067c90426a47cea0857dee05657e18",
-  "size": 24018
+  "sha256": "6440897ebce7f273f084a402cd970a0585425fe8e2f392453f52acb00fb795fe",
+  "size": 24145
  },
  "behaviour": {
   "default": "--shots 5,20, no --wait (argv identical to the pre-G07 literal)",
@@ -31,7 +31,7 @@
     "60"
    ]
   },
-  "validation": "before execution_enabled/--dispatch/lock: wait_seconds finite in (0,120], shots nonempty <=32 strictly increasing finite in (0,120], bool/str/NaN/Inf rejected, wait >= last shot; message names the field and ends 'no lock taken'"
+  "validation": "before execution_enabled/--dispatch/lock: wait_seconds finite in (0,120], shots nonempty <=32 strictly increasing finite in (0,120], bool/str/NaN/Inf rejected, wait >= last shot; message names the field and ends 'no lock taken'; huge integers refused (range test short-circuits before math.isfinite)"
  },
  "tests": {
   "g07_unittest": "5/5",
@@ -143,6 +143,107 @@
      "size": 2
     }
    ]
+  },
+  {
+   "id": "v04-g07-unittest-overflow",
+   "argv": [
+    "python3",
+    "-I",
+    "benchmark/2026-10-21-commercial-game/bounded-sampling/test_board_run_sampling.py",
+    "-v"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$COMMERCIAL_G07_PRIVATE/raw/v04-g07-unittest-overflow.argv.json",
+     "sha256": "20e4f7473fe8bba2ceac85cd4bc07dbbe5bf1068793c544e29fa4b7e8b3cc2cf",
+     "size": 108
+    },
+    {
+     "alias": "$COMMERCIAL_G07_PRIVATE/raw/v04-g07-unittest-overflow.stdout",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$COMMERCIAL_G07_PRIVATE/raw/v04-g07-unittest-overflow.stderr",
+     "sha256": "bae94601a9cf0cbb9bdd8f2bf4c19f1405bcd8ff44ba903137a5867a12f2e42e",
+     "size": 547
+    },
+    {
+     "alias": "$COMMERCIAL_G07_PRIVATE/raw/v04-g07-unittest-overflow.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "v05-existing-board-run-tests",
+   "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "scripts/lab/tests",
+    "-p",
+    "test_board_run.py"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$COMMERCIAL_G07_PRIVATE/raw/v05-existing-board-run-tests.argv.json",
+     "sha256": "b3b9e1dabca434138634fc841b18e7b8f218a80061273c09a695e364eb701577",
+     "size": 96
+    },
+    {
+     "alias": "$COMMERCIAL_G07_PRIVATE/raw/v05-existing-board-run-tests.stdout",
+     "sha256": "67304c113457e7bd22615e51a934ddcf88e559fc204c8be6bffcd2b2fd093847",
+     "size": 113
+    },
+    {
+     "alias": "$COMMERCIAL_G07_PRIVATE/raw/v05-existing-board-run-tests.stderr",
+     "sha256": "f6fc0ec1702166afeea09959b9da2f986cb5726fc6c2b3e97ce1885cc8431b65",
+     "size": 124
+    },
+    {
+     "alias": "$COMMERCIAL_G07_PRIVATE/raw/v05-existing-board-run-tests.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "v06-cargo-test-bounded-sampling",
+   "argv": [
+    "cargo",
+    "test",
+    "--test",
+    "commercial_game_bounded_sampling"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$COMMERCIAL_G07_PRIVATE/raw/v06-cargo-test-bounded-sampling.argv.json",
+     "sha256": "a4e3187fd303df40549c364d8516007f5fedabe4081f90de78310bac5fe9ff1c",
+     "size": 64
+    },
+    {
+     "alias": "$COMMERCIAL_G07_PRIVATE/raw/v06-cargo-test-bounded-sampling.stdout",
+     "sha256": "b7865478393f4520eefd65663d51bc375ea4473375480b5838dcc7c9512676aa",
+     "size": 270
+    },
+    {
+     "alias": "$COMMERCIAL_G07_PRIVATE/raw/v06-cargo-test-bounded-sampling.stderr",
+     "sha256": "ca28a12fa72f30de196e1d4215bf19c5f54a60c265f17a9268d3a686734fa8ef",
+     "size": 1106
+    },
+    {
+     "alias": "$COMMERCIAL_G07_PRIVATE/raw/v06-cargo-test-bounded-sampling.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
   }
- ]
+ ],
+ "review_fix": "range test before math.isfinite: a huge JSON integer (10**400) is refused with the field reason instead of OverflowError; cases added for wait_seconds and shots, unit and main()"
 }
