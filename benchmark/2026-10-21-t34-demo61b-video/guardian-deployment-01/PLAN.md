@@ -1,0 +1,12 @@
+# Guardian-only deployment preparation
+
+The old icon-r2 transaction is reusable, but its sealed-r1 `OLD_ROOT` and outer-only lock-token check are not valid current admission. This is a preparation card, not an executable or signed deployment.
+
+1. Derive `prepare.py` and `deploy.py` from `benchmark/2026-10-19-toutiao-icon-deploy/` in this directory. Bind the exact fresh before-cfg service path and full CC holder/start. Reuse existing bounded receipt transport; retain the original cfg CAS, metadata, root read-only restoration and apply-transaction-bound rollback. Do not edit the donor.
+2. After r3 source review, verify the generated helper/watchdog → entry/members → startup.env → startup.expected.sha256 chain. Record full hashes and source pins. Do not use the disabled r2 payload or historical `1589…` cfg as current input.
+3. Before lock, prepare local payload, unsigned plan and rollback argv against actual before bytes; then acquire one new lock and revalidate the fresh boot/control preimage. Stage into one previously absent `icon-manual-*` root; all bytes/metadata verify before cfg CAS. Preserve old roots and stale guardian lock files.
+4. Use normal reboot, then the existing ordinary-icon UI. Capture new guardian/parent/child identities and feed. Observe manual reentry only if child naturally exits. No signal, force-stop or timer extension. Stop new experiments at1000s; prepare restore at1100s; decide/actually start restore before1200s.
+5. Retain only with actual outer signature and scoped evidence. Otherwise invoke the derived deploy `--rollback --boot CURRENT_BOOT --apply-receipt ACTUAL_TRANSACTION` against the SAME plan, reboot, and verify original cfg/control chain/runtime/power/debug before unlock by1800s. A transport-unknown result requires read-only reconciliation, never automatic write retry.
+6. Only after retained guardian closure, bind a NEW video window to the actual new guardian manifest; the T34 old18-control hashes and rollback card are stale. Keep video six-file deployment out of this guardian window.
+
+Precise CLI shapes are the donor `prepare.py --payload --before --boot --out` and `deploy.py --plan [--execute --out]` / `--rollback --boot --apply-receipt`; derived holder/budget arguments and exact argv must be frozen and reviewed before execution. There is currently no runnable admission. The associated spec is `specs/demo61b-video-delivery/t4-guardian-baseline-deployment.spec.md`.
