@@ -1,0 +1,67 @@
+{
+  "entries": [
+    {
+      "id": "manifest",
+      "argv": [
+        "$AAPT2",
+        "dump",
+        "badging",
+        "$APK"
+      ],
+      "additional_argv": [
+        "$AAPT2",
+        "dump",
+        "xmltree",
+        "$APK",
+        "--file",
+        "AndroidManifest.xml"
+      ],
+      "inputs": "Exact base APK; inspect splits separately",
+      "output": "package/version/SDK/ABI declarations/XML",
+      "actual_smoke": "manifest and xmltree rc0"
+    },
+    {
+      "id": "elf",
+      "argv": [
+        "$LLVM_READELF",
+        "-h",
+        "-d",
+        "$EXTRACTED_ELF"
+      ],
+      "inputs": "Exact ZIP member, member SHA and containing APK SHA",
+      "output": "machine/class/DT_NEEDED, not runtime provider",
+      "actual_smoke": "arm64 graphics.path member rc0"
+    },
+    {
+      "id": "open-sites",
+      "argv": [
+        "python3",
+        "scripts/lab/open_site_scan.py",
+        "$HOST_ELF",
+        "$CHILD_ELF",
+        "--json",
+        "$OUT/sites.json"
+      ],
+      "inputs": "Exact host and child ELF; Android NDK llvm-objdump/nm (tool() picks sorted installed path)",
+      "output": "direct open-site PCs/namespace edges; unresolved indirect paths remain unknown",
+      "actual_smoke": "one APK arm64 ELF rc0, zero direct sites; not host/child closure"
+    },
+    {
+      "id": "jni",
+      "argv": [
+        "python3",
+        "scripts/lab/jni_gate.py",
+        "--package",
+        "$GENERATION",
+        "--allowlist",
+        "$APPROVED_EXCEPTIONS",
+        "--output",
+        "$OUT/jni.json"
+      ],
+      "inputs": "Generation package.json + actual JAR/native/source closure; not an APK-only CLI",
+      "output": "export/registration coverage, strict exception gate; no app reachability proof",
+      "actual_smoke": "NOT_RUN; target generation missing"
+    }
+  ],
+  "next": "t1 exact Genshin input manifest including splits/assets then manifest -> ELF/imports -> target callsites/JNI and host/child open sites; no backend selected before dependencies."
+}
