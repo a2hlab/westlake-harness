@@ -422,7 +422,9 @@ class Board:
             if remaining <= 0:
                 break
             marker = '__BMS_REMOTE_RC_' + uuid.uuid4().hex + '__'
-            wrapped = command + '; bms_rc=$?; printf "\\n' + marker + '%s\\n" "$bms_rc"'
+            # A heredoc delimiter must end its own line, with or without an
+            # existing final newline in command. Preserve the command's rc.
+            wrapped = command + '\n' + 'bms_rc=$?; printf "\\n' + marker + '%s\\n" "$bms_rc"'
             rc, text = self.command(self.hdc + ['-t', self.serial, 'shell', wrapped], remaining)
             m = re.search(re.escape(marker) + r'(\d+)\s*$', text)
             if rc == 0 and m:

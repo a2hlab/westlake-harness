@@ -292,6 +292,46 @@ class BatchTests(unittest.TestCase):
         board.command=cmd
         self.assertEqual(board.raw_shell('false'),(7,'install failed'))
 
+    def local_shell_board(self):
+        board=b.Board(SERIAL,'hdc','board-note','cx-t0',self.root)
+        calls=[]
+        def command(argv,timeout=60):
+            calls.append(argv[-1])
+            proc=subprocess.run(['/bin/sh','-c',argv[-1]],capture_output=True,
+                                text=True,timeout=timeout)
+            return proc.returncode,proc.stdout+proc.stderr
+        board.command=command
+        return board,calls
+
+    def test_raw_shell_local_heredoc_without_final_newline(self):
+        board,calls=self.local_shell_board()
+        command="/bin/sh -c 'cat' -- apply - <<'LABEL_RECIPE_INPUT'\nfile\t/system/example\ndirectory\t/system/example-dir\nLABEL_RECIPE_INPUT"
+        self.assertEqual(board.raw_shell(command),(0,'file\t/system/example\ndirectory\t/system/example-dir'))
+        self.assertEqual(len(calls),1)
+
+    def test_raw_shell_local_heredoc_with_final_newline(self):
+        board,calls=self.local_shell_board()
+        command="/bin/sh -c 'cat' -- apply - <<'LABEL_RECIPE_INPUT'\nfile\t/system/example\ndirectory\t/system/example-dir\nLABEL_RECIPE_INPUT\n"
+        self.assertEqual(board.raw_shell(command),(0,'file\t/system/example\ndirectory\t/system/example-dir'))
+        self.assertEqual(len(calls),1)
+
+    def test_raw_shell_local_heredoc_remote_nonzero(self):
+        board,calls=self.local_shell_board()
+        command="/bin/sh -c 'cat; exit 7' -- apply - <<'LABEL_RECIPE_INPUT'\nrecipe input\nLABEL_RECIPE_INPUT"
+        self.assertEqual(board.raw_shell(command),(7,'recipe input'))
+        self.assertEqual(len(calls),1)
+
+    def test_raw_shell_local_plain_command(self):
+        board,calls=self.local_shell_board()
+        self.assertEqual(board.raw_shell("printf 'ordinary command'"),(0,'ordinary command'))
+        self.assertEqual(len(calls),1)
+
+    def test_raw_shell_local_missing_marker_refused_without_replay(self):
+        board,calls=self.local_shell_board()
+        with self.assertRaisesRegex(b.BatchStop,'HDC lost remote status marker'):
+            board.raw_shell('exit 0')
+        self.assertEqual(len(calls),1)
+
     def marker_board(self, replies):
         board=b.Board(SERIAL,'hdc','board-note','cx-t0',self.root)
         calls=[]
