@@ -1,0 +1,99 @@
+--- benchmark/2026-10-21-t34-demo61b-video/deployment/executor61b.py
++++ benchmark/2026-10-21-t34-demo61b-video/guardian-r3-video/deployment/executor61b.py
+@@ -102,7 +102,7 @@
+ 
+ repo=a.repo;sys.path.insert(0,str(repo/'benchmark/2026-09-28-bms-route-deploy/batch'));import bms_batch as b
+ q=shlex.quote;sha=lambda x:hashlib.sha256(x).hexdigest()
+-RT='/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d';DSO='libopensles_android_compat.so';CFG='/system/etc/init/01_westlake_u13_toutiao.cfg';CSHA='91e31b959995772d305d5b034c9a5ebdbf3f8371495e3964185ada928db4ee2e'
++RT='/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d';DSO='libopensles_android_compat.so';CFG='/system/etc/init/01_westlake_u13_toutiao.cfg';CSHA='7b9f2c0e6431a486f3138f8fca04e3c5aea2c21f4f8acb6f83e815735d998e4b'
+ MEDIA='lib/arm64-v8a/libmffmpeg.so'; MBEFORE='fecf91e1fcda600661f501ce76a97456ad7e330b584013f2b742afb680b337c9'; MAFTER='d2882303bf5dc34e297a404e4b57a214d9c30ddaf0f496eb2ef9f7dcac09c4b4'
+ assert re.fullmatch('[0-9a-f-]{36}',a.boot)
+ assert a.recovery_no_parent or (a.parent.isdigit() and a.birth.isdigit())
+@@ -254,7 +254,7 @@
+  test "$(sha256sum {CFG} | cut -d' ' -f1)" = {CSHA}
+  '''
+ for control,digest in readonly['controls'].items():
+- assert control.startswith('/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r2/') and re.fullmatch('[0-9a-f]{64}',digest)
++ assert control.startswith('/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/') and re.fullmatch('[0-9a-f]{64}',digest)
+  parent_guard+=pathguard(control)+f'test "$(sha256sum {q(control)} | cut -d\' \' -f1)" = {digest}\n'
+ network_guard=fg(RT+'/libandroid_native_network_compat.so','f6c354d1513071533fddcc91749f44e57a626177a584fb1bb9f48bf6446ef01e','644:20011206:20011206',dlabel)
+ if not a.recovery_no_parent:network_guard+=f'test "$(stat -L -c %d:%i {RT}/libandroid_native_network_compat.so)" = "$(stat -L -c %d:%i /proc/{a.parent}/root/data/local/tmp/asx/libandroid_native_network_compat.so)"\n'
+--- benchmark/2026-10-21-t34-demo61b-video/deployment/prepare_data.py
++++ benchmark/2026-10-21-t34-demo61b-video/guardian-r3-video/deployment/prepare_data.py
+@@ -9,7 +9,7 @@
+ D=Path(__file__).resolve().parent
+ SERIAL='61b0657200000000000000000324012c'
+ RT='/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d'
+-CFG='91e31b959995772d305d5b034c9a5ebdbf3f8371495e3964185ada928db4ee2e'
++CFG='7b9f2c0e6431a486f3138f8fca04e3c5aea2c21f4f8acb6f83e815735d998e4b'
+ HAP='b18978b875098bc66f1ee78e471ef64c7899978bf46052502c41801f168e9ff0'
+ ORIGIN='benchmark/2026-10-20-t30-request-recovery/deployment/final-01'
+ sha=lambda b:hashlib.sha256(b).hexdigest()
+@@ -30,7 +30,7 @@
+     assert sha(original)=='d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4','foreign baseline run'
+     assert sha(run)==f['run_sha256'] and wid==f['wid']==f['parent_wid']
+     assert run.count(b'export ASX_RUNTIME_OWNER_UID=20011206\n')==1
+-    reference=json.loads((repo/'benchmark/2026-10-20-t33-demo61b-host/static/reference.json').read_text())
++    reference=json.loads((D/'guardian-reference.json').read_text())
+     assert f['controls']==reference['controls'],'61b control drift'
+     assert f['access_token_id']==reference['accessTokenId'],'token drift'
+     for path,digest in reference['runtime'].items():
+--- benchmark/2026-10-21-t34-demo61b-video/deployment/derive.py
++++ benchmark/2026-10-21-t34-demo61b-video/guardian-r3-video/deployment/derive.py
+@@ -18,8 +18,8 @@
+         ("20011300", "20011206"),
+         ("PENDING_5CD", "EXTERNAL_REVIEW_REQUIRED_61B"),
+         ("19d0201b59a6edac821feffa5f51ca8e9a08d6ba87d5bc9fd15b4e4d00775152",
+-         "91e31b959995772d305d5b034c9a5ebdbf3f8371495e3964185ada928db4ee2e"),
+-        ("restore-v1-5cd-20261012", "icon-manual-20261019-r2"),
++         "7b9f2c0e6431a486f3138f8fca04e3c5aea2c21f4f8acb6f83e815735d998e4b"),
++        ("restore-v1-5cd-20261012", "icon-manual-20261021-r3"),
+         ("t21-5cd", "t34-61b"),
+         ("run5cd.before.reference.sh", "run61b.before.reference.sh"),
+         ("run5cd.after.wid29.reference.sh", "run61b.after.reference.sh"),
+--- benchmark/2026-10-21-t34-demo61b-video/transport-01/file_transport.py
++++ benchmark/2026-10-21-t34-demo61b-video/guardian-r3-video/transport/file_transport.py
+@@ -11,7 +11,7 @@
+ import sys
+ import time
+ 
+-EXECUTOR_SHA='d75ecd42714f03b52db167c0978ec14c3ed7bcb5ad7e96c98be0d5b594c7060e'
++EXECUTOR_SHA='3c6b1396bafd7306a1336286f69b9f2556ee37e82bff23cc78bf40d74e0295bb'
+ BOARD_SHA='f41efa6ae2450adadda1f02c3c09335b74479c7d025872bbf95b3c8a444b177c'
+ SERIAL='61b0657200000000000000000324012c'
+ THRESHOLD=32768  # Transport choice, not a claimed HDC limit.
+--- benchmark/2026-10-21-t34-demo61b-video/window-driver-01/common.py
++++ benchmark/2026-10-21-t34-demo61b-video/guardian-r3-video/window-driver/common.py
+@@ -41,8 +41,8 @@
+   self.op=json.loads((self.w/('rollback.argv.json' if recovery else 'apply.argv.json')).read_text())
+   assert digest(self.w/('rollback.argv.json' if recovery else 'apply.argv.json'))==a.operation_argv_sha
+   def opt(n):assert self.op.count(n)==1;return self.op[self.op.index(n)+1]
+-  assert Path(self.op[1]).resolve()==self.repo/REL/'transport-01/file_transport.py'
+-  assert Path(opt('--executor')).resolve()==self.repo/REL/'deployment/executor61b.py'
++  assert Path(self.op[1]).resolve()==self.repo/REL/'guardian-r3-video/transport/file_transport.py'
++  assert Path(opt('--executor')).resolve()==self.repo/REL/'guardian-r3-video/deployment/executor61b.py'
+   assert opt('--holder')==self.holder and float(opt('--start'))==self.start
+   assert Path(opt('--repo')).resolve()==self.repo and Path(opt('--data')).resolve()==self.w/'data'
+   assert opt('--hdc')==str(a.hdc) and '--execute' in self.op
+--- benchmark/2026-10-21-t34-demo61b-video/window-driver-01/test_driver.py
++++ benchmark/2026-10-21-t34-demo61b-video/guardian-r3-video/window-driver/test_driver.py
+@@ -2,7 +2,7 @@
+ from pathlib import Path
+ from types import SimpleNamespace
+ import common,recover_driver
+-MAIN=Path(os.environ.get('T34_MAIN',str(common.HERE.parents[2]))).resolve()
++MAIN=Path(os.environ.get('T34_MAIN',str(common.HERE.parents[3]))).resolve()
+ BOUND=MAIN/common.REL/'bound-data-01'
+ 
+ def restored_text(parent,fresh):
+--- benchmark/2026-10-21-t34-demo61b-video/test_offline.py
++++ benchmark/2026-10-21-t34-demo61b-video/guardian-r3-video/test_transaction.py
+@@ -19,7 +19,7 @@
+ sys.path.insert(0,str(D/'deployment'))
+ import derive
+ import prepare_data
+-MAIN=Path(os.environ.get('T34_MAIN',str(D.parents[1].parent/'westlake-harness')))
++MAIN=Path(os.environ.get('T34_MAIN',str(D.parents[2])))
+ S=(D/'deployment/executor61b.py').read_text();TREE=ast.parse(S)
+ sha=lambda b:hashlib.sha256(b).hexdigest()
+ sf=lambda p:sha(Path(p).read_bytes())
