@@ -1,0 +1,209 @@
+{
+  "results": {
+    "pins": {
+      "source": "8bf74a08b71474e39e90fcdb012eed5e420f7352fa131cef2aa63b9c5bd80ef9",
+      "common": "43d7b073467708770c8c69724633666e410d45581f8c0099d5098c31215e78ab",
+      "parser": "febc7094b9d90b6a8c6c305199395d92da1ccde42d2b82b8c2754f0cb60f9d04"
+    },
+    "after_pins": {
+      "source": "8bf74a08b71474e39e90fcdb012eed5e420f7352fa131cef2aa63b9c5bd80ef9",
+      "common": "43d7b073467708770c8c69724633666e410d45581f8c0099d5098c31215e78ab",
+      "parser": "febc7094b9d90b6a8c6c305199395d92da1ccde42d2b82b8c2754f0cb60f9d04"
+    },
+    "host_only": true,
+    "cases": [
+      {
+        "case": "empty_windows_one_spawn",
+        "pass": true,
+        "expected_fragments": [
+          "calls=1 seq=2 child=8080 birth=222 retired= state=alive"
+        ],
+        "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nevent child_retirement_cleared spawn_started\nevent reentry_spawn_ok ok 8080 222\nstate BOOTSTRAP data_preserved_no_rotation\nstate UI_UNVERIFIED snapshot_error_rc=1 reason=fixture alive_no_cleanup\nevent observation_limit_no_app_control\nevent consume_live_or_window child=alive win=no wid=30\nevent STOPPED existing_stop_no_delete\nRESULT rc=0 calls=1 seq=2 child=8080 birth=222 retired= state=alive\n",
+        "stderr": "",
+        "rc": 0
+      },
+      {
+        "case": "retired_pid_window",
+        "pass": true,
+        "expected_fragments": [
+          "calls=0 owned=unknown child=7172",
+          "consume_live_or_window"
+        ],
+        "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nevent consume_live_or_window child=gone win=unknown wid=30\nevent consume_live_or_window child=gone win=unknown wid=30\nevent STOPPED existing_stop_no_delete\nRESULT calls=0 owned=unknown child=7172\n",
+        "stderr": "",
+        "rc": 0
+      },
+      {
+        "case": "other_owned_window",
+        "pass": true,
+        "expected_fragments": [
+          "calls=0 owned=yes",
+          "consume_live_or_window"
+        ],
+        "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nevent consume_live_or_window child=gone win=yes wid=30\nevent consume_live_or_window child=gone win=yes wid=30\nevent STOPPED existing_stop_no_delete\nRESULT calls=0 owned=yes\n",
+        "stderr": "",
+        "rc": 0
+      },
+      {
+        "case": "invalid_wms",
+        "pass": true,
+        "expected_fragments": [
+          "calls=0 owned=unknown"
+        ],
+        "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nevent consume_live_or_window child=gone win=unknown wid=30\nevent consume_live_or_window child=gone win=unknown wid=30\nevent STOPPED existing_stop_no_delete\nRESULT calls=0 owned=unknown\n",
+        "stderr": "",
+        "rc": 0
+      },
+      {
+        "case": "owned_prelaunch_refusal_keeps_retirement",
+        "pass": true,
+        "expected_fragments": [
+          "launch=2 started=0 calls=0 key_kept=yes gate=0"
+        ],
+        "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nRESULT launch=2 started=0 calls=0 key_kept=yes gate=0\n",
+        "stderr": "",
+        "rc": 0
+      },
+      {
+        "case": "unknown_spawn_sticky_no_retry",
+        "pass": true,
+        "expected_fragments": [
+          "calls=1 hold=1 retired=",
+          "reentry_spawn_unknown_hold",
+          "reentry_hold_fail_closed"
+        ],
+        "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nevent child_retirement_cleared spawn_started\nevent reentry_spawn_unknown_hold unknown spawn_command_nonzero\nevent reentry_hold_fail_closed wid=30\nevent reentry_hold_fail_closed wid=30\nevent STOPPED existing_stop_no_delete\nRESULT calls=1 hold=1 retired=\n",
+        "stderr": "",
+        "rc": 0
+      },
+      {
+        "case": "new_child_guard_restored",
+        "pass": true,
+        "expected_fragments": [
+          "launch=0 gate=1 reason=child_identity retired="
+        ],
+        "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nevent child_retirement_cleared spawn_started\nRESULT launch=0 gate=1 reason=child_identity retired=\n",
+        "stderr": "",
+        "rc": 0
+      },
+      {
+        "case": "actual_main_adopt_clears_retirement",
+        "pass": true,
+        "expected_fragments": [
+          "main=0 calls=0 child=8080 birth=222 seq=2 retired= gate=1 reason=child_identity",
+          "child_retirement_cleared adopt"
+        ],
+        "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nstate SUPERVISOR_STARTING control_persistence_checked_before_launch\nevent child_retirement_cleared adopt\nstate BOOTSTRAP data_preserved_no_rotation\nstate UI_UNVERIFIED snapshot_error_rc=1 reason=fixture alive_no_cleanup\nevent observation_limit_no_app_control\nstate AWAITING_REENTRY child_exited_wait_manual_icon\nevent consume_live_or_window child=alive win=no wid=30\nevent consume_live_or_window child=alive win=no wid=30\nevent STOPPED existing_stop_no_delete\nRESULT main=0 calls=0 child=8080 birth=222 seq=2 retired= gate=1 reason=child_identity\n",
+        "stderr": "",
+        "rc": 0
+      }
+    ],
+    "passed": true
+  },
+  "commands": [
+    {
+      "case": "actual_main_adopt_clears_retirement",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "8c54bdda4eca215aca625c1a30e896695d4c3635e70eaa6b2e0949665cd220bc",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nstate SUPERVISOR_STARTING control_persistence_checked_before_launch\nevent child_retirement_cleared adopt\nstate BOOTSTRAP data_preserved_no_rotation\nstate UI_UNVERIFIED snapshot_error_rc=1 reason=fixture alive_no_cleanup\nevent observation_limit_no_app_control\nstate AWAITING_REENTRY child_exited_wait_manual_icon\nevent consume_live_or_window child=alive win=no wid=30\nevent consume_live_or_window child=alive win=no wid=30\nevent STOPPED existing_stop_no_delete\nRESULT main=0 calls=0 child=8080 birth=222 seq=2 retired= gate=1 reason=child_identity\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "empty_windows_one_spawn",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "37bc136cc8c91968015d1abbcb766bdbb0659773436b114eac3088fdca875a14",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nevent child_retirement_cleared spawn_started\nevent reentry_spawn_ok ok 8080 222\nstate BOOTSTRAP data_preserved_no_rotation\nstate UI_UNVERIFIED snapshot_error_rc=1 reason=fixture alive_no_cleanup\nevent observation_limit_no_app_control\nevent consume_live_or_window child=alive win=no wid=30\nevent STOPPED existing_stop_no_delete\nRESULT rc=0 calls=1 seq=2 child=8080 birth=222 retired= state=alive\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "invalid_wms",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "136e9f65c226e70b04481e62215cf2cff69ef354761dc77ea7f662b609f9cf36",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nevent consume_live_or_window child=gone win=unknown wid=30\nevent consume_live_or_window child=gone win=unknown wid=30\nevent STOPPED existing_stop_no_delete\nRESULT calls=0 owned=unknown\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "new_child_guard_restored",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "3af0803ac4a81f747001239987e615f36632b5326f02653a3e9d948bc9bf1372",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nevent child_retirement_cleared spawn_started\nRESULT launch=0 gate=1 reason=child_identity retired=\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "other_owned_window",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "39b3459cdc97d7897f93f9d1130d5da5170170ba64028977ad3b051349fe835d",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nevent consume_live_or_window child=gone win=yes wid=30\nevent consume_live_or_window child=gone win=yes wid=30\nevent STOPPED existing_stop_no_delete\nRESULT calls=0 owned=yes\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "owned_prelaunch_refusal_keeps_retirement",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "ef3d182142da6dbe84f49f77f4e33a632bf41671860b243dc040e41fbd8f3d1b",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nRESULT launch=2 started=0 calls=0 key_kept=yes gate=0\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "retired_pid_window",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "cc4eb1b5210c3c53f6a8d69e38d26bbd9ad251b8ab8034e0cec34c4cfe64ba54",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nevent consume_live_or_window child=gone win=unknown wid=30\nevent consume_live_or_window child=gone win=unknown wid=30\nevent STOPPED existing_stop_no_delete\nRESULT calls=0 owned=unknown child=7172\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "unknown_spawn_sticky_no_retry",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "1a093dcc0e47a089ec56b0f88dd0c621e295db37d0f1ee4e1c7011084221425c",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nevent child_retirement_cleared spawn_started\nevent reentry_spawn_unknown_hold unknown spawn_command_nonzero\nevent reentry_hold_fail_closed wid=30\nevent reentry_hold_fail_closed wid=30\nevent STOPPED existing_stop_no_delete\nRESULT calls=1 hold=1 retired=\n",
+      "stderr": "",
+      "rc": 0
+    }
+  ]
+}

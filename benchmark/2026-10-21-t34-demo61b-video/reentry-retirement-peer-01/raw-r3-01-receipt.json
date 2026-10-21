@@ -1,0 +1,249 @@
+{
+  "results": {
+    "schema": "retirement-peer-function-replay/v1",
+    "source_sha256": "8bf74a08b71474e39e90fcdb012eed5e420f7352fa131cef2aa63b9c5bd80ef9",
+    "source_after_sha256": "8bf74a08b71474e39e90fcdb012eed5e420f7352fa131cef2aa63b9c5bd80ef9",
+    "expect": "r3",
+    "cases": [
+      {
+        "case": "strict_first_exit_then_reuse",
+        "pass": true,
+        "result": "RESULT monitor=0 gate=0 reason= state=gone child=7172 birth=7475"
+      },
+      {
+        "case": "strict_owned_exit_then_reuse",
+        "pass": true,
+        "result": "RESULT monitor=0 gate=0 state=gone"
+      },
+      {
+        "case": "unconfirmed_reuse",
+        "pass": true,
+        "result": "RESULT gate=1 reason=child_identity"
+      },
+      {
+        "case": "unknown_not_retired",
+        "pass": true,
+        "result": "RESULT monitor=2 gate=1"
+      },
+      {
+        "case": "limit_not_retired",
+        "pass": true,
+        "result": "RESULT monitor=0 gate=1"
+      },
+      {
+        "case": "stop_not_retired",
+        "pass": true,
+        "result": "RESULT monitor=0 gate=1"
+      },
+      {
+        "case": "parent_drift",
+        "pass": true,
+        "result": "RESULT gate=1 reason=parent_identity"
+      },
+      {
+        "case": "boot_drift",
+        "pass": true,
+        "result": "RESULT gate=1 reason=boot_changed"
+      },
+      {
+        "case": "lock_drift",
+        "pass": true,
+        "result": "RESULT gate=1 reason=lock_foreign"
+      },
+      {
+        "case": "retired_tuple_drift_BOOT",
+        "pass": true,
+        "result": "RESULT gate=1 reason=lock_foreign"
+      },
+      {
+        "case": "retired_tuple_drift_seq",
+        "pass": true,
+        "result": "RESULT gate=1 reason=child_identity"
+      },
+      {
+        "case": "retired_tuple_drift_child",
+        "pass": true,
+        "result": "RESULT gate=1 reason=child_identity"
+      },
+      {
+        "case": "retired_tuple_drift_child_birth",
+        "pass": true,
+        "result": "RESULT gate=1 reason=child_identity"
+      }
+    ],
+    "host_only": true,
+    "scope": "actual extracted production functions; external process/filesystem seams mocked; no device main",
+    "passed": true
+  },
+  "commands": [
+    {
+      "case": "boot_drift",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "c4d334286bcf04ba3f0e9309c36157fff55f9973c78e76714f1c5318bc4b2fd4",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nRESULT gate=1 reason=boot_changed\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "limit_not_retired",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "6d810b2eab1e46f594cb242a6528b57d0e7de11b4f61bbf869845e30d5fcf9c5",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nstate UI_UNVERIFIED snapshot_error_rc=1 reason=fixture alive_no_cleanup\nevent observation_limit_no_app_control\nRESULT monitor=0 gate=1\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "lock_drift",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "9dca6167c44a40b9c41ca5a502108747feb722eeccd428e01398776000d59e1e",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nRESULT gate=1 reason=lock_foreign\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "parent_drift",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "ca4b69b2a78d1a5edd086567a9ed5b330de4b7b64633019daa1a6cc84e96a76d",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nRESULT gate=1 reason=parent_identity\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "retired_tuple_drift_BOOT",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "4682baf381adc26433823bf8e1ac86ef7729758b25004092c3fc41d8d598eb15",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nRESULT gate=1 reason=lock_foreign\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "retired_tuple_drift_child",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "f27bef0cc7108892d76371e14ef4fee50fc5151fc957deb2bba2dfffd8cb17b6",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nRESULT gate=1 reason=child_identity\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "retired_tuple_drift_child_birth",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "d21b818c4dadb9e3b608d35ea0c376289504056e89cfc52b5ecd490d28ce9213",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nRESULT gate=1 reason=child_identity\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "retired_tuple_drift_seq",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "1243d3e0c2b33360fb93264af5f6d3d509c808eb9916d8e46e2fdbf0a350a648",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nRESULT gate=1 reason=child_identity\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "stop_not_retired",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "5382e580980b2bbf284ff7b7f9994f5ab235d7f2940779ae65f69276131b4003",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nstate STOPPED existing_stop\nRESULT monitor=0 gate=1\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "strict_first_exit_then_reuse",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "9b5281ea135a8f334cc4be92674cec35b96efa68ccef7ad80831798a2ada9ca4",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit first_read_exited\nevent child_retired key=boot/1/7172/7475 strict_exited\nRESULT monitor=0 gate=0 reason= state=gone child=7172 birth=7475\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "strict_owned_exit_then_reuse",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "d53d49b5a8beb593b62abfecae5eceff349cfb5540d73a850c48ae6e853af519",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nevent process_exit during_ownership_check\nevent child_retired key=boot/1/7172/7475 strict_exited\nRESULT monitor=0 gate=0 state=gone\n",
+      "stderr": "death\n",
+      "rc": 0
+    },
+    {
+      "case": "unconfirmed_reuse",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "43477c54e0cb436283fcab6ed50e581eb2a166e320211ec64a2dcf3d4067ba25",
+      "stdout": "RESULT gate=1 reason=child_identity\n",
+      "stderr": "",
+      "rc": 0
+    },
+    {
+      "case": "unknown_not_retired",
+      "argv": [
+        "/bin/sh",
+        "case.sh",
+        "fixture"
+      ],
+      "cwd": "isolated temporary directory containing case.sh and fixture/",
+      "script_sha256": "f1fed721229783d69e6bc24c47c2ab41f159ede01152348a50e058b9ee921031",
+      "stdout": "state BOOTSTRAP data_preserved_no_rotation\nstate OWNER_REFUSED identity_unreadable_or_reused_no_relaunch verdict=unknown\nRESULT monitor=2 gate=1\n",
+      "stderr": "",
+      "rc": 0
+    }
+  ]
+}
