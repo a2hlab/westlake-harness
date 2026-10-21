@@ -11,7 +11,7 @@ def repo_ref(rel): b = open(os.path.join(REPO, rel), "rb").read(); return {"alia
 ids = sorted({f.rsplit(".", 1)[0] if not f.endswith(".invalid.json") else f[:-len(".invalid.json")] for f in os.listdir(RAW)
               if f.endswith((".argv.json",))} | set())
 ids = sorted({f[:-len(".argv.json")] for f in os.listdir(RAW) if f.endswith(".argv.json")})
-NOTE = {"q09-hilog-tail-ro": "hilog -x with -t/-z combination rejected by hilog (CODE -31); read-only, no log retained; kept as failure",
+NOTE = {"q09-hilog-tail-ro": "hilog -x with -z is a RUNBOOK-documented invalid combination (CODE -31); kept as failure; successors use the T23-verified single tail mode only",
         "o02-board-run-dispatch-dryrun": "plan shape error: before_unlock given as list of lists; kept", "o03-board-run-disabled-refusal": "same plan shape error; kept",
         "o05-board-run-disabled-refusal": "expected: execution_enabled=false -> REFUSE, no lock taken"}
 rec = []
@@ -41,10 +41,35 @@ fresh = {
  "runtime_deploy": {"bind_mounts_seen": len(re.findall(r" on /system/(android|bin/appspawn-x|lib64/(appspawn|westlake|libwestlake))", rt("q08-mounts-runtime.stdout"))),
                     "route_a": sorted(set(re.findall(r"/system/lib64/westlake/route-a/([0-9a-f]{64})", rt("q08-mounts-runtime.stdout")))),
                     "board_runtime_fingerprint_file": "absent (/data/local/tmp/runtime-fingerprint.txt)",
-                    "last_recorded_fp": {"runtime": "9745004d10ce", "bootimage": "ee927db88a67", "source": "2026-10-13 r6 smoke group-0 facts.txt (historical, NOT fresh)"}},
+                    "last_recorded_fp": {"runtime": "9745004d10ce", "bootimage": "ee927db88a67", "source": "2026-10-13 r6 smoke group-0 facts.txt (historical, NOT fresh; superseded by fresh_supplement)"}},
  "genshin_installed": "yuanshen" in rt("q06-bm-genshin.stdout").lower().replace("grep_rc", ""),
  "bundles_dump_lines": int(rt("q06-bm-genshin.stdout").split()[-1]),
  "relevant_installed": [l.strip() for l in rt("q07-bm-boat-a2hlab.stdout").splitlines() if l.strip()],
+}
+def lines(n): return [l for l in rt(n).splitlines()]
+pw = rt("r06-power-dump.stdout"); wms = rt("r05-wms-dump.stdout"); cfg = rt("r03-launch-config.stdout"); dirs = rt("r07-install-dirs-before.stdout")
+focus = re.search(r"^Focus window: (\d+)", wms, re.M); fid = focus.group(1) if focus else None
+frow = next((l.split()[0] for l in wms.splitlines() if fid and len(l.split()) > 3 and l.split()[3] == fid), None)
+fpj = json.loads(rt("r02-fresh-fp.stdout"))
+supp = {
+ "boot_id_before": rt("r01-boot-before.stdout").split()[0], "boot_id_after": rt("r08-boot-after.stdout").split()[0],
+ "fresh_fingerprints": {**fpj, "runtime_members": repo_ref("benchmark/2026-10-21-commercial-game/spare-preflight/fresh-fp/runtime-fingerprint.txt"),
+     "boot_members": repo_ref("benchmark/2026-10-21-commercial-game/spare-preflight/fresh-fp/boot-image-fingerprint.txt"),
+     "vs_2026_10_13_record": {"runtime": "9745004d10ce -> %s; one member differs: /system/android/lib64/liboh_android_runtime.so f28bd1b3d44e -> 94718e0d0b61" % fpj["runtime_fp"],
+                             "boot": "ee927db88a67 unchanged"},
+     "shim_receipts": [{"alias": "$COMMERCIAL_G05_PRIVATE/fresh-fp/" + n, "sha256": hashlib.sha256(open(os.path.join(P, "fresh-fp", n), "rb").read()).hexdigest(),
+                       "size": os.path.getsize(os.path.join(P, "fresh-fp", n))} for n in sorted(os.listdir(os.path.join(P, "fresh-fp"))) if n.startswith("shim-")],
+     "shim_remote_rc": [open(os.path.join(P, "fresh-fp", n)).read().strip() for n in sorted(os.listdir(os.path.join(P, "fresh-fp"))) if n.endswith(".remote_rc")]},
+ "launch_config": {"init_cfgs_naming_appspawn_x": [{"path": p_, "sha256": h_} for h_, p_ in re.findall(r"^([0-9a-f]{64})  (/(?:system|vendor)/etc/init/\S+)", cfg, re.M)],
+     "appspawn_x_sha256": (re.search(r"^([0-9a-f]{64})  /system/bin/appspawn-x", cfg, re.M) or [None, None])[1],
+     "appspawn_x_pid": None if "pidof_rc=1" in cfg else "see raw", "note": "U13 recover-v3 cfg: post-fs-data replays the U13 baseline mounts and binds the BoatAttack demo overlay; appspawn-x is ondemand (not running at sample time)"},
+ "bm_dump_full": {"lines": len(lines("r04-bm-dump-full.stdout")), "nonempty": len(lines("r04-bm-dump-full.stdout")) > 1, "first_line": lines("r04-bm-dump-full.stdout")[0].strip(),
+     "genshin_present": "com.miHoYo.Yuanshen" in rt("r04-bm-dump-full.stdout")},
+ "wms_foreground": {"focus_window_id": fid, "focus_window_name": frow, "note": "screen lock window holds focus"},
+ "power": {"current_state": (re.search(r"Current State: (\w+)", pw) or [None, None])[1],
+           "screen_off_timeout_ms": int(re.search(r"ScreenOffTime: Timeout=(\d+)ms", pw).group(1)), "override_timeout_ms": int(re.search(r"OverrideTimeout=(\d+)ms", pw).group(1))},
+ "install_dirs_before": {"lines": [l for l in dirs.splitlines() if l.startswith(("ABSENT", "PRESENT"))],
+                         "bms_batch_stage_dirs_on_tmp": int(dirs.splitlines()[-3]), "public_bundle_dirs": int(dirs.splitlines()[-2]), "data_df": dirs.splitlines()[-1].split()[1:5]},
 }
 plan_files = ["plan/board-run-genshin-5ea.disabled.json", "plan/smoke-genshin-5ea.json", "plan/manifest-genshin.json", "plan/genshin.keys"]
 plan = {
@@ -60,9 +85,10 @@ plan = {
                         "o04-board-run-dispatch-dryrun (rc 0)", "o05-board-run-disabled-refusal (REFUSE, no lock)"],
  "rollback": "before_unlock = tools/rollback_genshin.sh 5ea…: bm uninstall -n com.miHoYo.Yuanshen, read back bm dump, rc 0 only if absent (else lock retained); no runtime/data reset needed because nothing else is written",
  "evidence_collected_in_window": ["bms_batch record.json/facts.txt (install readback, PID, alive t5/t20)", "t5/t20 screenshots with focus", "hilog reset before launch + dump after wait + new faultlogs"],
- "unknown": ["fresh runtime/bootimage fingerprints (re-derived by the smoke gate; historical values may differ -> stop)",
+ "unknown": ["whether fingerprints still equal the G05 fresh values at window start (smoke gate re-derives; mismatch stops)",
+             "screen is SLEEP with the lock screen focused: waking/unlocking is a device write that G06 must own (board_setup/bms_batch preflight), not done here",
              "whether t20 shows Genshin first screen (board_run fixes --shots 5,20 and default --wait 15; no plan-level override)",
-             "whether the BMS/APK installer extracts the 32 arm64 libs itself (no sidecars provided)",
+             "whether the BMS/APK installer extracts the 32 arm64 libs itself (source review delegated to outer peer base5_delta_review)",
              "whether appspawn-x starts on demand for the first Android launch after this boot (zigzag control in the smoke gate answers it first)"],
  "not_in_scope": ["login, clicks beyond launch, full content download, runtime replacement, 61b"],
 }
@@ -70,7 +96,7 @@ res = {"token": "COMMERCIAL-G05", "status": "FRESH_READ_OK_PLAN_READY_DISABLED",
        "contract": "specs/commercial-game-round1/t5-spare-preflight.spec.md @ b3971d0379",
        "input": {"apk_sha256": "abd3c4d59217d78745a65aaa952367872354298bff5bc1ba2faae00b8f37a9cc", "package": "com.miHoYo.Yuanshen", "source": "COMMERCIAL-G03 a3c45bd667"},
        "elapsed": {"start_epoch": T0, "end_epoch": T1, "seconds": T1 - T0, "budget_seconds": 600},
-       "fresh": fresh, "plan": plan,
+       "fresh": fresh, "fresh_supplement": supp, "plan": plan,
        "limits": ["read-only hdc shell only: no lock, install, click, reboot, file write, REA; 61b untouched",
                   "6 first sample commands failed locally (zsh did not split $H; device not contacted) and are kept INVALID_LOCAL",
                   "hilog read failed (option combination); not retried"],

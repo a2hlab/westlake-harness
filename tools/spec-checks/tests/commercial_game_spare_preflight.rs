@@ -29,6 +29,20 @@ plan = json.load(open(os.path.join(d, "plan/board-run-genshin-5ea.disabled.json"
 assert plan["execution_enabled"] is False and plan["serial"] == f["serial"] and plan["stop_new_tests_by_minute"] * 60 == 1200
 assert isinstance(plan["before_unlock"], list) and all(isinstance(x, str) for x in plan["before_unlock"])
 assert "61b" not in plan["serial"]
+s = res["fresh_supplement"]
+assert s["boot_id_before"] == s["boot_id_after"] == f["boot_id_before"], "supplement must stay on the same boot"
+fp = s["fresh_fingerprints"]
+assert re.fullmatch(r"[0-9a-f]{12}", fp["runtime_fp"]) and re.fullmatch(r"[0-9a-f]{12}", fp["boot_fp"]) and fp["shim_remote_rc"] == ["0", "0"]
+for k, n in (("runtime_members", fp["runtime_files"]), ("boot_members", fp["boot_files"])):
+    body = open(os.path.join(root, fp[k]["alias"])).read()
+    assert hashlib.sha256(body.encode()).hexdigest() == fp[k]["sha256"]
+    L = [l for l in body.splitlines() if l]
+    assert len(L) == n and all(re.fullmatch(r"[0-9a-f]{64}\s+/\S+", l) for l in L)
+    assert hashlib.sha256("\n".join(L).encode()).hexdigest()[:12] == (fp["runtime_fp"] if k == "runtime_members" else fp["boot_fp"]), "fp not recomputable from members"
+smk = json.load(open(os.path.join(d, "plan/smoke-genshin-5ea.json")))
+assert smk["expect"] == {"runtime_fp": fp["runtime_fp"], "boot_fp": fp["boot_fp"]}, "smoke must expect the fresh pair"
+assert s["bm_dump_full"]["nonempty"] and s["power"]["screen_off_timeout_ms"] > 0 and s["wms_foreground"]["focus_window_id"]
+assert all(l.startswith(("ABSENT", "PRESENT")) for l in s["install_dirs_before"]["lines"]) and s["install_dirs_before"]["lines"]
 priv = os.path.expanduser("~/.local/share/westlake/commercial-game-20261021/spare-preflight")
 checked = 0
 for r in p["files"]:
