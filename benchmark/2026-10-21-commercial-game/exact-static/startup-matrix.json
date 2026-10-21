@@ -1,0 +1,92 @@
+{
+  "rows": [
+    {
+      "id": "manifest",
+      "basis": "OBSERVED",
+      "finding": "ComboApplication; launcher MainActivity; GLES 3.1 and AEP requested, Vulkan optional.",
+      "evidence": "evidence/manifest.rea.xml",
+      "limit": "Manifest projection/activity lifecycle support on actual target is unbound."
+    },
+    {
+      "id": "application",
+      "basis": "OBSERVED_DEX",
+      "finding": "ComboApplication.attachBaseContext falls through to Application; onCreate calls CryptoUtils.init and Initializer.start unless hotfix redirect handles invocation.",
+      "evidence": "startup-excerpts.json",
+      "limit": "Dynamic hotfix branch selection and downloaded content UNKNOWN.",
+      "additional_evidence": "rea-method-findings.json"
+    },
+    {
+      "id": "launcher",
+      "basis": "OBSERVED_DEX",
+      "finding": "MainActivity.onCreate calls ComboSDKActivity, then UnityPlayerActivity creates UnityPlayer and setContentView.",
+      "evidence": "startup-excerpts.json",
+      "limit": "No first frame/runtime initialization observed.",
+      "additional_evidence": "rea-method-findings.json"
+    },
+    {
+      "id": "native-load",
+      "basis": "OBSERVED_DEX",
+      "finding": "UnityPlayer.<clinit> tries yuanshen, then main only if loadLibraryStatic returned false; NativeLoader.load(nativeLibraryDir) is native.",
+      "evidence": "startup-excerpts.json",
+      "limit": "main not packaged; runtime resolution/fallback outcome UNKNOWN. No separate unity/il2cpp file in APK lib directory.",
+      "additional_evidence": "rea-method-findings.json"
+    },
+    {
+      "id": "engine-identity",
+      "basis": "STRING_HINT_ONLY",
+      "finding": "libyuanshen contains 2017.4.30f1 strings and global-metadata references; APK includes 80748380-byte global-metadata.dat.",
+      "evidence": "native-string-hints.json",
+      "limit": "Exact engine revision/configuration and combined engine/generated-code division UNKNOWN; Boat 2020.3.23f1 transforms not portable."
+    },
+    {
+      "id": "graphics",
+      "basis": "OBSERVED_ELF_IMPORT",
+      "finding": "libyuanshen imports ANativeWindow_fromSurface/acquire/release/getWidth/getHeight/setBuffersGeometry and EGL window/context/swap functions.",
+      "evidence": "elf-inventory.json",
+      "limit": "Actual OH wrapper/owner/ABI/ns and GLES/AEP support unbound. No assumption of pin-compatible native windows."
+    },
+    {
+      "id": "vulkan",
+      "basis": "STRING_HINT_ONLY",
+      "finding": "libvulkan.so string present in libyuanshen; optional manifest feature.",
+      "evidence": "native-string-hints.json",
+      "limit": "No direct vk import in scanned dynamic symbol tables; dlsym/branch selection UNKNOWN, not absence of Vulkan path."
+    },
+    {
+      "id": "fmod-audio",
+      "basis": "OBSERVED_DEX",
+      "finding": "FMODAudioDevice.run calls fmodGetInfo, AudioTrack.getMinBufferSize, constructor(IIIIII), getState, play and write(byte[],int,int); fmodProcess fills buffer.",
+      "evidence": "startup-excerpts.json",
+      "limit": "Native registration/provider and actual selected output UNKNOWN. No direct getBufferSizeInFrames call found in this method.",
+      "additional_evidence": "rea-method-findings.json"
+    },
+    {
+      "id": "opensles",
+      "basis": "OBSERVED_ELF_IMPORT",
+      "finding": "Mmoron and cri_ware_unity need libOpenSLES and import engine/PLAY/buffer queues; CRI also RECORD and effects.",
+      "evidence": "elf-inventory.json",
+      "limit": "Existing Android/OH IID widths and PLAY callback hard stubs are relevant conditional constraints; exact playback interfaces selected UNKNOWN."
+    },
+    {
+      "id": "aaudio",
+      "basis": "BOUNDED_NEGATIVE",
+      "finding": "No AAudio-prefixed name among decoded undefined dynamic symbols; two LLVM warning objects limit completeness.",
+      "evidence": "elf-inventory.json",
+      "limit": "Dynamic lookup, other resources and later downloaded code not ruled out."
+    },
+    {
+      "id": "jni",
+      "basis": "NAME_MATCH_ONLY",
+      "finding": "881 native declarations; 125 exported-name candidates.",
+      "evidence": "dex-inventory.json",
+      "limit": "Unmatched names are NOT missing JNI: dynamic RegisterNatives and class ownership remain UNKNOWN; short exports may have overload ambiguity."
+    },
+    {
+      "id": "first-fatal",
+      "basis": "UNKNOWN",
+      "finding": "No device or APK execution.",
+      "evidence": "results.json",
+      "limit": "All runtime outcomes NOT_TESTED; no claim of install admission, playable state, first fatal removed, graphics/audio pass."
+    }
+  ]
+}
