@@ -1,0 +1,227 @@
+## benchmark/2026-10-02-u13-single-native/sources/candidate/policy/src/native_loader.cpp SHA256 cdd53c08d36d5c7bad6d80eeb8bce01cc3ba063a22bb86103ba1638b14920734
+
+161: void* OpenNativeLibrary(JNIEnv* env, int32_t target_sdk_version,
+162:                         const char* path, jobject class_loader,
+163:                         const char* caller_location, jstring library_path,
+164:                         bool* needs_native_bridge, char** error_msg) {
+165:   using namespace westlake::nativeloader;
+166:   (void)caller_location;
+167:   if (needs_native_bridge != nullptr) *needs_native_bridge = false;
+168:   if (error_msg != nullptr) *error_msg = nullptr;
+169: 
+170:   if (class_loader == nullptr) {
+171:     return GlobalSystemLoader().Open(path, caller_location,
+172:                                      library_path != nullptr, error_msg);
+173:   }
+174: 
+175:   Config implicit_config;
+176:   std::string config_error;
+177:   const Config* implicit = nullptr;
+178:   if (env != nullptr && class_loader != nullptr && library_path != nullptr) {
+179:     if (!BuildImplicitConfig(env, target_sdk_version, library_path,
+180:                              &implicit_config, &config_error)) {
+181:       if (!config_error.empty() && error_msg != nullptr) {
+182:         *error_msg = CopyError(config_error);
+183:       }
+184:       if (!config_error.empty()) return nullptr;
+185:     } else {
+186:       implicit = &implicit_config;
+187:     }
+188:   }
+189:   return GlobalRegistry().Open(env, class_loader, implicit, path, RTLD_NOW,
+190:                                error_msg);
+
+## benchmark/2026-10-02-u13-single-native/sources/candidate/policy/src/native_loader_registry.cpp SHA256 db4201cbf7532bfc61f72d674e18756c647d919d932d0fd14b79e6417ab5d4fa
+
+215:   ++backend_calls_;
+216: 
+217:   const std::string app_search = Join(config.app_search_paths);
+218:   const std::string app_permitted = Join(config.app_permitted_paths);
+219:   const std::string bridge_search = Join(config.bridge_search_paths);
+220:   const std::string bridge_permitted = Join(config.bridge_permitted_paths);
+221:   const std::string bridge_sonames = Join(config.bridge_shared_sonames);
+222:   const bool has_bridge = !config.bridge_shared_sonames.empty();
+223: 
+224:   AnlDomainConfig backend_config = {};
+225:   backend_config.app_search_paths = app_search.c_str();
+226:   backend_config.app_permitted_paths = app_permitted.c_str();
+227:   backend_config.bridge_search_paths = has_bridge ? bridge_search.c_str() : nullptr;
+228:   backend_config.bridge_permitted_paths =
+229:       has_bridge ? bridge_permitted.c_str() : nullptr;
+230:   backend_config.bridge_shared_sonames =
+231:       has_bridge ? bridge_sonames.c_str() : nullptr;
+232:   backend_config.bridge_bootstrap_soname = has_bridge ?
+233:       config.bridge_bootstrap_soname.c_str() : nullptr;
+234: 
+235:   lock.unlock();
+236:   AnlDomain* raw_domain = nullptr;
+237:   int backend_result = 0;
+238:   {
+239:     BackendDepthGuard backend_depth;
+240:     backend_result = ANL_CreateDomain(&backend_config, &raw_domain);
+241:   }
+242:   std::string backend_error;
+243:   if (backend_result != 0 || raw_domain == nullptr) {
+244:     const char* borrowed = ANL_Dlerror();
+245:     backend_error = borrowed != nullptr ? borrowed :
+246:         (raw_domain == nullptr ? "ANL_CreateDomain returned a null domain"
+247:                                : "ANL_CreateDomain failed");
+365:     ++entry->active_calls;
+366:     ++backend_calls_;
+367:     break;
+368:   }
+369: 
+370:   void* handle = nullptr;
+371:   {
+372:     BackendDepthGuard backend_depth;
+373:     handle = ANL_Dlopen(domain, path, flags);
+374:   }
+375:   std::string backend_error;
+376:   if (handle == nullptr) {
+377:     const char* borrowed = ANL_Dlerror();
+378:     backend_error = borrowed != nullptr ? borrowed : "ANL_Dlopen failed";
+379:   }
+
+## bms/src/adapter/framework/app-native-loader/src/app_native_loader.c SHA256 aa1cd7c09164f1e6eefb928e8bc856ecb4df3ce22f81842d6595911c5c1f1d06
+
+50:     void* bridge_bootstrap_handle;
+51: };
+52: 
+53: static _Atomic unsigned long g_domain_id = 1;
+54: static _Atomic unsigned int g_runtime_gate_state = 0;
+395: 
+396:     unsigned long id = atomic_fetch_add_explicit(&g_domain_id, 1, memory_order_relaxed);
+397:     char bridge_name[NS_NAME_MAX + 1] = {0};
+398:     char app_name[NS_NAME_MAX + 1] = {0};
+399: 
+400:     if (wants_bridge) {
+401:         snprintf(bridge_name, sizeof(bridge_name),
+402:                  "westlake.anl.bridge.%ld.%lu", (long)getpid(), id);
+403:     }
+404:     snprintf(app_name, sizeof(app_name), "westlake.anl.app.%ld.%lu",
+405:              (long)getpid(), id);
+406:     const char* shared = wants_bridge ? config->bridge_shared_sonames : NULL;
+407:     void* bootstrap_handle = NULL;
+408:     int rc = domain->runtime_gate.namespace_host_ops.create_configured_namespaces(
+409:         wants_bridge ? &domain->bridge : NULL,
+410:         wants_bridge ? bridge_name : NULL,
+411:         wants_bridge ? config->bridge_search_paths : NULL,
+412:         wants_bridge ? config->bridge_permitted_paths : NULL,
+413:         shared,
+414:         wants_bridge ? config->bridge_bootstrap_soname : NULL,
+415:         wants_bridge ? &domain->runtime_gate.pthread_bridge_ops : NULL,
+416:         &bootstrap_handle, &domain->app, app_name,
+417:         config->app_search_paths, config->app_permitted_paths);
+418:     if (rc != 0) {
+419:         free(domain);
+420:         return failf("default-owner namespace configuration failed: %d", rc);
+421:     }
+422:     domain->has_bridge = wants_bridge;
+465:     int prepared = selected ? flutter_prepare(domain) : 0;
+466:     pthread_mutex_unlock(&domain->flutter_mutex);
+467:     if (prepared != 0) return NULL;
+468:     dlerror();
+469:     void* handle = selected
+470:         ? domain->runtime_gate.namespace_host_ops.open_namespace(
+471:             &domain->flutter, path, mode | RTLD_LOCAL)
+472:         : domain->runtime_gate.namespace_host_ops.open_namespace(
+473:             &domain->app, path, mode | RTLD_LOCAL);
+474:     if (handle == NULL) {
+475:         const char* error = dlerror();
+476:         failf("%s: dlopen_ns failed for %s: %s", classify_load_error(error),
+477:               path,
+478:               error == NULL ? "linker produced no diagnostic" : error);
+479:     } else {
+
+## native-checks/n10b-child.c SHA256 d87bf4c35d17550fddac7eef00123d300e2ef2b98dc41b856c4beb2eae913fee
+
+235:      * the return address to select the caller namespace; keep the caller in
+236:      * the sealed provider, not in this default-namespace plugin. A stack
+237:      * array here prevents the sibling call with the locked compiler. The
+238:      * post-link instruction check is part of admission for this wrapper. */
+239:     static const char prefix[] = "/system/android/lib64/";
+240:     if (namespace_prepared != 1 || !AbsoluteCanonicalForm(absolute_path) ||
+241:         strncmp(absolute_path, prefix, sizeof(prefix) - 1U) != 0 ||
+242:         absolute_path[sizeof(prefix) - 1U] == '\0' ||
+243:         (flags & (RTLD_NOW | RTLD_GLOBAL)) != RTLD_NOW) return NULL;
+244:     return dlopen(absolute_path, flags);
+245: }
+246: 
+247: static void *RealOpenLocalNow(void *context, const char *absolute_path,
+248:                               int flags)
+249: {
+250:     (void)context;
+251:     if (namespace_prepared == 0) {
+252:         char search_path[PATH_MAX];
+253:         char *slash;
+254:         size_t length = strlen(absolute_path);
+255:         if (length == 0U || length >= sizeof(search_path)) {
+256:             return NULL;
+257:         }
+258:         (void)memcpy(search_path, absolute_path, length + 1U);
+259:         slash = strrchr(search_path, '/');
+260:         if (slash == NULL || slash == search_path) {
+261:             return NULL;
+262:         }
+263:         *slash = '\0';
+264:         dlns_init(&closure_namespace, "westlake.sealed.child");
+265:         if (dlns_create2(&closure_namespace, search_path,
+266:                          CREATE_INHERIT_CURRENT) != 0) {
+267:             return NULL;
+268:         }
+269:         namespace_prepared = 1;
+270:     }
+271:     void *handle = dlopen_ns(&closure_namespace, absolute_path, flags);
+272:     const char *basename = strrchr(absolute_path, '/');
+273:     if (handle != NULL && basename != NULL &&
+274:         strcmp(basename + 1, "libwestlake_android_runtime_provider.so") == 0) {
+275:         /* N10b: the provider has now loaded route-a ART and openjdkjvm.
+276:          * Open both JNI owners in that same namespace, before provider init.
+277:          * CREATE_INHERIT_CURRENT adds an inheritance edge; it is not a
+278:          * snapshot. A default-owner preload would bind system ART instead.
+279:          * OH 6.1 musl ldso/linux/dynlink.c:4831-4983,2408-2575. */
+280:         static void *jni_owner_handles[2];
+281:         static const char *const owner_paths[] = {
+282:             "/system/android/lib64/liboh_adapter_bridge.so",
+283:             "/system/android/lib64/liboh_android_runtime.so"
+284:         };
+285:         size_t owner;
+286:         void *art = dlopen_ns(&closure_namespace, "libart.so",
+287:                               RTLD_NOW | RTLD_NOLOAD | RTLD_LOCAL);
+288:         if (art == NULL) {
+289:             (void)dlclose(handle);
+290:             return NULL;
+291:         }
+292:         (void)dlclose(art);
+293:         for (owner = 0U; owner < 2U; ++owner) {
+294:             if (jni_owner_handles[owner] == NULL) {
+295:                 jni_owner_handles[owner] = dlopen_ns(&closure_namespace,
+296:                                                      owner_paths[owner],
+297:                                                      RTLD_NOW | RTLD_LOCAL);
+298:             }
+299:             if (jni_owner_handles[owner] == NULL) {
+300:                 fprintf(stderr, "[N10b-JNI-OWNER] preload failed %s: %s\n",
+
+## benchmark/2026-10-02-u13-single-native/namespace_gates.py SHA256 7455cf82aa161fd31cfe000beb013cf6b6902832db2eb364983a0adfa7277eb6
+
+10:     root = HERE / ".artifacts/two-piece-package"
+11:     root.mkdir(exist_ok=True)
+12:     original = json.loads((base / "package.json").read_text())
+13:     replacements = {
+14:         "payload/runtime/appspawn-x": HERE / ".artifacts/host/candidate1/appspawn-x-candidate1",
+15:         "payload/android/lib64/libnativeloader.so": HERE / ".artifacts/policy/candidate1/libnativeloader-candidate.so",
+16:         "payload/route/libnativeloader.so": HERE / ".artifacts/policy/candidate1/libnativeloader-candidate.so"}
+17:     files = dict(original["files"])
+18:     for name, path in replacements.items():
+
+## benchmark/2026-10-02-u13-single-native/report.py SHA256 9f10cfb7b8f8d423d71a26f13f9627fdaed8c416161e89aa5d849d490281f8e4
+
+78:         item = record["artifacts"]["candidate1"]
+79:         return dict(path=item["path"].replace("$REPO/", "$WORKSPACES/westlake-harness-bms/"), sha256=item["sha256"])
+80:     targets = {
+81:         "native/payload/android/lib64/libnativeloader.so": dict(candidate=delivered(policy), before=POLICY_SHA, rollback="restore U12 2a6ec73f bytes"),
+82:         "native/payload/route/libnativeloader.so": dict(candidate=delivered(policy), before=POLICY_SHA, rollback="restore the same U12 bytes in both aliases together"),
+83:         "native/payload/runtime/appspawn-x": dict(candidate=delivered(host), before=HOST_SHA, rollback="restore U12 2a87118e bytes")}
+84:     save("payload-edit.json", dict(execution_enabled=False, targets=targets, runtime_changed=False, compat_changed=False,
+85:         final_assembly_owner="cx-t0", no_root_zlib_alias=True, no_libc_copy=True))
+
