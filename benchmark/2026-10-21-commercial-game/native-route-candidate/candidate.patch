@@ -1,0 +1,74 @@
+--- baseline/anl/app_native_loader.c
++++ candidate/anl/app_native_loader.c
+@@ -39,6 +39,7 @@
+     int flutter_state;
+     bool flutter_selected;
+     bool native_selected;
++    bool genshin_selected;
+     char selected_load_dir[PATH_MAX];
+     void* flutter_handles[3];
+     pthread_mutex_t flutter_mutex;
+@@ -63,7 +64,7 @@
+     const char* packages[] = {"com.ichi2.anki", "com.unciv.app", "app.organicmaps",
+         "com.nextcloud.client", "com.mcdonalds.app", "io.anuke.mindustry",
+         "com.emn8.mobilem8.nativeapp.bk", "im.vector.app",
+-        "org.mozilla.firefox", "org.mozilla.fennec_fdroid", "org.videolan.vlc", "org.ppsspp.ppsspp", "com.shatteredpixel.shatteredpixeldungeon"};
++        "org.mozilla.firefox", "org.mozilla.fennec_fdroid", "org.videolan.vlc", "org.ppsspp.ppsspp", "com.shatteredpixel.shatteredpixeldungeon", "com.miHoYo.Yuanshen"};
+     for (size_t i=0; i<sizeof(packages)/sizeof(packages[0]); ++i) {
+         const char* q=text;
+         while ((q=strstr(q, packages[i])) != NULL) {
+@@ -71,6 +72,19 @@
+             if ((q==text || q[-1]=='/') && (q[n]=='/' || q[n]==':' || q[n]=='\0')) return true;
+             q+=n;
+         }
++    }
++    return false;
++}
++
++/* G26: exact package component, matching the existing selector boundaries. */
++static bool genshin_package_path(const char* text) {
++    const char* package = "com.miHoYo.Yuanshen";
++    const size_t n = strlen(package);
++    const char* p = text;
++    while ((p = strstr(p, package)) != NULL) {
++        if ((p == text || p[-1] == '/') &&
++            (p[n] == '/' || p[n] == ':' || p[n] == '\0')) return true;
++        p += n;
+     }
+     return false;
+ }
+@@ -450,6 +464,9 @@
+     if (!domain->flutter_selected &&
+         (native_cluster_path(path) || native_cluster_path(domain->app_paths) ||
+          native_cluster_path(domain->app_permitted_paths))) domain->native_selected = true;
++    if (!domain->flutter_selected &&
++        (genshin_package_path(path) || genshin_package_path(domain->app_paths) ||
++         genshin_package_path(domain->app_permitted_paths))) domain->genshin_selected = true;
+     bool selected = domain->flutter_selected || domain->native_selected;
+     if (selected && domain->flutter_state == 0 && path[0] == '/') {
+         const char* slash = strrchr(path, '/');
+--- baseline/anl/flutter_domain.inc
++++ candidate/anl/flutter_domain.inc
+@@ -39,6 +39,11 @@
+         "libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:"
+         "liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:"
+         "libwestlake_bionic_pthread_bridge.so";
++    /* Exact app -> bridge inheritance; no new owner or GLOBAL publication. */
++    if (!domain->flutter_selected && domain->genshin_selected)
++        shared = "libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:"
++                 "liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:"
++                 "libwestlake_bionic_pthread_bridge.so:libmediandk.so";
+     int rc = domain->runtime_gate.namespace_host_ops.create_configured_namespaces(
+         &domain->flutter_bridge, bridge_name,
+         domain->flutter_bridge_search, domain->flutter_bridge_permitted, shared,
+--- baseline/host/candidate-stock-host.c
++++ candidate/host/candidate-stock-host.c
+@@ -124,7 +124,7 @@
+     const char* packages[] = {"com.ichi2.anki", "com.unciv.app", "app.organicmaps",
+         "com.nextcloud.client", "com.mcdonalds.app", "io.anuke.mindustry",
+         "com.emn8.mobilem8.nativeapp.bk", "im.vector.app",
+-        "org.mozilla.firefox", "org.mozilla.fennec_fdroid", "org.videolan.vlc", "org.ppsspp.ppsspp", "com.shatteredpixel.shatteredpixeldungeon"};
++        "org.mozilla.firefox", "org.mozilla.fennec_fdroid", "org.videolan.vlc", "org.ppsspp.ppsspp", "com.shatteredpixel.shatteredpixeldungeon", "com.miHoYo.Yuanshen"};
+     for (size_t i=0; i<sizeof(packages)/sizeof(packages[0]); ++i) {
+         const char* q=text;
+         while ((q=strstr(q, packages[i])) != NULL) {
