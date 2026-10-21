@@ -13,7 +13,7 @@ import sys
 import time
 import uuid
 from transaction import TransportUnknown,validate_kit,transact,unknown_resolved
-from policy import APK,CANDIDATE,ORIGINAL,SERIAL,TARGETS,Refuse,need,guard,identity,maps_snapshot,check_coverage
+from policy import APK,CANDIDATE,ORIGINAL,SERIAL,TARGETS,Refuse,need,guard,identity,maps_snapshot,check_coverage,processes
 
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def save(p,x):
@@ -40,6 +40,47 @@ def apply_attempt(cfg,window):
     failure=Path(proof['stderr_path']).read_text().strip().splitlines()
     need(failure and re.fullmatch(r'policy\.Refuse: uncovered non-observer PID [0-9]+',failure[-1]),'prior outcome is not the explicit maps admission refusal')
     return 'g13-apply-'+str(time.time_ns())
+
+def close_maps(board,snapshot,before,after):
+    """Close the observed PID set with at most two bounded supplemental reads.
+
+    A ps-only newcomer is never classified by NAME. Only the existing exact
+    hdcd observation ancestry exemption is retained. No failed read is empty.
+    """
+    def observer(pid,rows):
+        row=rows[pid];parent=rows.get(row['ppid'],{})
+        return (row['name']=='sh' and parent.get('name')=='hdcd') or (row['name']=='ps' and parent.get('name')=='sh' and rows.get(parent['ppid'],{}).get('name')=='hdcd')
+    original=processes(before);current=processes(after);absent=set()
+    def filtered_before():
+        return '\n'.join(l for l in before.splitlines() if not (l.split() and l.split()[0].isdigit() and int(l.split()[0]) in absent))
+    for turn in range(3):
+        missing=[pid for pid in current.keys()-snapshot['identities'].keys() if not observer(pid,current)]
+        vanished=[pid for pid in original.keys()-snapshot['identities'].keys()-current.keys()-absent if not observer(pid,original)]
+        if not missing and not vanished:
+            check_coverage(snapshot,filtered_before(),after)
+            snapshot['closure_rounds']=turn;snapshot['confirmed_absent_before_pids']=sorted(absent)
+            return snapshot
+        need(turn<2,'maps closure still has uncovered PIDs after2 supplemental rounds')
+        need(len(missing)+len(vanished)<=8,'maps closure delta exceeds bounded8 PID supplement')
+        for pid in sorted(vanished):
+            rc,text=board.shell(f'test ! -d /proc/{pid} && echo G13_ABSENT_{pid}',timeout=15)
+            need(rc==0 and text.strip()==f'G13_ABSENT_{pid}','old before PID disappearance unproven')
+            absent.add(pid)
+        for pid in sorted(missing):
+            command=(f'set -e; echo BEGIN_PROC /proc/{pid}; cat /proc/{pid}/stat; echo STAT_BEFORE_RC=0; '
+                     f'cat /proc/{pid}/maps; echo MAPS_RC=0; cat /proc/{pid}/stat; echo STAT_AFTER_RC=0; '
+                     f'echo END_PROC /proc/{pid}; echo PROC_COUNT=1')
+            rc,text=board.shell(command,timeout=15);need(rc==0,'supplemental proc read failed')
+            extra=maps_snapshot(text);need(set(extra['identities'])=={pid},'supplemental PID mismatch')
+            need(extra['identities'][pid]['ppid']==current[pid]['ppid'],'supplemental parent drift')
+            snapshot['identities'].update(extra['identities']);snapshot['hits'].extend(extra['hits'])
+        rc,after=board.shell('ps -A -o PID,PPID,UID,NAME',timeout=15);need(rc==0,'closure ps failed')
+        following=processes(after)
+        for pid in current.keys()&following.keys():
+            need((current[pid]['ppid'],current[pid]['uid'])==(following[pid]['ppid'],following[pid]['uid']),'closure ps parent/uid drift '+str(pid))
+        need(not (absent&following.keys()),'previously absent PID reappeared during closure')
+        current=following;snapshot['count']=len(snapshot['identities'])
+    raise Refuse('maps closure incomplete')
 
 def execute(phase,cfg):
     v=cfg['bindings'];need(all(v.get(k) is not None for k in ['repo','window','hdc','holder','lane','transaction','kit','hook_config','manifest','input_root','source_pins']),'missing binding')
@@ -143,7 +184,7 @@ def execute(phase,cfg):
         command=next(x['argv'][-1] for x in next_plan['commands'] if x['id']=='all-process-maps')
         _,before=board.shell('ps -A -o PID,PPID,UID,NAME')
         _,text=board.shell(command,timeout=45);snap=maps_snapshot(text)
-        _,after=board.shell('ps -A -o PID,PPID,UID,NAME');check_coverage(snap,before,after)
+        _,after=board.shell('ps -A -o PID,PPID,UID,NAME');snap=close_maps(board,snap,before,after)
         save(log/('consumers-'+str(time.time_ns())+'.json'),snap);return snap
     def declaration():
         _,text=board.shell('cat /system/etc/init/installs.cfg');data=json.loads(text)
