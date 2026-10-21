@@ -18,7 +18,7 @@ NOTES = {
  "r05-orb-a2hlab-mounts": ("CONTEXT", "a2hlab mounts: btrfs root, /mnt/mac = this Mac (virtiofs), /mnt/machines/oh7x86"),
  "r06-orb-a2hlab-root-find-names": ("CANCELLED_OVER_SCOPE", "root whole-disk find opened by cc-video, stopped on outer correction 14:28; rc unknown, 0 B; not coverage"),
  "r07-orb-a2hlab-inputs-names": ("COVERAGE", "env.md input root ~/a2hlab/ws/inputs maxdepth 6: only toolchain dirs, no apk/xapk/apks/obb or name match"),
- "r08-hw248-state-roots-ls": ("CONTEXT", "ls of hw248 /home/alvin top dirs; rc 2 only because linux_cache root /opt/build-trees/bridge-demo-artifact-cache is absent"),
+ "r08-hw248-state-roots-ls": ("CONTEXT", "ls of hw248 $HW248_ARTIFACT_ROOT top dirs; rc 2 only because linux_cache root /opt/build-trees/bridge-demo-artifact-cache is absent"),
  "r09-hw248-artifact-roots-names": ("COVERAGE", "hw248 documented artifact/input roots (westlake-artifacts, *-inputs, boat-v2-inputs, final61b-game) maxdepth 6: 0 apk/xapk/apks/obb, 0 name match"),
 }
 HOME = os.path.expanduser("~")
@@ -29,6 +29,7 @@ def alias_args(argv):
     return out
 def alias_arg(a):
     a = a.replace(HOME, "$HOME")
+    a = re.sub(r"/home/[^/ \"\']+", "$HW248_ARTIFACT_ROOT", a)
     a = re.sub(r"[A-Za-z0-9_.-]+@\d+\.\d+\.\d+\.\d+", "<macserver-doc>", a)
     a = re.sub(r"\b\d+\.\d+\.\d+\.\d+\b", "<host>", a)
     return a
@@ -61,7 +62,7 @@ summary = {"evidence_layers": {
                                               "boundary": "embedded base/split APK AndroidManifest.xml NOT read; package identity is the container claim, unverified"}},
            "known_tool_defect": "pkgnames.py 'split' field is always null (aapt2 reports split= inside the package: line, which is kept verbatim in package_line)",
            "entries": len(rows), "apk": sum(1 for r in rows if r.get("kind") == "apk"),
-           "xapk": sum(1 for r in rows if r.get("kind") == "xapk"), "manifest_unknown": unknown,
+           "xapk": sum(1 for r in rows if r.get("kind") == "xapk"), "apk_manifest_parse_failures": unknown, "embedded_manifest_unknown": sum(1 for r in rows if r.get("kind") == "xapk"),
            "distinct_packages": len(pk), "mihoyo_like_packages": mihoyo, "packages": dict(sorted(pk.items(), key=lambda x: str(x[0])))}
 json.dump(summary, open(os.path.join(OUT, "local-package-summary.json"), "w"), indent=1, ensure_ascii=False)
 sb = open(os.path.join(OUT, "local-package-summary.json"), "rb").read()
@@ -71,14 +72,14 @@ prior = os.path.expanduser("~/.local/share/westlake/genshin-static-intake-202610
 pb = open(prior, "rb").read()
 sources = [
  {"source": "local-mac/apk-stores (westlake-inputs/apks, 00.Workspace/APKS, vm-copies/apks-77, demo-baseline originals)", "state": "MISSING",
-  "method": "manifest package read of reused GENSHIN-T1 s08 list", "receipts": ["c01-local-manifest-pkgnames"],
+  "method": "393 APK AndroidManifest reads plus 48 XAPK container metadata reads from reused s08 list", "receipts": ["c01-local-manifest-pkgnames"],
   "reused_list": {"alias": "$GENSHIN_T1_PRIVATE/raw/s08-apk-obb-inventory.stdout", "sha256": hashlib.sha256(pb).hexdigest(), "size": len(pb)},
-  "result": f"{len(rows)} entries, {len(pk)} distinct packages, manifest UNKNOWN {unknown}, miHoYo-like {mihoyo}"},
+  "result": f"{len(rows)} path entries: 393 APK AndroidManifest parses, parse failures {unknown}; 48 XAPK metadata reads, 48 embedded manifests UNKNOWN; {len(pk)} mixed-layer claimed packages; miHoYo-like {mihoyo}"},
  {"source": "local-mac/westlake-inputs, 00.Workspace, vm-copies names+text indexes", "state": "MISSING", "method": "reused GENSHIN-T1 s03/s04/s07 (not rerun)", "receipts": ["GENSHIN-T1:s03,s04,s07"]},
  {"source": "orbstack-a2hlab:~/a2hlab/ws/inputs", "state": "MISSING", "receipts": ["r07-orb-a2hlab-inputs-names"]},
  {"source": "orbstack-a2hlab:rootfs (non-root -xdev)", "state": "OVER_SCOPE_NOT_COUNTED", "receipts": ["r01-orb-a2hlab-find-names"]},
  {"source": "orbstack-a2hlab:rootfs (root)", "state": "CANCELLED", "receipts": ["r06-orb-a2hlab-root-find-names"]},
- {"source": "hw248:/home/alvin documented artifact & input roots", "state": "MISSING", "receipts": ["r08-hw248-state-roots-ls", "r09-hw248-artifact-roots-names"]},
+ {"source": "hw248:$HW248_ARTIFACT_ROOT documented artifact & input roots", "state": "MISSING", "receipts": ["r08-hw248-state-roots-ls", "r09-hw248-artifact-roots-names"]},
  {"source": "hw248:LAB_STATE_DIR mirror", "state": "NOT_SEARCHED", "why": "env.md says the directory name is given by the operator; not identified in this slice"},
  {"source": "hw248:linux_cache /opt/build-trees/bridge-demo-artifact-cache", "state": "MISSING_ROOT", "receipts": ["r08-hw248-state-roots-ls"]},
  {"source": "hw248:whole disk", "state": "CANCELLED", "receipts": ["r02-hw248-find-names"]},

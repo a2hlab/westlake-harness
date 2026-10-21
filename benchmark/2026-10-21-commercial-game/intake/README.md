@@ -6,8 +6,8 @@ No download, install, login, package execution or REA. Elapsed: see `results.jso
 
 ## What was wrong first (kept)
 
-- The prior GENSHIN-T1 intake searched only local **filenames** and never read the 441 APK/XAPK manifests, so a
-  renamed package would have been missed. This round read every one of them.
+- The prior GENSHIN-T1 intake searched only local **filenames** and never read package identities of the 441 APK/XAPK entries, so a
+  renamed package would have been missed. This round read 393 APK AndroidManifests and 48 XAPK container metadata records; the 48 embedded APK manifests remain unexamined.
 - cc-video opened two **whole-disk** name finds (`r02` hw248 `/`, `r06` a2hlab `/` as root) — this violates the
   contract ("不扫整盘"). Both were stopped on outer correction (TaskStop + pkill), rc unknown, partial stdout kept,
   classed `CANCELLED_OVER_SCOPE`, not counted as coverage. `r01` (non-root a2hlab rootfs `-xdev` name find) did
