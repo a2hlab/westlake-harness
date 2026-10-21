@@ -93,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[D600 Wi-Fi debugging capability](benchmark/2026-10-21-d600-wifi-debug/README.md)** | Three OH 6.1.0.31 boards have Wi-Fi and hdcd TCP support; current access is USB, wireless session not yet tested. Read-only receipts retained. |
 | **[Genshin static intake and BoatAttack comparison](benchmark/2026-10-21-genshin-static-intake/README.md)** | Bounded local package search found no named input; 441 APK/XAPK path entries, 10 source references and explicit remote/manifest gaps. No Genshin launch attempted. |
 | **[61b scoped video demo and guardian baseline](benchmark/2026-10-21-t34-demo61b-video/README.md)** | W05 scoped video demo sealed after G01: actual playback/fullscreen, same-child icon warm return and BoatAttack/LibreSudoku first-screen smoke. Return-path limits and failed attempts preserved; sources, original builds, archive and API observation50 linked. No new API freeze or61b audio claim. |
 | **[Campaign evolution closeout](benchmark/2026-10-20-evolution-closeout/README.md)** | Exact-input host preflight with one real positive and six rejection cases; evidence/scheduling retrospective, freeze-readiness matrix and collector receipts. |
