@@ -1,0 +1,615 @@
+[
+  {
+    "path": "$WORKSPACES/westlake-harness-bms-deploy/bms/src/.work/b68-generation/adapter/framework/appspawn-x/bionic_compat/src/bionic_locale_compat.c",
+    "sha256": "21e52d1e8025795b34f5d258f563699adc52c598c3abe16fc848a4fa56cbe88a",
+    "bytes": 3093,
+    "lines": [
+      {
+        "line": 1,
+        "text": "// Exact Bionic locale/ctype ABI required by the unmodified ZigZag arm64 DSOs."
+      },
+      {
+        "line": 2,
+        "text": "//"
+      },
+      {
+        "line": 3,
+        "text": "// AOSP16 implements strtoll_l/strtoull_l as strong aliases of strtoll/strtoull,"
+      },
+      {
+        "line": 4,
+        "text": "// so the locale argument is intentionally ignored here as well.  `_ctype_` is"
+      },
+      {
+        "line": 5,
+        "text": "// the historical Bionic/OpenBSD pointer ABI: consumers load the exported"
+      },
+      {
+        "line": 6,
+        "text": "// pointer, then index the 257-byte C-locale classification table at c + 1."
+      },
+      {
+        "line": 7,
+        "text": ""
+      },
+      {
+        "line": 8,
+        "text": "#include <locale.h>"
+      },
+      {
+        "line": 9,
+        "text": "#include <stdlib.h>"
+      },
+      {
+        "line": 10,
+        "text": ""
+      },
+      {
+        "line": 11,
+        "text": "long long strtoll_l(const char *nptr, char **endptr, int base, locale_t locale)"
+      },
+      {
+        "line": 12,
+        "text": "{"
+      },
+      {
+        "line": 13,
+        "text": "    (void)locale;"
+      },
+      {
+        "line": 14,
+        "text": "    return strtoll(nptr, endptr, base);"
+      },
+      {
+        "line": 15,
+        "text": "}"
+      },
+      {
+        "line": 16,
+        "text": ""
+      },
+      {
+        "line": 17,
+        "text": "unsigned long long strtoull_l("
+      },
+      {
+        "line": 18,
+        "text": "    const char *nptr, char **endptr, int base, locale_t locale)"
+      },
+      {
+        "line": 19,
+        "text": "{"
+      },
+      {
+        "line": 20,
+        "text": "    (void)locale;"
+      },
+      {
+        "line": 21,
+        "text": "    return strtoull(nptr, endptr, base);"
+      },
+      {
+        "line": 22,
+        "text": "}"
+      },
+      {
+        "line": 23,
+        "text": ""
+      },
+      {
+        "line": 24,
+        "text": "#define BIONIC_CT_U 0x01"
+      },
+      {
+        "line": 25,
+        "text": "#define BIONIC_CT_L 0x02"
+      },
+      {
+        "line": 26,
+        "text": "#define BIONIC_CT_N 0x04"
+      },
+      {
+        "line": 27,
+        "text": "#define BIONIC_CT_S 0x08"
+      },
+      {
+        "line": 28,
+        "text": "#define BIONIC_CT_P 0x10"
+      },
+      {
+        "line": 29,
+        "text": "#define BIONIC_CT_C 0x20"
+      },
+      {
+        "line": 30,
+        "text": "#define BIONIC_CT_X 0x40"
+      },
+      {
+        "line": 31,
+        "text": "#define BIONIC_CT_B 0x80"
+      },
+      {
+        "line": 32,
+        "text": ""
+      },
+      {
+        "line": 33,
+        "text": "static const char kBionicCtypeTable[1 + 256] = {"
+      },
+      {
+        "line": 34,
+        "text": "    0,"
+      },
+      {
+        "line": 35,
+        "text": "    BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C,"
+      },
+      {
+        "line": 36,
+        "text": "    BIONIC_CT_C, BIONIC_CT_C|BIONIC_CT_S, BIONIC_CT_C|BIONIC_CT_S, BIONIC_CT_C|BIONIC_CT_S, BIONIC_CT_C|BIONIC_CT_S, BIONIC_CT_C|BIONIC_CT_S, BIONIC_CT_C, BIONIC_CT_C,"
+      },
+      {
+        "line": 37,
+        "text": "    BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C,"
+      },
+      {
+        "line": 38,
+        "text": "    BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C,"
+      },
+      {
+        "line": 39,
+        "text": "    BIONIC_CT_S|(char)BIONIC_CT_B, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P,"
+      },
+      {
+        "line": 40,
+        "text": "    BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P,"
+      },
+      {
+        "line": 41,
+        "text": "    BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_N,"
+      },
+      {
+        "line": 42,
+        "text": "    BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P,"
+      },
+      {
+        "line": 43,
+        "text": "    BIONIC_CT_P, BIONIC_CT_U|BIONIC_CT_X, BIONIC_CT_U|BIONIC_CT_X, BIONIC_CT_U|BIONIC_CT_X, BIONIC_CT_U|BIONIC_CT_X, BIONIC_CT_U|BIONIC_CT_X, BIONIC_CT_U|BIONIC_CT_X, BIONIC_CT_U,"
+      },
+      {
+        "line": 44,
+        "text": "    BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U,"
+      },
+      {
+        "line": 45,
+        "text": "    BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U,"
+      },
+      {
+        "line": 46,
+        "text": "    BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P,"
+      },
+      {
+        "line": 47,
+        "text": "    BIONIC_CT_P, BIONIC_CT_L|BIONIC_CT_X, BIONIC_CT_L|BIONIC_CT_X, BIONIC_CT_L|BIONIC_CT_X, BIONIC_CT_L|BIONIC_CT_X, BIONIC_CT_L|BIONIC_CT_X, BIONIC_CT_L|BIONIC_CT_X, BIONIC_CT_L,"
+      },
+      {
+        "line": 48,
+        "text": "    BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L,"
+      },
+      {
+        "line": 49,
+        "text": "    BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L,"
+      },
+      {
+        "line": 50,
+        "text": "    BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_C,"
+      },
+      {
+        "line": 51,
+        "text": "};"
+      },
+      {
+        "line": 52,
+        "text": ""
+      },
+      {
+        "line": 53,
+        "text": "_Static_assert(sizeof(kBionicCtypeTable) == 257,"
+      },
+      {
+        "line": 54,
+        "text": "               \"Bionic _ctype_ table layout drifted\");"
+      },
+      {
+        "line": 55,
+        "text": ""
+      },
+      {
+        "line": 56,
+        "text": "const char *_ctype_ = kBionicCtypeTable;"
+      }
+    ]
+  },
+  {
+    "path": "$WORKSPACES/westlake-harness-bms-deploy/bms/src/.work/b68-generation/adapter/framework/appspawn-x/bionic_compat/bionic_compat.map",
+    "sha256": "0b8fb69a7a8a62d983424e9f3d1542f2ab55708e1d5645b76e0ebcc552f77bdb",
+    "bytes": 451,
+    "lines": [
+      {
+        "line": 1,
+        "text": "LIBC {"
+      },
+      {
+        "line": 2,
+        "text": "    global:"
+      },
+      {
+        "line": 3,
+        "text": "        __FD_ISSET_chk;"
+      },
+      {
+        "line": 4,
+        "text": "        __FD_SET_chk;"
+      },
+      {
+        "line": 5,
+        "text": "        _ctype_;"
+      },
+      {
+        "line": 6,
+        "text": "        __errno;"
+      },
+      {
+        "line": 7,
+        "text": "        __system_property_find;"
+      },
+      {
+        "line": 8,
+        "text": "        __system_property_get;"
+      },
+      {
+        "line": 9,
+        "text": "        __system_property_read;"
+      },
+      {
+        "line": 10,
+        "text": "        android_set_abort_message;"
+      },
+      {
+        "line": 11,
+        "text": "        sigaction;"
+      },
+      {
+        "line": 12,
+        "text": "        sigemptyset;"
+      },
+      {
+        "line": 13,
+        "text": "        wl_sigact;"
+      },
+      {
+        "line": 14,
+        "text": "        wl_sigempty;"
+      },
+      {
+        "line": 15,
+        "text": "        sigfillset;"
+      },
+      {
+        "line": 16,
+        "text": "        sigaddset;"
+      },
+      {
+        "line": 17,
+        "text": "        sigdelset;"
+      },
+      {
+        "line": 18,
+        "text": "        sigismember;"
+      },
+      {
+        "line": 19,
+        "text": "        sigprocmask;"
+      },
+      {
+        "line": 20,
+        "text": "        strtoll_l;"
+      },
+      {
+        "line": 21,
+        "text": "        strtoull_l;"
+      },
+      {
+        "line": 22,
+        "text": "};"
+      }
+    ]
+  },
+  {
+    "path": "$WORKSPACES/westlake-harness-bms-deploy/bms/src/adapter/framework/appspawn-x/bionic_compat/src/unity_libc_stubs.c",
+    "sha256": "20ceddfc3c3b68d6873a9c1ed2a028f3111d283c8418ced501dc2fab61b8a8a2",
+    "bytes": 10589,
+    "lines": [
+      {
+        "line": 100,
+        "text": "// 8) _ctype_  (unity)  [UNITY-LIBC-STUB]  -- BSD ctype classification table."
+      },
+      {
+        "line": 101,
+        "text": "//    DATA symbol, NOT a function. musl/OH libc.so does not export it."
+      },
+      {
+        "line": 102,
+        "text": "//"
+      },
+      {
+        "line": 103,
+        "text": "//    ABI note (verified by disassembling PackageEscort libunity.so):"
+      },
+      {
+        "line": 104,
+        "text": "//      adrp x9,_ctype_GOT ; ldr x9,[x9]      ; x9 = &_ctype_   (the symbol addr)"
+      },
+      {
+        "line": 105,
+        "text": "//      ldr  x9,[x9]                          ; x9 = *_ctype_   <-- DEREFERENCE"
+      },
+      {
+        "line": 106,
+        "text": "//      add  x12,x9,char ; ldrb w12,[x12,#1]  ; class = base[char+1]"
+      },
+      {
+        "line": 107,
+        "text": "//    i.e. the consumer treats `_ctype_` as a POINTER (load value, then deref),"
+      },
+      {
+        "line": 108,
+        "text": "//    exactly like bionic's `const char *_ctype_ = _C_ctype_;`. A bare"
+      },
+      {
+        "line": 109,
+        "text": "//    `const char _ctype_[]` array would be loaded-then-WRONGLY-dereferenced"
+      },
+      {
+        "line": 110,
+        "text": "//    (first 8 table bytes used as a pointer) -> crash. So we replicate bionic:"
+      },
+      {
+        "line": 111,
+        "text": "//    a 257-byte table (_C_ctype_) + a `_ctype_` POINTER to it. base[0] is the"
+      },
+      {
+        "line": 112,
+        "text": "//    EOF slot; base[c+1] is char c's class. The verbatim table below is the"
+      },
+      {
+        "line": 113,
+        "text": "//    OpenBSD/bionic _C_ctype_ (bionic/libc/upstream-openbsd/.../gen/ctype_.c);"
+      },
+      {
+        "line": 114,
+        "text": "//    bytes 0x80..0xFF are 0 (ASCII-only classification, as bionic ships)."
+      },
+      {
+        "line": 115,
+        "text": "//"
+      },
+      {
+        "line": 116,
+        "text": "//    `_ctype_` shows in `llvm-nm -D` as `D _ctype_` (GLOBAL OBJECT in .data)."
+      },
+      {
+        "line": 117,
+        "text": "// ---------------------------------------------------------------------------"
+      },
+      {
+        "line": 118,
+        "text": "#define _CT_U 0x01  /* upper */"
+      },
+      {
+        "line": 119,
+        "text": "#define _CT_L 0x02  /* lower */"
+      },
+      {
+        "line": 120,
+        "text": "#define _CT_N 0x04  /* digit */"
+      },
+      {
+        "line": 121,
+        "text": "#define _CT_S 0x08  /* space */"
+      },
+      {
+        "line": 122,
+        "text": "#define _CT_P 0x10  /* punct */"
+      },
+      {
+        "line": 123,
+        "text": "#define _CT_C 0x20  /* control */"
+      },
+      {
+        "line": 124,
+        "text": "#define _CT_X 0x40  /* hex digit */"
+      },
+      {
+        "line": 125,
+        "text": "#define _CT_B 0x80  /* blank (printable space) */"
+      },
+      {
+        "line": 126,
+        "text": ""
+      },
+      {
+        "line": 127,
+        "text": "const char _C_ctype_[1 + 256] = {"
+      },
+      {
+        "line": 128,
+        "text": "    0,"
+      },
+      {
+        "line": 129,
+        "text": "    _CT_C, _CT_C, _CT_C, _CT_C, _CT_C, _CT_C, _CT_C, _CT_C,"
+      },
+      {
+        "line": 130,
+        "text": "    _CT_C, _CT_C|_CT_S, _CT_C|_CT_S, _CT_C|_CT_S, _CT_C|_CT_S, _CT_C|_CT_S, _CT_C, _CT_C,"
+      },
+      {
+        "line": 131,
+        "text": "    _CT_C, _CT_C, _CT_C, _CT_C, _CT_C, _CT_C, _CT_C, _CT_C,"
+      },
+      {
+        "line": 132,
+        "text": "    _CT_C, _CT_C, _CT_C, _CT_C, _CT_C, _CT_C, _CT_C, _CT_C,"
+      },
+      {
+        "line": 133,
+        "text": "    _CT_S|(char)_CT_B, _CT_P, _CT_P, _CT_P, _CT_P, _CT_P, _CT_P, _CT_P,"
+      },
+      {
+        "line": 134,
+        "text": "    _CT_P, _CT_P, _CT_P, _CT_P, _CT_P, _CT_P, _CT_P, _CT_P,"
+      },
+      {
+        "line": 135,
+        "text": "    _CT_N, _CT_N, _CT_N, _CT_N, _CT_N, _CT_N, _CT_N, _CT_N,"
+      },
+      {
+        "line": 136,
+        "text": "    _CT_N, _CT_N, _CT_P, _CT_P, _CT_P, _CT_P, _CT_P, _CT_P,"
+      },
+      {
+        "line": 137,
+        "text": "    _CT_P, _CT_U|_CT_X, _CT_U|_CT_X, _CT_U|_CT_X, _CT_U|_CT_X, _CT_U|_CT_X, _CT_U|_CT_X, _CT_U,"
+      },
+      {
+        "line": 138,
+        "text": "    _CT_U, _CT_U, _CT_U, _CT_U, _CT_U, _CT_U, _CT_U, _CT_U,"
+      },
+      {
+        "line": 139,
+        "text": "    _CT_U, _CT_U, _CT_U, _CT_U, _CT_U, _CT_U, _CT_U, _CT_U,"
+      },
+      {
+        "line": 140,
+        "text": "    _CT_U, _CT_U, _CT_U, _CT_P, _CT_P, _CT_P, _CT_P, _CT_P,"
+      },
+      {
+        "line": 141,
+        "text": "    _CT_P, _CT_L|_CT_X, _CT_L|_CT_X, _CT_L|_CT_X, _CT_L|_CT_X, _CT_L|_CT_X, _CT_L|_CT_X, _CT_L,"
+      },
+      {
+        "line": 142,
+        "text": "    _CT_L, _CT_L, _CT_L, _CT_L, _CT_L, _CT_L, _CT_L, _CT_L,"
+      },
+      {
+        "line": 143,
+        "text": "    _CT_L, _CT_L, _CT_L, _CT_L, _CT_L, _CT_L, _CT_L, _CT_L,"
+      },
+      {
+        "line": 144,
+        "text": "    _CT_L, _CT_L, _CT_L, _CT_P, _CT_P, _CT_P, _CT_P, _CT_C,"
+      },
+      {
+        "line": 145,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,  /* 0x80 */"
+      },
+      {
+        "line": 146,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,"
+      },
+      {
+        "line": 147,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,  /* 0x90 */"
+      },
+      {
+        "line": 148,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,"
+      },
+      {
+        "line": 149,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,  /* 0xA0 */"
+      },
+      {
+        "line": 150,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,"
+      },
+      {
+        "line": 151,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,  /* 0xB0 */"
+      },
+      {
+        "line": 152,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,"
+      },
+      {
+        "line": 153,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,  /* 0xC0 */"
+      },
+      {
+        "line": 154,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,"
+      },
+      {
+        "line": 155,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,  /* 0xD0 */"
+      },
+      {
+        "line": 156,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,"
+      },
+      {
+        "line": 157,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,  /* 0xE0 */"
+      },
+      {
+        "line": 158,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,"
+      },
+      {
+        "line": 159,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0,  /* 0xF0 */"
+      },
+      {
+        "line": 160,
+        "text": "    0, 0, 0, 0, 0, 0, 0, 0"
+      },
+      {
+        "line": 161,
+        "text": "};"
+      },
+      {
+        "line": 162,
+        "text": ""
+      },
+      {
+        "line": 163,
+        "text": "// The exported symbol the consumer binds: a POINTER to the table base."
+      },
+      {
+        "line": 164,
+        "text": "const char* _ctype_ = _C_ctype_;"
+      },
+      {
+        "line": 165,
+        "text": ""
+      },
+      {
+        "line": 166,
+        "text": "// ---------------------------------------------------------------------------"
+      },
+      {
+        "line": 167,
+        "text": "// 6) __sF  (il2cpp, unity, c++_shared)  -- the fiddly one."
+      },
+      {
+        "line": 168,
+        "text": "//"
+      },
+      {
+        "line": 169,
+        "text": "//    bionic <stdio.h> for NDK apps:  extern FILE __sF[];"
+      }
+    ]
+  }
+]
