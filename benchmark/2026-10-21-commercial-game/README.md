@@ -8,6 +8,8 @@ The original local search did not locate a Genshin input. Official acquisition a
 | Prior implementation reuse | [reuse](reuse/README.md) | 11 conditional Unity/graphics/input/audio mappings, 31 source references, five actual small-input tool commands. Boat-specific C7/C4 binaries are excluded from reuse. |
 | Official input | [official-input](official-input/README.md) | Official CN base APK, 513,290,344 bytes; signature v1/v2, package/version/splits and download chain verified. Full game content not acquired. |
 | Exact target analysis | [exact-static](exact-static/README.md) | 32 ELF libraries, five DEX files, one REA package inspection and five focused REA methods. Startup, graphics and audio observations retain dynamic-resolution limits. |
+| Spare-board preparation | [spare-preflight](spare-preflight/README.md) | Fresh 5ea boot, 124 runtime and 36 boot-image members, full package list, foreground and power. Read-only evidence accepted; historical disabled recovery draft rejected separately. |
+| APK library extraction | [installer-review](installer-review/README.md) | Four source pins show APK-contained libraries use a separate extraction path from optional external sidecars; actual deployed behavior remains to be observed. |
 
 Exact APK SHA256: `abd3c4d59217d78745a65aaa952367872354298bff5bc1ba2faae00b8f37a9cc`. Package `com.miHoYo.Yuanshen`, version `7.1.0_48052158_48145775`, arm64-v8a. The APK and large raw dumps remain in persistent private storage; source tools, small observations and their integrity indexes are in this repository.
 
