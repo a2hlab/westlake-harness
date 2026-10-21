@@ -1,0 +1,94 @@
+{
+  "token": "G34-ROUTE-PROVIDER-SOURCE-LOOKUP",
+  "status": "PARTIAL_BIND_UNWINDSTACK_MANIFEST_DECLARED_SIGCHAIN_DEPLOYED_SHA_NOT_IN_BOUNDED_SEARCH",
+  "targets": {
+    "libunwindstack.so": "d2c1cbc70d097855b9196ec87f80c09d6f24e674ee16a3c517629df999c66965",
+    "libsigchain.so": "6d5d5538ff45c057208186f5cb74b9b5c2402d693aa2756a99327fd4b9f8c400"
+  },
+  "search_roots_existing": [
+    "/opt/wl-src/.work/product-tls-generation",
+    "/opt/wl-src/upstream/openharmony-6.1.0.31",
+    "/opt/build-runs/m1-generation-source-slice-20260822-r1/project/src/.work",
+    "l03a15-* (listed)",
+    "m1-aosp-libbase-relink-20260825-r117{,b}-df1-global"
+  ],
+  "method": "read-only ssh hw248; bounded text grep (*.json/*.txt/*.sha256/*SHA256SUMS*/*manifest*/*receipt*) in the named roots; no whole-disk scan, no binary grep, no build/script run",
+  "hits": {
+    "libunwindstack_d2c1cbc7": {
+      "bound": true,
+      "frozen_provider_sha_record": "l03a15-attempt13-validated-successor-hw248-f471-83f1d068.47msqF/.../frozen/runtime_provider/provider-v12/base-providers.sha256:20 -> /artifacts/providers/libunwindstack.so",
+      "deployed_sha_equals_frozen_provider_sha": "manifest-declared: base-providers.sha256:20 and base-providers-repro.sha256:20 both list d2c1cbc7 for /artifacts/providers/libunwindstack.so; these are manifest SHA declarations, not a re-hash of the remote artifact by this lookup",
+      "reproduction": "base-providers-repro.sha256 lists the same d2c1cbc7; base-verification.json byte_deterministic_runs=2 (declared, not re-run here)"
+    },
+    "libsigchain_6d5d5538": {
+      "bound": false,
+      "frozen_provider_v12_libsigchain_sha": "ea7becd0203fdcb03cc0d61a493ef8e4a12ef3ca3b4ca9b61be3f02103865ba2",
+      "note": "the deployed sigchain SHA was NOT found within the bounded text grep (named roots, text file types only). This is a bounded-scope miss, not proof that no build record exists anywhere. provider-v12 declares a libsigchain.so at a different SHA ea7becd0 (already-read sigchain pins not repeated here)."
+    }
+  },
+  "source_and_recipe_for_matched_unwindstack": {
+    "source_snapshot": "base-inputs.sha256 pins the AOSP source tree ./aosp/system/unwinding/libunwindstack/* by SHA (Android.bp, *.cpp/*.h/*.S, include/, tests/, plus .git/logs/HEAD and the android-14.0.0_r1 remote ref). This is a manifest SHA pin of the source tree, NOT a per-artifact source->object build binding and NOT source-closure.",
+    "recipe_source": "libunwindstack/Android.bp (soong build definition) is pinned in base-inputs.sha256. adapter/build/compile_app_native_loader_arm64.sh is the app_native_loader compile script and is NOT the compile recipe for libunwindstack or libsigchain.",
+    "original_build_log": "NOT FOUND in the bounded reads. Only AOSP git ref logs (.git/logs/HEAD) are pinned; verification/audit reference libunwindstack only as symbol owner/soname. No compile command or build log for the artifact was located.",
+    "verification_audit_role": "base-verification.json and independent-audit.json reference libunwindstack as a symbol owner and soname, not as a source->object build record"
+  },
+  "conclusion": "libunwindstack d2c1cbc7 is manifest-declared in the frozen provider-v12 (base-providers + repro) with its AOSP source tree and Android.bp pinned by SHA and a declared 2-run deterministic reproduction; no original compile command/log was found and manifest pins are not source-closure. Deployed libsigchain 6d5d5538 was not matched within the bounded search; provider-v12 declares a different sigchain ea7becd0. Path names and version labels are not treated as SHA proof.",
+  "next_real_missing": [
+    "original compile command / build log for libunwindstack d2c1cbc7 (manifest SHA + source tree + Android.bp are pinned; the actual build invocation and its log are not)",
+    "any build record that produced the EXACT deployed libsigchain 6d5d5538 (which generation sealed it, its source snapshot and recipe) \u2014 not matched in the bounded search"
+  ],
+  "receipts": [
+    {
+      "path": "$HOME/.local/share/westlake/route-provider-source-lookup-20261022/01-probe.stdout",
+      "sha256": "522d07d6b25c972fb066707da199a9b5a3532f461552def68bf78142bc79bc75",
+      "bytes": 2547
+    },
+    {
+      "path": "$HOME/.local/share/westlake/route-provider-source-lookup-20261022/02-grep.stdout",
+      "sha256": "642a5a0739ebc21623a6f785a4e667d3ac4e0e8b09c4c6221a8f20e8fefc893c",
+      "bytes": 1166
+    },
+    {
+      "path": "$HOME/.local/share/westlake/route-provider-source-lookup-20261022/03-read.stdout",
+      "sha256": "96dfb0f72f610f4edb18bfd98a62193ee4dde62de7edb371bc26edac76c4d986",
+      "bytes": 4028
+    },
+    {
+      "path": "$HOME/.local/share/westlake/route-provider-source-lookup-20261022/04-confirm.stdout",
+      "sha256": "872eaa1e6d1f52fb1d00837a7688b51c86abb99caab144612e4b3ab499ce3819",
+      "bytes": 5839
+    },
+    {
+      "path": "$HOME/.local/share/westlake/route-provider-source-lookup-20261022/01-probe.argv.txt",
+      "sha256": "7f9c257ca6b8ee9cb66e78645d822f260adcdca3717a636f0b2a5d4b465604ed",
+      "bytes": 412
+    },
+    {
+      "path": "$HOME/.local/share/westlake/route-provider-source-lookup-20261022/02-grep.argv.txt",
+      "sha256": "dcc0c49f9528d2980f41780de29c62dd5d80b8c7a75272159c167b682ac32bf4",
+      "bytes": 826
+    },
+    {
+      "path": "$HOME/.local/share/westlake/route-provider-source-lookup-20261022/03-read.argv.txt",
+      "sha256": "6fb6966eb3dc83c76f91ddbcc28e52d5eae615b505afa4257f0c77793d7a08dc",
+      "bytes": 1194
+    },
+    {
+      "path": "$HOME/.local/share/westlake/route-provider-source-lookup-20261022/04-confirm.argv.txt",
+      "sha256": "e1afe4520622d6ea1357a29fc027f0ae9aa7d97aa30245fdf450945e49a0f997",
+      "bytes": 1251
+    },
+    {
+      "path": "$HOME/.local/share/westlake/route-provider-source-lookup-20261022/05-unwindstack.stdout",
+      "sha256": "2e86b1dc20bdc10d50527b4d955f30df387af944fb5a4e0eb6e1fc8e535116f3",
+      "bytes": 11972
+    },
+    {
+      "path": "$HOME/.local/share/westlake/route-provider-source-lookup-20261022/05-unwindstack.argv.txt",
+      "sha256": "4ff4879f0e79346907368a58dd853f677ccb7cd0300bb05a7e0a9892d3ee6b26",
+      "bytes": 1034
+    }
+  ],
+  "device_adb_rea_debugger_build_calls": 0,
+  "permission_changes": 0
+}
