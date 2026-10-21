@@ -1,0 +1,284 @@
+{
+ "task": "T34-RETIRE-R3",
+ "spec": "specs/demo61b-video-delivery/t3-confirmed-child-retirement.spec.md@115ad5931c",
+ "status": "OFFLINE_SOURCE_READY_NOT_DEPLOYED",
+ "r2_watchdog_sha256": "41f1bf653f4becf3bb40a1a754f8e0c35520ce9fa6a0eb3da84c01ef96e64a28",
+ "r2_reentry_common_sha256": "43d7b073467708770c8c69724633666e410d45581f8c0099d5098c31215e78ab",
+ "r3_watchdog_sha256": "8bf74a08b71474e39e90fcdb012eed5e420f7352fa131cef2aa63b9c5bd80ef9",
+ "r3_cascade": {
+  "root": "/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r2 (same root as r2; only watchdog.sh + entry.sh/members.tsv/startup.env/startup.expected.sha256 differ from repo r2 payload)",
+  "files": {
+   "watchdog.sh": "8bf74a08b71474e39e90fcdb012eed5e420f7352fa131cef2aa63b9c5bd80ef9",
+   "entry.sh": "ad76c65653e860cefbedb27cdb08dce5880f254566b64a33c36df84165801a95",
+   "members.tsv": "27d756a41b84a617001aed7ddcf0af30f29b7718fa1751c311364cd47a30a019",
+   "startup.env": "7092ae9102690603e5232c07fc76320be5f71f1401ac9147a7f10b922b7756e2",
+   "startup.expected.sha256": "c43e272486211728b673c675325aa973e4b411451f97db7ae3f2d39918116520"
+  },
+  "binaries_not_committed": {
+   "screen-gate": "0bf966d7 (identical to base, reproduced by generator)",
+   "decoder-probe.jpeg": "e8320bdd"
+  }
+ },
+ "tests": {
+  "r3_retirement": "71 passed 0 failed (t01)",
+  "r2_negative_control": "54 passed 17 failed, rc1 (t02) - reproduces OWNER_REFUSED on PID reuse",
+  "old_suite_r2_control": "run-all PASS (t03)",
+  "old_suite_r3": "run-all PASS: parser21 reentry29 race116 generator-cascade (t04)",
+  "rust": "cargo test --test demo61b_child_retirement rc0 (t07)"
+ },
+ "limits": [
+  "old race tests extract only child_owned/rc_verdict_to_state/rc_child_state/monitor_child; r3 retire helpers are not in that extraction, so the old race suite exercises the r3 bodies on the non-retired path only; retirement paths are covered by run-retirement-tests.sh which sources the whole r3 file",
+  "child_owned, parent_owned, rb_owned_pids, focus/WMS capture are stubbed seams in run-retirement-tests.sh; rc_parse_owned_window, exit-verdict, rb_birth, event/state/instance are real",
+  "generated cascade is the disabled-by-default repo form; the deployed 61b startup.env/guardian state is a separate deployment-window concern"
+ ],
+ "device_operations": 0,
+ "runtime_verdict": "NOT_DEPLOYED",
+ "fresh_evidence_index": {
+  "source": "$HOME/.local/share/westlake/t34-resume-20261021-0907/intake (T34-RESUME-STATE, read-only)",
+  "facts": [
+   "boot 80b23c89 (W04 recovery boot); guardian state AWAITING_REENTRY seq=1",
+   "events: uptime95 process_exit first_read_exited -> AWAITING_REENTRY; uptime7024 OWNER_REFUSED gate=child_identity_no_signal_no_stop_delete",
+   "later read-only: guardian owner pid4074 absent, old child 7172 absent, parent 5177/birth5834 alive"
+  ],
+  "unknown": [
+   "what PID/identity value at uptime7024 produced child_identity (PID reuse not proven)",
+   "W04 candidate boot reopen spawn behaviour (separate boot, own receipts)"
+  ]
+ },
+ "command_receipts": [
+  {
+   "id": "t01-retire-r3",
+   "cwd": "$HOME/orca/workspaces/westlake-harness-video",
+   "argv": [
+    "sh",
+    "benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-01/tests/run-retirement-tests.sh"
+   ],
+   "rc": 0,
+   "stdout_last_line": "71 passed, 0 failed",
+   "raw_refs": [
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t01-retire-r3.argv.json",
+     "sha256": "0b9d3f8c663d6978326ce2bc6a05544fd3a56c89712df2d3173c573fe036ff6f",
+     "size": 175
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t01-retire-r3.stdout",
+     "sha256": "614a6450c701b95b94d4e29e7dbc71de44ff2ec8d837a3f4f3ccc0d41e24c537",
+     "size": 1994
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t01-retire-r3.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t01-retire-r3.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "t02-retire-negative-r2",
+   "cwd": "$HOME/orca/workspaces/westlake-harness-video",
+   "argv": [
+    "env",
+    "RETIRE_UNDER_TEST=benchmark/2026-10-19-toutiao-icon-reentry/src/watchdog-reentry.sh",
+    "sh",
+    "benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-01/tests/run-retirement-tests.sh"
+   ],
+   "rc": 1,
+   "stdout_last_line": "54 passed, 17 failed",
+   "raw_refs": [
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t02-retire-negative-r2.argv.json",
+     "sha256": "993e9fa511a45f2046d1d9f2e1311bc7c1d35bc29090c7e079e772d33ce7645e",
+     "size": 269
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t02-retire-negative-r2.stdout",
+     "sha256": "0235c730758c20758a4692d27ce66d533e66d21a38d0bb4b668c327e48b7c5fd",
+     "size": 2482
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t02-retire-negative-r2.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t02-retire-negative-r2.rc",
+     "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "t03-old-suite-r2-control",
+   "cwd": "$T34_RETIRE_PRIVATE/old-suite-r2-control",
+   "argv": [
+    "sh",
+    "benchmark/2026-10-19-toutiao-icon-reentry/tests/run-all.sh"
+   ],
+   "rc": 0,
+   "stdout_last_line": "=== run-all result: PASS ===",
+   "raw_refs": [
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t03-old-suite-r2-control.argv.json",
+     "sha256": "75971e2d349656eb057912f41f5fb28fbb7289fa12497e659caad29cb498a037",
+     "size": 179
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t03-old-suite-r2-control.stdout",
+     "sha256": "94157810771e550efa9ff5328134658935fc1b9a09054a2394e4110ee0aa8ad6",
+     "size": 4295
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t03-old-suite-r2-control.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t03-old-suite-r2-control.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "t04-old-suite-r3",
+   "cwd": "$T34_RETIRE_PRIVATE/old-suite-r3",
+   "argv": [
+    "sh",
+    "benchmark/2026-10-19-toutiao-icon-reentry/tests/run-all.sh"
+   ],
+   "rc": 0,
+   "stdout_last_line": "=== run-all result: PASS ===",
+   "raw_refs": [
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t04-old-suite-r3.argv.json",
+     "sha256": "474a4a7ebc1275adecddab51a97cd10acb7cbb27b499ab233434fc3c9248e14a",
+     "size": 171
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t04-old-suite-r3.stdout",
+     "sha256": "94157810771e550efa9ff5328134658935fc1b9a09054a2394e4110ee0aa8ad6",
+     "size": 4295
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t04-old-suite-r3.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t04-old-suite-r3.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "t05-generate-r3-cascade",
+   "cwd": "$T34_RETIRE_PRIVATE/old-suite-r3",
+   "argv": [
+    "sh",
+    "benchmark/2026-10-19-toutiao-icon-reentry/generator/derive-candidate.sh",
+    "--out",
+    "$T34_RETIRE_PRIVATE/r3-cascade"
+   ],
+   "rc": 0,
+   "stdout_last_line": "OK candidate written to $T34_RETIRE_PRIVATE/r3-cascade (armed=no)",
+   "raw_refs": [
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t05-generate-r3-cascade.argv.json",
+     "sha256": "6d91b68becd87cd209a21743ce757727a55e759a9011b2d2285dc736262003c3",
+     "size": 276
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t05-generate-r3-cascade.stdout",
+     "sha256": "e71376009e17d937915ba3f70e42cda5d24a8db5b2e1bc99748f2ec7eff65e6f",
+     "size": 3065
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t05-generate-r3-cascade.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t05-generate-r3-cascade.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "t06-generate-r3-cascade-r2root",
+   "cwd": "$T34_RETIRE_PRIVATE/old-suite-r3",
+   "argv": [
+    "sh",
+    "benchmark/2026-10-19-toutiao-icon-reentry/generator/derive-candidate.sh",
+    "--out",
+    "$T34_RETIRE_PRIVATE/r3-cascade",
+    "--root",
+    "/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r2"
+   ],
+   "rc": 0,
+   "stdout_last_line": "OK candidate written to $T34_RETIRE_PRIVATE/r3-cascade (armed=no)",
+   "raw_refs": [
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t06-generate-r3-cascade-r2root.argv.json",
+     "sha256": "d0ff303bc5a2acbd422962eec6296dfc9aa2e6ecda1a90aa3090f51d591d6751",
+     "size": 359
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t06-generate-r3-cascade-r2root.stdout",
+     "sha256": "11cf376bf957ab259d4ea2dbddf6d112d66edb0aab97fe85348c16911f087330",
+     "size": 3065
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t06-generate-r3-cascade-r2root.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t06-generate-r3-cascade-r2root.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "t07-cargo-demo61b-child-retirement",
+   "cwd": "$HOME/orca/workspaces/westlake-harness-video/tools/spec-checks",
+   "argv": [
+    "cargo",
+    "test",
+    "--test",
+    "demo61b_child_retirement"
+   ],
+   "rc": 0,
+   "stdout_last_line": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.87s",
+   "raw_refs": [
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t07-cargo-demo61b-child-retirement.argv.json",
+     "sha256": "6502c3307c4197000c636449bc8338ff39816b2124c20fc3fb1048f1558e438b",
+     "size": 148
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t07-cargo-demo61b-child-retirement.stdout",
+     "sha256": "99ac080e769cd835f182625274b3df9aa6e244c759d23a9f6f15ac51621e9162",
+     "size": 2143
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t07-cargo-demo61b-child-retirement.stderr",
+     "sha256": "f29e165e57af117c6f16028e07362fc27a1d04b36041f1c2d9bcfbf107a439f7",
+     "size": 534
+    },
+    {
+     "alias": "$T34_RETIRE_PRIVATE/raw/t07-cargo-demo61b-child-retirement.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  }
+ ]
+}

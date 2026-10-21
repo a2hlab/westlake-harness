@@ -1,0 +1,73 @@
+--- ../../2026-10-19-toutiao-icon-reentry/src/watchdog-reentry.sh	2026-10-21 09:15:20
++++ src/watchdog-reentry-r3.sh	2026-10-21 09:16:44
+@@ -31,6 +31,14 @@
+ . "$HERE/reentry-common.sh"
+ BOOT=unknown; seq=0; child=none; child_birth=none; parent=none; parent_birth=none
+ keep_lock=0; owner_verified=0; parent_wid=
++# r3 (T34-RETIRE): retirement key "boot seq pid birth" of a child proven exited by a
++# STRICT child_exit_verdict=exited branch of monitor_child. Only that exact current
++# instance is treated as gone without re-reading its (possibly reused) PID. Cleared at
++# the next real spawn/adopt boundary. instance.txt and past events stay unchanged.
++ret_key=
++rc_retire_child() { ret_key="$BOOT $seq $child $child_birth"; event child_retired "key=$BOOT/$seq/$child/$child_birth strict_exited"; }
++rc_retired_current() { [ -n "$ret_key" ] && [ "$ret_key" = "$BOOT $seq $child $child_birth" ]; }
++rc_retire_clear() { [ -z "$ret_key" ] || { ret_key=; event child_retirement_cleared "$1"; }; }
+ # --- BEGIN frozen helpers (verbatim from base watchdog 2b635ef1) ------------------
+ io_fail() {
+  keep_lock=1
+@@ -319,6 +327,12 @@
+  rc_capture_wms "$F/wms-owned.txt" || { rc_owned_result=unknown; return 0; }
+  ow_extra=$(rb_owned_pids 2>/dev/null) || ow_extra=
+  rc_owned_result=$(rc_parse_owned_window "$F/wms-owned.txt" "$child $ow_extra") || rc_owned_result=unknown
++ # r3: a retired PID may now belong to a stranger; a window matched only through it is
++ # unattributable (unknown, never owned and never no). The retired PID stays in the set.
++ if [ "$rc_owned_result" = yes ] && rc_retired_current; then
++  ow_other=$(rc_parse_owned_window "$F/wms-owned.txt" "$ow_extra") || ow_other=unknown
++  [ "$ow_other" = yes ] || rc_owned_result=unknown
++ fi
+  return 0
+ }
+ # Map the single-read exit verdict onto the child-state vocabulary used by the loop:
+@@ -333,6 +347,8 @@
+ }
+ rc_child_state() {
+  [ -n "$child" ] && [ "$child" != none ] || { echo gone; return 0; }
++ # r3: the exact strictly-exited instance is gone; its PID is not re-read (reuse-safe).
++ if rc_retired_current; then echo gone; return 0; fi
+  cs_b=$(rb_birth "$child" 2>/dev/null) || {
+   # First read failed: same verdict as the monitor (r2 race fix); unknown stays unknown.
+   rc_verdict_to_state "$(child_exit_verdict "$child" "$child_birth" "$BOOT")"; return 0
+@@ -353,6 +369,7 @@
+  verify_exact "$F/lock/owner" "$$ $self_birth $BOOT"
+  [ -z "$(rb_owned_pids)" ] || { do_reason=existing_child_without_attach_identity; return 2; }
+  do_spawn_started=1
++ rc_retire_clear spawn_started
+  if ! timeout 15 sh "$F/spawn.sh" > "$F/spawn.txt" 2>&1; then do_reason=spawn_command_nonzero; return 3; fi
+  child=$(sed -n 's/.*result=0 pid=\([0-9][0-9]*\).*/\1/p' "$F/spawn.txt" | tail -1)
+  child_birth=$(rb_birth "$child") || { do_reason=child_not_alive; return 4; }
+@@ -401,7 +418,7 @@
+    # verify the birth.)
+    exit_v=$(child_exit_verdict "$child" "$child_birth" "$BOOT")
+    case "$exit_v" in
+-    exited) event process_exit "first_read_$exit_v"; return 0;;
++    exited) event process_exit "first_read_$exit_v"; rc_retire_child; return 0;;
+     *) state OWNER_REFUSED "identity_unreadable_or_reused_no_relaunch verdict=$exit_v"; return 2;;
+    esac
+   fi
+@@ -419,7 +436,7 @@
+      # enters the manual-icon wait; reuse / malformed / unknown stays refused.
+      exit_v=$(child_exit_verdict "$child" "$child_birth" "$BOOT")
+      case "$exit_v" in
+-      exited) event process_exit during_ownership_check; return 0;;
++      exited) event process_exit during_ownership_check; rc_retire_child; return 0;;
+       *) state OWNER_REFUSED "child_identity_changed_no_signal verdict=$exit_v"; return 2;;
+      esac;;
+     *)
+@@ -505,6 +522,7 @@
+  parent_owned "$parent" "$parent_birth" || { state OWNER_REFUSED parent_identity_changed; return 2; }
+  if [ -n "${TT_CHILD_PID:-}" ]; then
+   child=$TT_CHILD_PID; child_birth=${TT_CHILD_BIRTH:-none}
++  rc_retire_clear adopt
+   child_owned "$child" "$child_birth" || { state OWNER_REFUSED child_identity; return 2; }
+   seq=$(cat "$F/sequence") || io_fail sequence_read_failed
+   case "$seq" in ''|*[!0-9]*) io_fail sequence_invalid;; esac
