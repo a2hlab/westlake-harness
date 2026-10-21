@@ -1,0 +1,154 @@
+== /system/etc/init/00_westlake_u13_recover-v3.cfg
+897f9ca073c0396c47c681860a601aaa14ba812c63b083711d7e386785e1a762  /system/etc/init/00_westlake_u13_recover-v3.cfg
+{
+  "comment": [
+    "00_westlake_u13_recover-v3.cfg = the v2 recover cfg, UNCHANGED, EXCEPT the westlake-u13-recover service",
+    "points at /system/etc/westlake-u13-recover-v3.sh (v2 recover + default-OFF permissive opt-in switch; cc-t3 #91).",
+    "Default installs stay v2; this cfg is placed only when the installer is run with RECOVER_VARIANT=v3.",
+    "U13 device-native boot recovery + BoatAttack overlay (demo autostart), v2. (1) westlake-u13-recover runs at the",
+    "**post-fs-data** bootstage (after /data, BEFORE the boot-stage foundation/AMS that would trigger the ondemand",
+    "appspawn-x) and replays the pinned 56 U13 baseline mounts (source-relabel-before-bind), then preserves init's",
+    "ondemand appspawn-x listener (NEVER starts/execs the daemon, NEVER launches an app); (2) after it sets",
+    "sys.westlake.demo.u13.ready, westlake-u13-boat-overlay binds the BoatAttack shared overlay (C8 adapter + C9 jar)",
+    "and the 3 app-private libs. v2 last-mile (APPSPAWN-LASTMILE-PLAN-v2.md): init latches SERVICE_ATTR_INVALID if",
+    "stat(/system/bin/appspawn-x) EVER fails at a ServiceStart (init_common_service.c:674-692), with no clear path. The",
+    "0B mount points exist at boot (no ENOENT), so the latch came from a stat-fail moment during mount churn. v2: run at",
+    "post-fs-data (before the boot-stage foundation/AMS first triggers the ondemand appspawn-x) and bind the real U13",
+    "appspawn-x WITHOUT any umount (stat stays continuous) -> the first ServiceStart execs real bytes, never latched.",
+    "recover journals dmesg+timestamps to /data so a future invalid line can be pinned. DELTA vs donor: NO setenforce 0;",
+    "caps minimal (DAC_OVERRIDE/CHOWN/FOWNER/SYS_ADMIN, no SYS_PTRACE/SETPCAP). Can't run sealed -> STOP for outer review."
+  ],
+  "jobs": [
+    {
+      "name": "post-fs-data",
+      "cmds": [
+        "start westlake-u13-recover"
+      ]
+    },
+    {
+      "name": "param:westlake-u13-boat-overlay-start",
+      "condition": "sys.westlake.demo.u13.ready=true",
+      "cmds": [
+        "start westlake-u13-boat-overlay"
+      ]
+    }
+  ],
+  "services": [
+    {
+      "name": "westlake-u13-recover",
+      "path": [
+        "/system/bin/sh",
+        "/data/westlake-demo/u13/boat-v2-20261013-r4/recover-v3-boat.sh"
+      ],
+      "uid": "root",
+      "gid": [
+        "root",
+        "system"
+      ],
+      "caps": [
+        "DAC_OVERRIDE",
+        "CHOWN",
+        "FOWNER",
+        "SYS_ADMIN",
+        "SYS_PTRACE"
+      ],
+      "start-mode": "condition",
+      "once": 1,
+      "sandbox": 0,
+      "secon": "u:r:su:s0"
+    },
+    {
+      "name": "westlake-u13-boat-overlay",
+      "path": [
+        "/system/bin/sh",
+        "/data/westlake-demo/u13/boat-v2-20261013-r4/worker.sh"
+      ],
+      "uid": "root",
+      "gid": [
+        "root",
+        "system"
+      ],
+      "caps": [
+        "DAC_OVERRIDE",
+        "CHOWN",
+        "FOWNER",
+        "SYS_ADMIN",
+        "SYS_PTRACE"
+      ],
+      "start-mode": "condition",
+      "once": 1,
+      "sandbox": 0,
+      "secon": "u:r:su:s0"
+    }
+  ]
+}== /system/etc/init/appspawn_x.cfg
+5a499244840da582060a0d4db94fb769354b0d4f9e79bac56d4cf63414cfefb4  /system/etc/init/appspawn_x.cfg
+{
+    "jobs" : [{
+            "name" : "boot",
+            "cmds" : [
+                "mkdir /data/service/el1/public/appspawnx 0711 root system",
+                "mkdir /data/misc/appspawnx 0711 root root",
+                "mkdir /data/misc/appspawnx/dalvik-cache 0711 root root",
+                "mkdir /data/misc/appspawnx/dalvik-cache/arm64 0711 root root"
+            ]
+        },
+        {
+            "name" : "init",
+            "cmds" : [
+                "mkdir /dev/pids",
+                "mkdir /dev/pids/native",
+                "mount cgroup none /dev/pids pids",
+                "chown root appspawn /dev/pids",
+                "chown root appspawn /dev/pids/tasks",
+                "chown root appspawn /dev/pids/cgroup.procs",
+                "chmod 0755 /dev/pids",
+                "chmod 0755 /dev/pids/tasks",
+                "chmod 0755 /dev/pids/cgroup.procs"
+            ]
+        }
+    ],
+    "services" : [{
+            "name" : "appspawn-x",
+            "path" : ["/system/bin/appspawn-x", "--socket-name", "AppSpawnX"],
+            "importance" : -20,
+            "uid" : "root",
+            "gid" : ["root"],
+            "writepid" : ["/dev/memcg/perf_sensitive/cgroup.procs"],
+            "setuid" : true,
+            "cgroup" : false,
+            "socket" : [{
+                "name" : "AppSpawnX",
+                "family" : "AF_LOCAL",
+                "type" : "SOCK_STREAM",
+                "protocol" : "default",
+                "permissions" : "0660",
+                "uid" : "root",
+                "gid" : "appspawn",
+                "option" : [
+                ]
+            }],
+            "sandbox" : 0,
+            "_comment_ondemand" : "ondemand:true makes init listen() the AppSpawnX socket and lazily spawn this service when AMS connects. critical/disabled/start-mode must be absent (critical+ondemand are mutually exclusive in OH init). Verified working for B.40+ aa-start path 2026-04-29.",
+            "ondemand" : true,
+            "console" : 0,
+            "secon" : "u:r:appspawn:s0",
+            "env" : [
+                { "name" : "ANDROID_ROOT", "value" : "/system/android" },
+                { "name" : "ANDROID_DATA", "value" : "/data" },
+                { "name" : "OH_ADAPTER_FN01_STATE_ROOT", "value" : "/data/service/el1/public/appspawnx/fn01" },
+                { "name" : "ANDROID_BOOT_IMAGE", "value" : "/system/android/framework/arm64/boot.art" },
+                { "name" : "ANDROID_I18N_ROOT", "value" : "/system/android" },
+                { "name" : "ANDROID_TZDATA_ROOT", "value" : "/system/android" },
+                { "name" : "ICU_DATA", "value" : "/system/android/etc/icu" },
+                { "name" : "APPSPAWNX_FAST_DEV", "value" : "0" },
+                { "name" : "APPSPAWNX_CHECK_JNI", "value" : "0" },
+                { "name" : "APPSPAWNX_NO_JIT", "value" : "1" },
+                { "name" : "LD_LIBRARY_PATH", "value" : "/system/android/lib64:/system/lib64/chipset-sdk-sp:/system/lib64:/system/lib64/platformsdk:/system/lib64/chipset-sdk:/system/lib64/ndk" },
+                { "name" : "LD_PRELOAD", "value" : "/system/android/lib64/liblzma.so" }
+            ]
+        }
+    ]
+}
+2a87118e7e8e62fb73ef71a436517cda406c308668753a478cf52331e996072e  /system/bin/appspawn-x
+pidof_rc=1

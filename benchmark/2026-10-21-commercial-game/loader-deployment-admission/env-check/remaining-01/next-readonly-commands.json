@@ -1,0 +1,30 @@
+{
+  "execution_enabled": false,
+  "purpose": "Original read-only commands for outer fresh window evidence; no connection or command executed by this addendum",
+  "serial": "5ea34a4500000000000000001123012c",
+  "phase1_remote_shell_commands": [
+    "cat /proc/sys/kernel/random/boot_id",
+    "ps -A -o PID,PPID,UID,NAME",
+    "sha256sum /system/etc/init/appspawn_x.cfg /system/bin/appspawn-x",
+    "cat /system/etc/init/appspawn_x.cfg",
+    "bm dump -n com.example.helloworld",
+    "bm dump -n com.a2hlab.bridge.zigzag",
+    "bm dump -n org.wikipedia",
+    "bm dump -n com.miHoYo.Yuanshen",
+    "stat -c '%a:%u:%g:%C' /dev/unix/socket/AppSpawnX",
+    "cat /proc/sys/kernel/random/boot_id"
+  ],
+  "phase2_remote_shell_templates": [
+    "readlink /proc/<fresh-system-parent-pid>/exe",
+    "sha256sum /proc/<fresh-system-parent-pid>/exe",
+    "cat /proc/<fresh-system-parent-pid>/stat",
+    "cat /proc/<fresh-system-parent-pid>/status",
+    "ps -A -o PID,PPID,UID,NAME",
+    "cat /proc/<fresh-system-parent-pid>/stat",
+    "cat /proc/sys/kernel/random/boot_id"
+  ],
+  "transport": "Use existing outer receipt collector/HDC transport; capture each remote rc and timestamp. Do not use old PID 6274 without deriving identity from phase1. No environ.",
+  "original_stop_service_command": "begetctl stop_service appspawn-x",
+  "stop_service_command_is_write_and_was_not_run": true,
+  "no_live_child_condition": "Check parent/UID relationships and test app UID even when comm is renamed; original stop final check only compares NAME=appspawn-x."
+}
