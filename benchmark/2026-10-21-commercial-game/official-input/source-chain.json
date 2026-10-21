@@ -1,0 +1,105 @@
+{
+ "token": "COMMERCIAL-G03",
+ "derivation": {
+  "environment": "production (deployment host act.mihoyo.com; globalOptions.environment assignment site not located, UNKNOWN)",
+  "platform": "android (options.type)",
+  "from_channel": "absent on https://ys.mihoyo.com/ -> default -> backup319"
+ },
+ "steps": [
+  {
+   "step": 1,
+   "what": "official root page https://ys.mihoyo.com/ loads puzzle page config + setups",
+   "file": "official-source/official-root.stdout",
+   "sha256": "f2e968d9ece47e66a1546c8b9c7cb382a312fce991bf53310f2db693b2cf1d0f",
+   "size": 7239,
+   "evidence": [
+    {
+     "needle": "config.aac69b9b.js\"",
+     "found": true,
+     "offset": 4397,
+     "text": "ipt><script defer=\"defer\" src=\"https://act.mihoyo.com/puzzle/hk4e/pz_Bw8DOTSoZy/config.aac69b9b.js\""
+    },
+    {
+     "needle": "setups.32e271fc.js\"",
+     "found": true,
+     "offset": 4502,
+     "text": "ipt><script defer=\"defer\" src=\"https://act.mihoyo.com/puzzle/hk4e/pz_Bw8DOTSoZy/setups.32e271fc.js\""
+    }
+   ]
+  },
+  {
+   "step": 2,
+   "what": "page config places @puzzle/ys-download v1.23.0 with options.type=android (label 安卓下载)",
+   "file": "official-source/download-config.stdout",
+   "sha256": "3ca5005fa30f0af87f99edda53965136b33d5823001579e463f240614a340100",
+   "size": 276249,
+   "evidence": [
+    {
+     "needle": "\"alias\":\"安卓下载\",\"version\":\"1.23.0\"",
+     "found": true,
+     "offset": 136528,
+     "text": "\"pz-YFUZPU8t7o\",\"name\":\"@puzzle/ys-download\",\"label\":\"原神下载\",\"alias\":\"安卓下载\",\"version\":\"1.23.0\",\"enabled\":true,\"boxStyle\":{\"position\":\"absolute\",\"width\":\"1.84rem\",\"height\":\"0.54rem\",\"cursor\":\"pointer\",\"top\":\"4.69rem\",\"zIndex\":\"3\",\"left\":\"0.54rem\"},\"options\":{\"type\":\"android\",\"src\":\"https://act-webstatic.mihoyo.com/puzzle/hk4e/pz_Bw8DOTSoZy/resource/puzz"
+    }
+   ]
+  },
+  {
+   "step": 3,
+   "what": "setups webpack runtime: publicPath and chunk filename map (chunk 14 holds the ys-download component)",
+   "file": "official-source/download-setups.stdout",
+   "sha256": "f518ab0b6e0a381792d0056f1c08a3a28698a360ebcd0b6c1f17f2221e73bc24",
+   "size": 1438075,
+   "evidence": [
+    {
+     "needle": "c.p=\"https://act.mihoyo.com/puzzle/hk4e/pz_Bw8DOTSoZy/\"",
+     "found": true,
+     "offset": 1259791,
+     "text": "c.p=\"https://act.mihoyo.com/puzzle/hk4e/pz_Bw8DOTSoZy/\""
+    },
+    {
+     "needle": "c.u=function(e){",
+     "found": true,
+     "offset": 1258273,
+     "text": "c.u=function(e){return({416:\"lib.pc\",833:\"lib.m\"}[e]||e)+\".\"+{14:\"fd07d37d\",416:\"ff966963\",833:\"5766697d\"}[e]+\".js\"},c.miniCssF=function"
+    }
+   ]
+  },
+  {
+   "step": 4,
+   "what": "chunk 14: ys-download downloadUrl -> Zt(); Ht.production overridden to ys-api; Ut.production=ys_cn; android default channel -> backup319",
+   "file": "official-input/raw/f01-14.fd07d37d.js.stdout",
+   "sha256": "a09e70c2017e52c2078b2ca80a63d32997dd0508c1c7287259e6d51f8c597eda",
+   "size": 811115,
+   "evidence": [
+    {
+     "needle": "Gt={IOS:\"ios\",ANDROID:\"android\"",
+     "found": true,
+     "offset": 592239,
+     "text": "Gt={IOS:\"ios\",ANDROID:\"android\",PC:\"pc\",PS4:\"ps4\",TAPTAP_PC:\"taptappc\",TAPTAP_M:\"taptaph5\",CLOUD:\"cloudmbtn\",CLOUD_WEB:\"cloudweb\"},Ht=ut(ut({},{development:\"https://devapi-takumi.mihoyo.com/event\",test:\"https://devapi-takumi.mihoyo.com/event\",prerelease:\"https://preapi-takumi.mihoyo.com/event\",production:\"https://api-takumi.mihoyo.com/event\"}),{},{production:"
+    },
+    {
+     "needle": "Ut={development:\"hk4e_cn\"",
+     "found": true,
+     "offset": 592636,
+     "text": "Ut={development:\"hk4e_cn\",test:\"hk4e_cn\",prerelease:\"ys_cn\",production:\"ys_cn\"};function Zt(t){var e=t.environment,n=t.platform,i=t.fromChannel,o=Ht[qt.ys_download_env||e];if(n===Gt.CLOUD)return\"\".concat(o,\"/download_porter/link/clgm_cn/official/android_cbu101\");var r=[Gt.TAPTAP_M,Gt.TAPTAP_PC,Gt.PS4,Gt.IOS].includes(n)?\"default\":i||\"default\",a=Ut[e];return\"default\"===r&&[Gt.ANDROID,Gt.PC].includes(n)&&(r=\"backup319\"),\"\".concat(o,\"/download_porter/link/\").concat(a,\"/official/\").concat(n,\"_\").concat(r)}var Jt={development:\"https://preapi-ta"
+    },
+    {
+     "needle": "var o=\"mobile\"===this.config.options.type",
+     "found": true,
+     "offset": 597148,
+     "text": "var o=\"mobile\"===this.config.options.type?n?\"ios\":\"android\":this.config.options.type;return Zt({environment:this.environment,platform:o||Wt,fromChannel:qt.from_channel,abInfo:this.globalOptions.ABTestRes||{}})},extraAttr:function()"
+    }
+   ]
+  },
+  {
+   "step": 5,
+   "what": "GET porter link (no redirect follow): HTTP 302 Location",
+   "file": "official-input/raw/h02-porter-get-noredirect.stdout",
+   "porter_url": "https://ys-api.mihoyo.com/event/download_porter/link/ys_cn/official/android_backup319",
+   "location": "https://autopatchcn.yuanshen.com/client_app/download/Android/20260915143557_znpK0stDcvvXlIk8/ydbackup319/yuanshen_7.1.0.apk"
+  }
+ ],
+ "porter_receipts": [
+  "h01-porter-head",
+  "h02-porter-get-noredirect"
+ ]
+}
