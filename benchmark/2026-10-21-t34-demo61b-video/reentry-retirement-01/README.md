@@ -51,3 +51,14 @@ Versus the repo r2 payload only `watchdog.sh`, `entry.sh`, `members.tsv`, `start
 are not committed (identical to base, reproduced by the generator). The cascade is the
 disabled-by-default repo form; the deployed 61b control files, backup and rollback are the
 separate deployment window's job. Old r2 files are not modified.
+
+## Deploy-only package (`deploy-package-r3-root/`, prepared, NOT admitted)
+
+Generated (receipt t08, rc 0) from r3 source `8bf74a08` with
+`--root /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3 --enable --approved-by 'outer(codex)'`.
+`STARTUP_ENABLED=1` only authorizes candidate content, not a device write. The new root was
+read-only confirmed absent on boot 80b23c89. `deploy-cfg/` holds the exact live
+`01_westlake_u13_toutiao.cfg` bytes and the r3 version that changes only the line-19 exec
+path (the same single-line method the r2 deployment used: r2 `before.cfg`→`after.cfg`).
+The generator's `payload/recovery.cfg` uses a different service name and must not replace the
+live cfg. Full chain, live r2 control SHAs and fresh read-only receipts: `CHAIN.json`.
