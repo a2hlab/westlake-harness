@@ -93,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[Normal Genshin icon launch](benchmark/2026-10-21-commercial-game/normal-ui-01/)** | White-screen → desktop evidence, exact exit log, no game-frame claim |
 | **[Genshin commercial-game qualification](benchmark/2026-10-21-commercial-game/README.md)** | Official input, 11 prior implementation mappings, exact 32-ELF/5-DEX scan and five method-level REA observations. Static evidence accepted; runtime not yet tested. |
 | **[D600 Wi-Fi debugging capability](benchmark/2026-10-21-d600-wifi-debug/README.md)** | Three OH 6.1.0.31 boards have Wi-Fi and hdcd TCP support; current access is USB, wireless session not yet tested. Read-only receipts retained. |
 | **[Genshin static intake and BoatAttack comparison](benchmark/2026-10-21-genshin-static-intake/README.md)** | Bounded local package search found no named input; 441 APK/XAPK path entries, 10 source references and explicit remote/manifest gaps. No Genshin launch attempted. |
