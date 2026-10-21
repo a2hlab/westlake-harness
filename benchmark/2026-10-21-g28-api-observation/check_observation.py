@@ -2,8 +2,8 @@
 """Check G31's one-row append (62nd observation, G28 native-route trial); no device, REA, build or cited-code run.
 
 Reuses the G29 checker (G15 58 / G17 59 / G25 60 / G29 61 strict prefixes, original-renderer byte equality of
-index.html/observations.csv/results.json, G24 and G26 failure semantics) and adds: exactly 62 rows, row 62
-equals added-row.json, independent semantic guards (game failed, baseline restored, candidate not deployed,
+index.html/observations.csv/results.json, G24 and G26 failure semantics) and adds: the 62-row prefix, row 62
+equals added-row.json (G33: the 62-row prefix is strict and later rows may follow), independent semantic guards (game failed, baseline restored, candidate not deployed,
 not frozen, atfork/maps/held-receipt boundaries), cross-checks against the G28 receipts, and negative cases.
 """
 import argparse, copy, importlib.util, json, sys
@@ -39,7 +39,7 @@ def check(data, source_root, rendered=True):
     count = g29.check(data, source_root, rendered)
     base = old.read(HERE / 'original-61.json')
     old.require(len(base['rows']) == 61 and data['rows'][:61] == base['rows'], 'original61 objects changed')
-    old.require(len(data['rows']) == 62, 'G31 requires exactly 62 rows')
+    old.require(len(data['rows']) >= 62, 'G31 requires the 62-row prefix')
     row = data['rows'][61]
     semantic(row)
     for g in ('source', 'build', 'evidence'):
@@ -93,8 +93,9 @@ def main():
         ('false success in table', lambda: guard('status', 'GAME_STARTED；有游戏帧'), 'game success'),
         ('HTML-only fake game frame', lambda: g25.rendered_equal(data, source_root, dict(files(), **{'index.html': forged_html()})), 'index.html differs'),
         ('CSV-only edit', lambda: g25.rendered_equal(data, source_root, dict(files(), **{'observations.csv': files()['observations.csv'] + b'x'})), 'observations.csv differs'),
-        ('truncated to 61', lambda: check(mut(lambda d: d['rows'].pop()), source_root, False), 'exactly 62 rows'),
-        ('63rd row appended', lambda: check(mut(lambda d: d['rows'].append(dict(d['rows'][61], id='OBS-FUTURE'))), source_root, False), 'exactly 62 rows'),
+        ('rows truncated below 62', lambda: check(mut(lambda d: d['rows'].__delitem__(slice(61, None))), source_root, False), '62-row prefix'),
+        ('appended row with unverified missing reference', lambda: g25.rendered_equal(mut(lambda d: d['rows'].append(dict(d['rows'][61], id='OBS-FUTURE',
+            evidence=[dict(item, path=f'{W}/closed/intentionally-missing.json')]))), source_root, {}), 'renderer refused'),
         ('row62 edited', lambda: check(mut(lambda d: d['rows'][61].__setitem__('name', 'changed')), source_root, False), 'G31 observation changed'),
         ('evidence dropped', lambda: check(mut(lambda d: d['rows'][61].__setitem__('evidence', [])), source_root, False), 'evidence references dropped'),
         ('claimed playable', lambda: guard('apps', '原神可玩，有游戏帧'), 'playable'),
@@ -107,6 +108,8 @@ def main():
         ('missing reference', lambda: old.check_ref(source_root, dict(item, path=f'{W}/closed/intentionally-missing.json')), 'missing/nonregular'),
         ('reference SHA drift', lambda: old.check_ref(source_root, dict(item, sha256='0' * 64)), 'SHA drift'),
     ]
+    later = mut(lambda d: d['rows'].append(dict(d['rows'][61], id='OBS-FUTURE')))
+    old.require(check(later, source_root, False) == count, 'G31 allows a later append')
     refusals = []
     for name, call, expected in cases:
         try: call()

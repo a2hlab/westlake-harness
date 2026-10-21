@@ -1,0 +1,298 @@
+{
+  "id": "OBS-20261021-G30-LOCALE-ABI-CANDIDATE",
+  "kind": "locale ABI离线兼容候选（公共兼容层源码/构建观察；不是游戏修改，不是公共API冻结）",
+  "name": "G30 原神_ctype_簇locale ABI候选：在已有native ABI库d205上新增3个LIBC导出，离线两次构建一致且未部署",
+  "status": "OFFLINE_CANDIDATE_VERIFIED_NOT_DEPLOYED；candidate_currently_deployed=false；runtime_namespace_binding UNKNOWN；无游戏运行证据",
+  "method": "在既有libwestlake_native_abi.so（基线d2053066…，39520 B，原两对象重编后精确复现）上追加一个locale对象：bionic_locale_compat.c与本地历史模块逐字相同（21e52d1e…），version script仅新增LIBC下_ctype_（8字节OBJECT指针，指向257项分类表）与strtoll_l/strtoull_l（转发strtoll/strtoull并忽略locale）；不含__assert2，不改G26 host/ANL、namespace、selector、运行时/音频发布与游戏。候选4296f805…（41984 B）两次完整构建SHA相同，原两对象逐字相同；构建由外环在VM交接后执行。",
+  "platform": "离线构建与宿主测试，无设备。真实生产locale TU仅为避免与宿主libc冲突改名，在Darwin上跑通257项分类与90个有/无符号整数用例；原native生产TU带宿主依赖替身（dlsym/pthread_atfork注入、__errno_location）对基线与候选均通过；9个ABI守卫反例；独立ELF检查：44个原动态符号tuple保留、26个原定义导出不变并仅增3个、新增导入仅strtoll/strtoull、NEEDED仍libc.so、构造/析构序列与.init/.fini字节不变、无TEXTREL。宿主测试不替代OH运行证据，OH回调未在本任务执行。",
+  "apps": "目标为com.miHoYo.Yuanshen（G28实测主库首终止为_ctype_@LIBC，仍白屏后回桌面exit1）。G30未上板：实际重定位赢家、后续阻塞、游戏帧与可玩均UNKNOWN；预计移走首个致命点的key为genshin，属待运行验证的预测。仅离线一例，不满足2app冻结条件。",
+  "limitations": "候选02在同一配方前后对55个输入逐一哈希且完全一致，input-closure指向全部55个持久副本；这不是完整Linux OS镜像或宿主动态库闭合（配置的tc/runtime目录不存在），也不是OH实际语义验证。locale源上游归属仅为源码注释，未独立核对AOSP字节。候选策略拒绝无版本导出不代表OH拒绝所有无版本provider。历史保留：内环VM入口rc124超时且无编译证据，是环境失败不是编译失败；host01因假设无转换时errno不变而失败（Darwin底层设EINVAL），host02直接比对转发后通过，生产源未改。",
+  "deployment": "candidate_currently_deployed=false：本条不部署、不授权部署、不冻结，也不称原神可玩。归档状态为G30固定主线8acf1ed61交件时的观察快照：原始双流、rc与构建日志在本地持久存储（raw-index.json所列$HOME/.local/share/westlake与.private路径），该交件56个公开路径中无远端回执，故当时远端未验证；不声称已远端核验。日后补齐的远端回执不改变本条历史快照，应另以新观察记录。",
+  "source": [
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/baseline-input-audit.json",
+      "sha256": "5700f18d59887f536a25bcb56217abf00831a8318e64bb68a26fa25193f4d98c",
+      "bytes": 2128
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/candidate-source-pins.json",
+      "sha256": "f94e7ef298ac2d9e55cb7d248bcf51c6541de36e2bc9e25486b4cf36e9bf781d",
+      "bytes": 368
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/candidate.patch",
+      "sha256": "81d2a743acb92df0c629874333afb0f2703b17b65576fe97472dd410b83e34da",
+      "bytes": 880
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/source-excerpts.json",
+      "sha256": "b4a3ff35bafe726db267dcbd59b2c5d9f5bac42e3f91fc58b29529bdef7f27c6",
+      "bytes": 60632
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/source-index.json",
+      "sha256": "b6b4fcc1bd453ec8252900ff56dd27fa774a0391380cd774cc186f95416ad4d6",
+      "bytes": 3115
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/sources/baseline/bionic_stdio_compat.c",
+      "sha256": "e5cfec3dd99abb4b5b47141568ed045e4afb7f254560876d709c61ecf98c447b",
+      "bytes": 6216
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/sources/baseline/native_abi.c",
+      "sha256": "6cf69a57a5318058aea1d2ce69f3b3a2355aa11231d5261a85435508443c3335",
+      "bytes": 7435
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/sources/baseline/native_abi.map",
+      "sha256": "362acdc8b9f469a1069f05f204e450a8d1aa8608c948edf23a3dd350a5618b72",
+      "bytes": 415
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/sources/candidate/bionic_locale_compat.c",
+      "sha256": "21e52d1e8025795b34f5d258f563699adc52c598c3abe16fc848a4fa56cbe88a",
+      "bytes": 3093
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/sources/candidate/bionic_stdio_compat.c",
+      "sha256": "e5cfec3dd99abb4b5b47141568ed045e4afb7f254560876d709c61ecf98c447b",
+      "bytes": 6216
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/sources/candidate/native_abi.c",
+      "sha256": "6cf69a57a5318058aea1d2ce69f3b3a2355aa11231d5261a85435508443c3335",
+      "bytes": 7435
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/sources/candidate/native_abi.map",
+      "sha256": "c1070f9dafe5def0625f095f7a6341ee962b2b32bf7fc555047ba46801452948",
+      "bytes": 447
+    }
+  ],
+  "build": [
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/build-checkpoint-01/README.md",
+      "sha256": "1631730d3a6e3ead6244713fb183846e7e69f6d2c50e41be890938ab46a33953",
+      "bytes": 1669
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/build-checkpoint-01/landing-paths.txt",
+      "sha256": "37093e5ae96053bd72dd318d7552d0e3edea5a005f59336660440d66da5ae4ff",
+      "bytes": 811
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/build-checkpoint-01/manifest.json",
+      "sha256": "8211c99c0083de377297616a38849fdf87206cffd5a6d8b4c18530e2eaa12d43",
+      "bytes": 1619
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/build-checkpoint-01/raw-index.json",
+      "sha256": "92ce6651396bba0bed3df7a0c2be3d1d482314ba832fdd222849e88836a6b438",
+      "bytes": 2829
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/build-checkpoint-01/results.json",
+      "sha256": "03d1d73f460eccb1581c45d32a28a5ef64cf91385a23576ae36a2b1f329c52fe",
+      "bytes": 688
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/build_baseline.py",
+      "sha256": "e467bf0d6ef4aa648e6ad91b31863e9a6661fa3f96f44db1001cbd68f783d883",
+      "bytes": 3970
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/build_candidate.py",
+      "sha256": "9edc40d57ce9d008036822754439f9895dc3d3cd9becd7fe62df301995d17578",
+      "bytes": 5053
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/baseline-receipt.json",
+      "sha256": "943f96762b466e0d2c1986ef101a301e51bc4b37645f4bf473e76d70c7e318d9",
+      "bytes": 1916
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/candidate01-receipt.json",
+      "sha256": "2efd33db1c8db7bf5e496ffd84b9f6d7c83cf28c2c0d54b55ceb1264baf0295a",
+      "bytes": 13814
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/candidate02-bookends.json",
+      "sha256": "3ae9eb8649a05fa345b4402a82cc3a56c63aef3da41915d1d466e9988cd45662",
+      "bytes": 503
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/candidate02-receipt.json",
+      "sha256": "2efd33db1c8db7bf5e496ffd84b9f6d7c83cf28c2c0d54b55ceb1264baf0295a",
+      "bytes": 13814
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/input-closure.json",
+      "sha256": "86e41a59d25aa9cfcbcf75195e9355e7ea51c3ef3c37b08dae371a137054063e",
+      "bytes": 22969
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/raw-index.json",
+      "sha256": "86e6c84a3cbc2abb5916f6872f74c6daac2970d709d5f57fd7c98b6513dd5387",
+      "bytes": 60358
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/manifest.json",
+      "sha256": "8e571a00741fff0d618a56eb899fdf006fafd4037d2639397ae2d18ece4ef105",
+      "bytes": 11699
+    }
+  ],
+  "evidence": [
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/ACK.md",
+      "sha256": "fee2a8069a9dc77861a09d96445959cd88d096ab988486d88aa72506cdd73179",
+      "bytes": 517
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/README.md",
+      "sha256": "db55db5d2c3a7155b6b45a42442d278e6ff48fc17fa273acaebd9535e3fbf5ca",
+      "bytes": 5429
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/check_delivery.py",
+      "sha256": "0e8c03e1dfc42e432be500a0bdcf0afe641705d720043be3f6b5693d64123e9c",
+      "bytes": 2805
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/check_elf.py",
+      "sha256": "a99c94b362a4555f466db589f478040e8a8478b7d19b0c671653d48d723b1a1b",
+      "bytes": 5199
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/check_negative.py",
+      "sha256": "89554553c2565d714644e3a5190cd4be14f8a7a432c76acffd62c2399b525af3",
+      "bytes": 1570
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/evidence/baseline-dynamic.txt",
+      "sha256": "41074d31173b370880801295a6132df901e0e3fdc32f1382386e80358fddc6e5",
+      "bytes": 1378
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/evidence/baseline-symbols.txt",
+      "sha256": "73232dec5a159bc6910f1bf78e0e714f22c4ed7235309b60e4403ea5e3416647",
+      "bytes": 3530
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/evidence/candidate-dynamic.txt",
+      "sha256": "9dd4347dfd4e77d93f6bc56cbf1353ed95c7b93f49b0668477453b7f8d8925ac",
+      "bytes": 1379
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/evidence/candidate-symbols.txt",
+      "sha256": "2ea29c9e9637770206281fe044894024b00163b18e44880295c20189d8d9c64a",
+      "bytes": 3894
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/evidence/elf-review.json",
+      "sha256": "0c38312d24b4ddc200129011fe34d40567e7d0b5121a866378191b526d14f1e8",
+      "bytes": 948
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/ACK.md",
+      "sha256": "d17149b7ab77335b84872a60b10dca58391cb49133fea69d31bc6c088d2dff3b",
+      "bytes": 628
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/README.md",
+      "sha256": "3f14ecec443e0400ac80ca14581fdcfc1ae2e7efa57589168bdf7634f01e24c2",
+      "bytes": 5525
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/host-output.txt",
+      "sha256": "90bd27b15eab05ef4900bb3acd3e970ad6e5384304db53bbe2e793f4ee06adbd",
+      "bytes": 83
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/host-receipt.json",
+      "sha256": "8e18b3fd3603a797c4922a7c53c5bdcbeee44f8e8641c7b3c5932ff2737e28d9",
+      "bytes": 505
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/peer-review.json",
+      "sha256": "0bdb310a9ed14f1c20d7fba9dcacba60fdf940ac924f3c2e51075ec4fda197df",
+      "bytes": 2132
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/preservation-baseline.txt",
+      "sha256": "34582665c8034b368cf8dce35b67e91fea69403ba41567575f8d6e99809fa626",
+      "bytes": 120
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/preservation-candidate.txt",
+      "sha256": "34582665c8034b368cf8dce35b67e91fea69403ba41567575f8d6e99809fa626",
+      "bytes": 120
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/preservation-receipt.json",
+      "sha256": "dc9e87f93f8b5c75c9228a3f9f7ed33d949f41ad70b8ba9805c5ffcb6853aa4a",
+      "bytes": 740
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/results.json",
+      "sha256": "e99c999be9baa47559eee8571d66309b761ab58fd792fc9f5c10b2f47552ccf5",
+      "bytes": 1536
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/validation.json",
+      "sha256": "1f210132b6ae03c47040e26e49655bf483b4c52228fae0ef77ded724a411b4d3",
+      "bytes": 475
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/landing-paths.txt",
+      "sha256": "7636b2590ac14407f30fc2bc4b881ccebaea5e7bc0e3449405918629a74c5574",
+      "bytes": 591
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/manifest.json",
+      "sha256": "6e7d2b5b474de771831d0f2e23cc31b1668f6f7068ab9b99914c5a9544157fd9",
+      "bytes": 1310
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/publish.py",
+      "sha256": "159e4b7e15f5c20419c72b2387b904c4260b3bdb0ea1dde47ea3a8c58894707e",
+      "bytes": 4441
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/results.json",
+      "sha256": "bf06c5f996979420c4da26b02972af07849a112f1baeec745e02c418f4d2bb55",
+      "bytes": 1194
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/run_host.py",
+      "sha256": "83ee5ae09e5d4054b937da6952ab81f3b4c90ef685aa62644f08476e711a709a",
+      "bytes": 1881
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/run_preservation.py",
+      "sha256": "227f4bfa2ea073df61c4383cecbe5b1ca64a72df46e274ab8faa5d771dc7ded1",
+      "bytes": 1701
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/tests/locale_functions.c",
+      "sha256": "d4b8d0aebbcec0e80e33954eb0dc679c478c1aa75c0cac438e2f1149061dfaa8",
+      "bytes": 4593
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/tests/native_preservation.c",
+      "sha256": "3e5a1b58e75fff62fd76df287add19770bf6587148ef712e300a5f0b46b285e3",
+      "bytes": 1729
+    },
+    {
+      "path": "tools/spec-checks/tests/commercial_game_locale_abi_candidate.rs",
+      "sha256": "5a84babb9b40affb21905e56d47bfc8aded854420be12e08d51dae8dfd99452b",
+      "bytes": 563
+    },
+    {
+      "path": "benchmark/2026-10-21-commercial-game/locale-abi-candidate/final/landing-paths.txt",
+      "sha256": "cb02c2ad0dc90920c034d56092a56357561bbd2cc6ebd9c0319a16aaaeaa6021",
+      "bytes": 4617
+    }
+  ],
+  "frozen": false
+}
