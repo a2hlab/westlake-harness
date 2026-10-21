@@ -1,0 +1,120 @@
+{
+ "schema": "t34-r3-chain-audit-v1",
+ "date": "2026-10-21",
+ "lane": "octoscode read-only mechanical audit",
+ "scope": "benchmark/2026-10-21-t34-guardian-inputs only; no REA, no device, no source change, no push, no commit (outer collects)",
+ "checks": {
+  "inputs_rehash": {
+   "listed": 28,
+   "verified": 28,
+   "mismatch": [],
+   "note": "INPUTS.sha256.json covers 22 payload + CHAIN.json + MANIFEST.sha256 + generation.json + 3 deploy-cfg files = 28 entries; all recomputed SHA-256 match"
+  },
+  "manifest_vs_payload": {
+   "manifest_entries": 22,
+   "payload_files_on_disk": 22,
+   "sha_mismatch": [],
+   "extra_on_disk": [],
+   "missing_from_manifest": []
+  },
+  "members_tsv": {
+   "rows": 16,
+   "sha_all_match": true,
+   "modes": {
+    "550": 15,
+    "440": 1
+   },
+   "tsv_vs_manifest_consistent": true,
+   "note": "members.tsv covers 16 executable/config members incl. screen-gate(binary,88528B) and decoder-probe.jpeg(mode440); payload also carries boot-entry.sh, members.tsv itself, recovery.cfg, rollback-inert.cfg, startup.env, startup.expected.sha256 which are not tsv rows (by design per config-common.sh line28 binding ROOT/members.tsv)"
+  },
+  "entry_referenced_shas": {
+   "watchdog.sh_pinned_in_entry_sh": {
+    "sha256": "8bf74a08b71474e39e90fcdb012eed5e420f7352fa131cef2aa63b9c5bd80ef9",
+    "match": true
+   },
+   "route-b-owner.sh_pinned_in_entry_sh": {
+    "sha256": "6bce7c3c8f84ad1047313c5dd76bcb084637d9095b9163dc710c88aaee12fe4c",
+    "match": true
+   },
+   "decoder_probe_pair_in_entry_sh": {
+    "screen-gate": {
+     "sha256": "0bf966d76e038379af1fa2542746572a2c76a9bf88e17a97869682debfc36eaf",
+     "match_startup_decoder_sha": true
+    },
+    "decoder-probe.jpeg": {
+     "sha256": "e8320bdd8a81c3fd6a29a2fa39a1468ad515f1332ae51ebebdd13c4d0703b964",
+     "match_startup_probe_sha": true
+    }
+   }
+  },
+  "startup_env_chain": {
+   "startup_expected_equals_sha256_of_startup_env": true,
+   "startup_expected_value": "5a8f555e1af68da471986ed27140b1457bb832287d595dfa9c925f9374f012a1",
+   "STARTUP_MEMBERS_SHA_equals_sha256_members_tsv": true,
+   "members_tsv_sha256": "b5fd108c2af5a07729609b9fefe5b77124adfa01dffd21af00e3c7ca54a717bb",
+   "STARTUP_START_PARENT_SHA_resolves_to": "real-start-parent-bounded.sh",
+   "STARTUP_DECODER_SHA_resolves_to": "screen-gate",
+   "STARTUP_PROBE_SHA_resolves_to": "decoder-probe.jpeg",
+   "unresolved_in_payload": [
+    "STARTUP_OLD_STOP_SHA",
+    "STARTUP_JIT_SHA",
+    "STARTUP_NAMESPACE_SHA",
+    "STARTUP_HOST_SPAWN_SHA",
+    "STARTUP_REQUEST_SHA"
+   ],
+   "unresolved_reason": "these pin live-device/runtime artifacts outside the payload (config-common.sh L25-33: old stop file, and AUTH_* runtime values exported, not payload files) — unknown in this offline package by design",
+   "chain_cascade_consistent": {
+    "cascade.members_sha_in_startup_env": true,
+    "cascade.startup_expected_eq_sha_startup_env": true,
+    "watchdog_in_entry": true
+   }
+  },
+  "generation_json_cross": {
+   "members_tsv_sha256": true,
+   "startup_env_sha256": true,
+   "startup_expected": true,
+   "candidate_watchdog_sha256": true,
+   "payload_files": 22,
+   "members": 16,
+   "device_calls": 0
+  },
+  "root_correctness": {
+   "expected_root": "/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3",
+   "root_in_config_common": true,
+   "root_in_chain_new_root": true,
+   "root_in_generator_argv": true,
+   "old_r2_root_occurrences_in_payload": 0,
+   "note": "entry.sh/startup.env/boot-entry.sh do not hardcode the r3 root; they derive it via config-common.sh ROOT or $HERE — consistent, not an error"
+  },
+  "deploy_cfg": {
+   "diff": "single line 19: exec path icon-manual-20261019-r2/boot-entry.sh -> icon-manual-20261021-r3/boot-entry.sh; line counts equal, no other diff",
+   "before_sha_matches_chain": true,
+   "after_sha_matches_chain": true,
+   "after_cfg_sha256": "7b9f2c0e6431a486f3138f8fca04e3c5aea2c21f4f8acb6f83e815735d998e4b",
+   "after_sha_prefix_7b9f2c0e": true
+  },
+  "authorization_scope": "startup.env STARTUP_APPROVED_BY=outer(codex)/STARTUP_ENABLED=1 and CHAIN.json note confirm content authorization only; NOT device admission/signature. CHAIN status DEPLOY_PACKAGE_PREPARED_NOT_ADMITTED; device_writes field present in CHAIN (see note).",
+  "chain_device_writes": 0
+ },
+ "not_verified": [
+  "live-device state (offline audit)",
+  "raw generator receipts aliased $T34_RETIRE_PRIVATE (not in package)",
+  "STARTUP_OLD_STOP/JIT/NAMESPACE/HOST_SPAWN/REQUEST sha targets (live artifacts, absent offline)"
+ ],
+ "counts": {
+  "payload_files": 22,
+  "inputs_listed": 28,
+  "inputs_verified": 28,
+  "manifest_entries": 22,
+  "members_rows": 16,
+  "entry_pins_verified": 4,
+  "cfg_diff_lines": 1
+ },
+ "writes": {
+  "device_calls": 0,
+  "builds": 0,
+  "source_changes": 0,
+  "pushes": 0,
+  "commits": 0
+ }
+}

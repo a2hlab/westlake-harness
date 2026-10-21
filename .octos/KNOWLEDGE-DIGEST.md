@@ -981,3 +981,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-21 #91 T34：W02部署rc0而实图灰白，拒留后1672秒收窗；原close称healthy feed被实际网络错误页否定，保留原件另更正。after-close13完整argv/rc与身份夹持补证parent-private六态恢复，12占位argv不采认；signal11仅证child退出不指认候选。见 benchmark/2026-10-21-t34-demo61b-video/，EVO-0162。
 - 2026-10-21 #91 T34 W03-b：候选89.891秒九图灰空白，拒留并恢复physical/private六态，最终文字feed含图片占位；1218.073秒才签回退、1488秒解锁，迟签保留。5cd T32确有新boot视频实证；相同run/五SO不能证明BCP/ART加载代一致，先取实际private路径与maps哈希，不能凭缺证指认根因。见 benchmark/2026-10-21-t34-w03-peer/ 与 T34 environment-diff-01/。
 - 2026-10-21 #91 T34 W04：候选physical/parent/child共18文件观察SHA及inode一致、bridge/shim/compat映射匹配，首轮与唯一正常重开仍灰；620.67秒签回退、785.66秒恢复解锁，恢复末图及闭窗后只读图仍灰。运行时恢复、feed健康、候选保留分别取证，rc0或加载一致不替代实图，SIG11不自动归因候选；见 T34/window-04-runtime-peer/、window-04-closed-peer/。
+
+- 2026-10-21 #91 T34 r3：守护已严格确认 child exited 后须按 (boot,seq,pid,birth) 退役旧身份；继续把旧 PID 当活动身份，后续复用会触发 child_identity 拒绝并退出守护。仅两处 strict exited 可退役，spawn/adopt 清除；仍保留 boot/parent/lock 与当前 child 核验。21 项独立实际函数/循环重放及71项作者测试通过；历史 uptime7024 具体触发值未知，不把离线复现当该事件根因。见 benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-peer-01/。
