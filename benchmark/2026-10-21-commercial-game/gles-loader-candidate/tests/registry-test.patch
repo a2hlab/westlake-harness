@@ -1,0 +1,26 @@
+--- upstream/native_loader_registry_host_test.cpp
++++ tests/registry_delta_test.cpp
+@@ -893,6 +893,23 @@
+       env, 34, loader, false, nullptr, search, permitted, attacker_list);
+   CHECK(result == nullptr, "Profile B Create success is null jstring");
+   std::vector<std::string> bridge = fakeanl::LastBridgeSonames();
++  std::vector<std::string> expected = {"libandroid.so", "libEGL.so", "liblog.so",
++      "libmediandk.so", "libz.so", "libwestlake_bionic_pthread_bridge.so", "libstdc++.so"};
++#ifdef EXPECT_GLES
++  expected.push_back("libGLESv2.so");
++#endif
++  CHECK(bridge == expected, "exact ordered shared policy reaches explicit backend");
++  bool implicit_bridge = true;
++  char* implicit_error = nullptr;
++  void* implicit_handle = android::OpenNativeLibrary(
++      env, 34, "/data/app/test/lib/arm64/libprobe.so", fakejni::NewObject(),
++      "caller", search, &implicit_bridge, &implicit_error);
++  CHECK(implicit_handle != nullptr && implicit_error == nullptr, "implicit open succeeds");
++  CHECK(fakeanl::LastBridgeSonames() == expected, "exact ordered shared policy reaches implicit backend");
++  if (implicit_handle != nullptr) {
++    CHECK(android::CloseNativeLibrary(implicit_handle, implicit_bridge, &implicit_error), "implicit handle closes");
++  }
++
+   CHECK(std::find(bridge.begin(), bridge.end(), "liblog.so") != bridge.end(),
+         "adapter bridge policy reaches backend");
+   CHECK(std::find(bridge.begin(), bridge.end(), "libevil.so") == bridge.end(),
