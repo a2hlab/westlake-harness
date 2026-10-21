@@ -99,3 +99,13 @@ G01 adds a guardian deployment observation: the separately generated r3 control 
 W05 subsequently retained the scoped61b video demo after the G01 guardian baseline. Actual video/fullscreen progress, same-child normal-icon warm return and BoatAttack/LibreSudoku first-screen smoke are recorded. Final feed was reached from another clip detail after closing a login promotion; direct first-clip return and tap-pair causality are not established. No new61b audible confirmation or natural-exit reentry is claimed. [Actual signed scope and failed observations](../2026-10-21-t34-demo61b-video/window-05-public/README.md) and [verified10479-member archive](../2026-10-21-t34-demo61b-video/archive-05/README.md) preserve the evidence. No public API freeze was added.
 
 The post-archive [final signoff](../2026-10-21-t34-demo61b-video/window-05-public/final-signoff.json) records SEALED_SCOPED_TOUTIAO_VIDEO_DEMO_61B with the same explicit limits; it does not rewrite the original retain or close.
+
+## 2026-10-21 accepted installation and bounded stop observations
+
+Current update: **58 observations with 1339 exact source/build/evidence references**. The original 50-observation statement above is preserved as the previous snapshot.
+
+Eight observations are appended after the unchanged original 50 objects: G08 source correction, G09 exact native build and remote archive, G13 accepted installation, T35 white-screen evidence, T36 offline candidate, T37 offline review, and the separate T38/G14 safety stops. G08/G09/G13 relate to JAVA-042 without changing its historical grade or adding a public Android API. G11 remains an earlier draft, not the current G13 outcome.
+
+G13 installed the unchanged original Genshin APK and retained queryable UID20011077; independent evidence binds the actual loaded candidate to its process-root SHA. The original failed loader receipt remains failed. Genshin was not launched and has zero screenshots. Both installer aliases were restored to51e1, root was resealed RO, power restored, and the lock released. The7c24 candidate is historical window state, not the current deployment. T36/T37 offline checks do not establish a white-screen fix; T38/G14 stopped work remains unexecuted.
+
+[Append-only checks and landing inputs](../2026-10-21-current-api-observations/README.md) pin the previous50 objects and historical315 files. Local rendering is verified; remote publication of this update is not claimed.
