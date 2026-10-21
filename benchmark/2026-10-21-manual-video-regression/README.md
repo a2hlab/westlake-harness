@@ -1,4 +1,11 @@
-# T35 — manual video state on 5cd / 61b (read-only; freeze hypothesis withdrawn)
+# T35 — manual video state on 5cd / 61b (read-only)
+
+Two separate observations:
+
+1. **Video freeze report — withdrawn.** The user's first report (progress moves, picture frozen) was corrected by the
+   user (subtitles change). Sampled boards were not on a playback page; no bug confirmed (this section).
+2. **61b white screen — actual, later.** After the user closed Toutiao on 61b and tapped the icon, the screen stayed
+   white; see `whitescreen-01/` (guardian `AWAITING_REENTRY`, no new child; inferred WID-binding mechanism).
 
 User first reported that on 5cd and 61b the progress bar moved while the picture stayed on the cover/first frame,
 then corrected it: the video appears to play (subtitles change). The whole-frame freeze hypothesis is **withdrawn**;

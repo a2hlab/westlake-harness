@@ -1,0 +1,586 @@
+{
+ "token": "T35-WHITESCREEN-01",
+ "board": "61b0657200000000000000000324012c",
+ "boot": "be4badc3-5a79-4fa8-8758-e6aacc0ca05f",
+ "device_writes": "snapshot_display one diagnostic file + recv only; no click/restart/deploy",
+ "screens": "3 frames ~3.06 s apart byte-identical 18b18c67: uniform light white, gesture bar only",
+ "identity": {
+  "guardian": "sh 4016 birth 3869 (W05 instance)",
+  "parent": "appspawn-x 5089 birth 5573 (/data/local/tmp/asx/appspawn-x, W05 instance), no child",
+  "old_child": "7140 (birth 7507) absent from /proc",
+  "old_host": "4834 absent",
+  "host_samples": "imehost 22069 birth 2344035 focused as imehost0 WID 66 (w03); later 22069 absent and guardian wms-focus.txt shows Focus 72",
+  "stock_appspawn_x": "/system/bin/appspawn-x 16295: child 17699 com.kaajjo.libr…, later unfinished children 23975/24065 (UID 20010872) and 24602 (UID 20011113); unrelated to parent 5089, identity not resolved"
+ },
+ "guardian_state": {
+  "state": "AWAITING_REENTRY",
+  "sequence": "1",
+  "instance": "child=7140 parent=5089 birth=7507 parent_birth=5573 seq=1 mode=preserve",
+  "events_tail": [
+   "23350 child=7140 reason=process_exit first_read_exited",
+   "23350 reason=child_retired key=be4badc3…/1/7140/7507 strict_exited",
+   "23350 reason=transition_target=AWAITING_REENTRY child_exited_wait_manual_icon"
+  ],
+  "after": "no further events"
+ },
+ "static_mechanism": {
+  "watchdog.sh": {
+   "alias": "benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-01/deploy-package-r3-root/payload/watchdog.sh",
+   "sha256": "8bf74a08b71474e39e90fcdb012eed5e420f7352fa131cef2aa63b9c5bd80ef9",
+   "size": 28416,
+   "deployed_match": "8bf74a08 = per-boot watchdog.sh recorded in T34"
+  },
+  "reentry-common.sh": {
+   "alias": "benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-01/deploy-package-r3-root/payload/reentry-common.sh",
+   "sha256": "43d7b073467708770c8c69724633666e410d45581f8c0099d5098c31215e78ab",
+   "size": 7517
+  },
+  "chain": [
+   "rc_focus_state (watchdog.sh:304): focus imehost0 -> rc_verify_window_process(pid, RB_OWNER_UID, org.westlake.imehost) then verify_parent_window_soft(parent, parent_birth, wid); any failure -> rc_focus_result=other",
+   "verify_parent_window_soft (watchdog.sh:235): requires parent environ WL_PARENT_ID == focused WID and ASX_RUNTIME_OWNER_UID == RB_OWNER_UID",
+   "reentry-common.sh:78: 'other' sets rc_arm=UNARMED and continues; no spawn and no audit event"
+  ],
+  "conclusion": "INFERRED from deployed sources: the parent's WL_PARENT_ID is fixed when the parent is launched at bootstrap; reentry only sends a spawn request to the existing parent socket and never rebinds the WID; after the close the host was recreated with WIDs 66/72, so if the live parent still carries its bootstrap WID the focus is classified 'other' and no spawn/event follows — consistent with AWAITING_REENTRY and no new child",
+  "not_read": "live WL_PARENT_ID of parent 5089: MISSING. w07 tool failure: board has no tr, the cat|tr|grep pipeline returned env_rc=1 (not evidence of absence). My next step that reported environment-derived content was stopped by a safety classifier, so I did not retry any environ read. Historical W-02 run.sh copies are not used as live evidence.",
+  "parent_lifecycle": {
+   "start-parent.sh": {
+    "alias": "benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-01/deploy-package-r3-root/payload/start-parent.sh",
+    "sha256": "e00e5889283de3ee63038a85e6ea7a9a2d7cb765da30e8c800bbfa551d21f910",
+    "size": 1988,
+    "line_9": "[ ! -e \"$AUTH_SOCKET\" ] || fail EXISTING_SOCKET_NO_TAKEOVER (parent created once, at bootstrap)"
+   },
+   "real-start-parent-bounded.sh": {
+    "alias": "benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-01/deploy-package-r3-root/payload/real-start-parent-bounded.sh",
+    "sha256": "f77f0f70dd1b64c3cea2260390c7eda7216562632703983c9210bd698869ed4d",
+    "size": 866,
+    "line_9": "sed rewrites export WL_PARENT_ID=<current host WID> in run.sh before the parent launch"
+   },
+   "real-spawn.sh": {
+    "alias": "benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-01/deploy-package-r3-root/payload/real-spawn.sh",
+    "sha256": "46337ba8364d871c19fb077e29a4087f37921bf609c70e9f3c1f98e1fff124a3",
+    "size": 207,
+    "note": "host_spawn request to the existing socket only; no WID rebind"
+   }
+  }
+ },
+ "not_claimed": [
+  "user close action killed the child",
+  "guardian died or crashed",
+  "Genshin/other app involvement"
+ ],
+ "screenshots": [
+  {
+   "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/shots/61b-white-1.jpeg",
+   "sha256": "18b18c67cf141bd97741ef68cbc235922dab1d2feec6d3358cfa0360767690ea",
+   "size": 37198,
+   "device_epoch": "1792570713.449265713"
+  },
+  {
+   "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/shots/61b-white-2.jpeg",
+   "sha256": "18b18c67cf141bd97741ef68cbc235922dab1d2feec6d3358cfa0360767690ea",
+   "size": 37198,
+   "device_epoch": "1792570716.513038673"
+  },
+  {
+   "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/shots/61b-white-3.jpeg",
+   "sha256": "18b18c67cf141bd97741ef68cbc235922dab1d2feec6d3358cfa0360767690ea",
+   "size": 37198,
+   "device_epoch": "1792570719.566188170"
+  }
+ ],
+ "command_receipts": [
+  {
+   "id": "s-1-recv",
+   "argv": [
+    "gtimeout",
+    "30",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "file",
+    "recv",
+    "/data/local/tmp/t35-diag.jpeg",
+    "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/shots/61b-white-1.jpeg"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-1-recv.argv.json",
+     "sha256": "3f16295fe5b221906dbccae8bc492771b1ca78ccc0e69c9a296a0da4ab8ebb1a",
+     "size": 228
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-1-recv.stdout",
+     "sha256": "85e65f188de3db40252e6387337f49ea68f5576c769e821bc04a9ca56f80bd78",
+     "size": 76
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-1-recv.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-1-recv.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "s-1-snap",
+   "argv": [
+    "gtimeout",
+    "30",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "date +%s.%N; snapshot_display -f /data/local/tmp/t35-diag.jpeg"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-1-snap.argv.json",
+     "sha256": "a7c80e158592492b7ea3962f1af29e250de57c11ab3ad7cdb887d9c6f83d6dd2",
+     "size": 143
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-1-snap.stdout",
+     "sha256": "5cc2a4658f37ec856339c3ef6d34ff489c1511c7be628269a9f8e8a1d274e45e",
+     "size": 295
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-1-snap.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-1-snap.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "s-2-recv",
+   "argv": [
+    "gtimeout",
+    "30",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "file",
+    "recv",
+    "/data/local/tmp/t35-diag.jpeg",
+    "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/shots/61b-white-2.jpeg"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-2-recv.argv.json",
+     "sha256": "8f6ee60d600e6a7e39bb3b07e07a8c05616b6e78e192d902739a0e61603dd4f1",
+     "size": 228
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-2-recv.stdout",
+     "sha256": "2353f5a977f2fa62d2e263377aa70ef056fef350fc6c8d89b02e2596ea66e307",
+     "size": 76
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-2-recv.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-2-recv.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "s-2-snap",
+   "argv": [
+    "gtimeout",
+    "30",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "date +%s.%N; snapshot_display -f /data/local/tmp/t35-diag.jpeg"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-2-snap.argv.json",
+     "sha256": "a7c80e158592492b7ea3962f1af29e250de57c11ab3ad7cdb887d9c6f83d6dd2",
+     "size": 143
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-2-snap.stdout",
+     "sha256": "0859d858a7749a1f3c3d4d908b0c37c765531fa5fa90c165bb65e31dc3839043",
+     "size": 295
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-2-snap.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-2-snap.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "s-3-recv",
+   "argv": [
+    "gtimeout",
+    "30",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "file",
+    "recv",
+    "/data/local/tmp/t35-diag.jpeg",
+    "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/shots/61b-white-3.jpeg"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-3-recv.argv.json",
+     "sha256": "7331300fc17c3ffe2bea4556606805b4fdf041932c5cac2b87422ec58c83d796",
+     "size": 228
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-3-recv.stdout",
+     "sha256": "3fc1806d963b4a16cc663f305d8d89cb68b420c89105b7f9990b3132f4317a3b",
+     "size": 76
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-3-recv.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-3-recv.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "s-3-snap",
+   "argv": [
+    "gtimeout",
+    "30",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "date +%s.%N; snapshot_display -f /data/local/tmp/t35-diag.jpeg"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-3-snap.argv.json",
+     "sha256": "a7c80e158592492b7ea3962f1af29e250de57c11ab3ad7cdb887d9c6f83d6dd2",
+     "size": 143
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-3-snap.stdout",
+     "sha256": "0b40c585ee8126155e8c6279b9549fd7664db4bbea6ff6764c32132dc757f4ff",
+     "size": 295
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-3-snap.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/s-3-snap.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "w00-held",
+   "argv": [
+    "bash",
+    "$HOME/orca/workspaces/westlake-harness/scripts/lab/board_note.sh",
+    "held",
+    "61b0657200000000000000000324012c"
+   ],
+   "rc": 1,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w00-held.argv.json",
+     "sha256": "e2613002f61d5385a35baa647b99aa1eb95a03ef2aad91a974ce727f55f5859b",
+     "size": 130
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w00-held.stdout",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w00-held.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w00-held.rc",
+     "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "w01-id",
+   "argv": [
+    "gtimeout",
+    "30",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "cat /proc/sys/kernel/random/boot_id; cat /proc/uptime; date +%s; power-shell dump -s | grep -E 'Current State|ScreenOffTime'; ps -A -o PID,PPID,UID,NAME"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w01-id.argv.json",
+     "sha256": "44d0e72b66e581e04a88305016d0be33257b71a8c0cf6512223d06e95a7c49b3",
+     "size": 233
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w01-id.stdout",
+     "sha256": "ee1fc7e253e8ddd20466cf4e4f4726f2ac386767affab8d7544389df91d6b9a0",
+     "size": 12104
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w01-id.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w01-id.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "w02-stats",
+   "argv": [
+    "gtimeout",
+    "40",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "cat /proc/sys/kernel/random/boot_id; for p in 4016 5089 16295 17699 22069 22915 951; do echo \"== $p\"; cut -d' ' -f1-4,22 /proc/$p/stat 2>&1; readlink /proc/$p/exe 2>&1; cat /proc/$p/cmdline 2>&1; echo; done"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w02-stats.argv.json",
+     "sha256": "5f0fc76d953f4b1d5630d33da48062eb789bd675374add586086285be7303cbd",
+     "size": 289
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w02-stats.stdout",
+     "sha256": "113e34fb3d1c605512c855f49d161fc9c2c276463d50ebfe311fde65c42bc866",
+     "size": 632
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w02-stats.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w02-stats.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "w03-wms",
+   "argv": [
+    "gtimeout",
+    "40",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "hidumper -s WindowManagerService -a '-a'"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w03-wms.argv.json",
+     "sha256": "657d3b70530789f27573ca910678997da4d98c66c56f8da8f729494b37a920aa",
+     "size": 121
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w03-wms.stdout",
+     "sha256": "6835150d74ce78b5516e8c62ea7e03a3b857fab3a2e62a4976a2011382409ff6",
+     "size": 3775
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w03-wms.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w03-wms.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "w04-guardian",
+   "argv": [
+    "gtimeout",
+    "40",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "echo BOOT=$(cat /proc/sys/kernel/random/boot_id); cat /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/boots/be4badc3-5a79-4fa8-8758-e6aacc0ca05f/state; echo STATE_RC=$?; ls -la /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/boots/be4badc3-5a79-4fa8-8758-e6aacc0ca05f 2>&1; for p in 4016 4834 5089 7140 22069; do r=$(cat /proc/$p/stat 2>/dev/null) || { echo \"pid=$p ABSENT\"; continue; }; z=${r##*) }; set -- $z; echo \"pid=$p state=$1 birth=${20}\"; done"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w04-guardian.argv.json",
+     "sha256": "a79cc8131d2f9579d64a1c39246f51d9bd153647ce1a48ce86f2b690d96295a2",
+     "size": 581
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w04-guardian.stdout",
+     "sha256": "bcbe4ffd460d24b3ccf0f4d5cef1f5eabba55b295a72440cb153b34b851028dd",
+     "size": 2147
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w04-guardian.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w04-guardian.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "w05-events",
+   "argv": [
+    "gtimeout",
+    "30",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "cat /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/boots/be4badc3-5a79-4fa8-8758-e6aacc0ca05f/events.log; echo ===STATE; cat /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/boots/be4badc3-5a79-4fa8-8758-e6aacc0ca05f/state; cat /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/boots/be4badc3-5a79-4fa8-8758-e6aacc0ca05f/sequence; echo ===WMSFOCUS; cat /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/boots/be4badc3-5a79-4fa8-8758-e6aacc0ca05f/wms-focus.txt | grep -E 'Focus|imehost' "
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w05-events.argv.json",
+     "sha256": "7ef8f66b16faa5d8b67ed2f2a75120b5a163f24b2fdf537fcebc0a9e0a209738",
+     "size": 651
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w05-events.stdout",
+     "sha256": "6deea0d6cd53c2636210fd511d9ee7a17478b1202c974f3fa40e6217193771eb",
+     "size": 1907
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w05-events.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w05-events.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "w06-ps2",
+   "argv": [
+    "gtimeout",
+    "30",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "date +%s; ps -A -o PID,PPID,UID,NAME | grep -E 'appspawn|imehost|article| sh$'"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w06-ps2.argv.json",
+     "sha256": "dbf2ddbb3bda8348c31fbea171f56fcb4744172eb0648b2ff0a49e0932f46b13",
+     "size": 159
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w06-ps2.stdout",
+     "sha256": "e95044e133d40426855fe5c187cd25b552016abd3d16d57c7c831174f0fa5284",
+     "size": 266
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w06-ps2.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w06-ps2.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  },
+  {
+   "id": "w07-guard-detail",
+   "argv": [
+    "gtimeout",
+    "40",
+    "hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "echo BOOT=$(cat /proc/sys/kernel/random/boot_id); echo ==instance; cat /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/boots/be4badc3-5a79-4fa8-8758-e6aacc0ca05f/instance.txt; echo ==parent-identity; cat /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/boots/be4badc3-5a79-4fa8-8758-e6aacc0ca05f/parent-identity; cat /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/boots/be4badc3-5a79-4fa8-8758-e6aacc0ca05f/parent-start.txt; echo ==spawn.txt; cat /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/boots/be4badc3-5a79-4fa8-8758-e6aacc0ca05f/spawn.txt; echo ==snapshot.log; tail -5 /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/boots/be4badc3-5a79-4fa8-8758-e6aacc0ca05f/snapshot.log; echo ==7140; cat /proc/7140/stat 2>&1 | cut -c1-80; echo ==5089env; cat /proc/5089/environ 2>&1 | tr '\\000' '\\n' 2>/dev/null | grep -E '^(WL_PARENT_ID|WL_HOST|WESTLAKE_HOST|.*HOST.*|.*PARENT.*)=' ; echo env_rc=$?; echo ==uids; for p in 23975 24065 24602; do r=$(cat /proc/$p/stat 2>/dev/null) || { echo pid=$p ABSENT; continue; }; z=${r##*) }; set -- $z; echo pid=$p ppid=$2 birth=${20}; done; bm dump -n com.ss.android.article.news 2>&1 | grep -E '\"uid\"|\"appIndex\"' | head -3"
+   ],
+   "rc": 0,
+   "raw_refs": [
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w07-guard-detail.argv.json",
+     "sha256": "c5f40b21ea6a8bde61791c7a55a4f4837a8000345b72d3f0f85f434e2d9dfb8b",
+     "size": 1356
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w07-guard-detail.stdout",
+     "sha256": "93796e803861efa23add2f6cd57fd28dda6d82839c169c445e550f27cb1b9dba",
+     "size": 1062
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w07-guard-detail.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$HOME/.local/share/westlake/manual-video-regression-20261021/whitescreen-01/raw/w07-guard-detail.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ]
+  }
+ ]
+}
