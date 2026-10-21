@@ -1,0 +1,44 @@
+--- benchmark/2026-10-21-t34-demo61b-video/guardian-deployment-01/deploy.py	2026-10-21 15:45:06
++++ benchmark/2026-10-21-manual-video-regression/host-reentry-window/deployment/deploy.py	2026-10-21 17:30:25
+@@ -12,7 +12,7 @@
+ 
+ SERIAL = '61b0657200000000000000000324012c'
+ CFG = '/system/etc/init/01_westlake_u13_toutiao.cfg'
+-OLD_ROOT = '/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r2'
++OLD_ROOT = '/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3'
+ q = shlex.quote
+ 
+ def sha(p):
+@@ -34,7 +34,7 @@
+     require(path.is_file(), 'source missing')
+     return path
+ 
+-def validate(plan, folder):
++def validate(plan, folder, authority=True):
+     require(plan['serial'] == SERIAL and plan['cfg'] == CFG, 'target scope')
+     uuid(plan['boot'])
+     root = plan['root']
+@@ -59,7 +59,12 @@
+     require(re.findall(r'^ROOT=[\"\']?([^\"\'\s]+)[\"\']?$', (folder/'payload/config-common.sh').read_text(), re.M) == [root], 'config root mismatch')
+     require(sha(folder/'payload/startup.env') == (folder/'payload/startup.expected.sha256').read_text().strip(), 'startup signature')
+     startup = dict(re.findall(r"^([A-Z0-9_]+)='([^']*)'$", (folder/'payload/startup.env').read_text(), re.M))
+-    require(startup.get('STARTUP_APPROVED_BY') == 'outer(codex)' and startup.get('STARTUP_ENABLED') == '1' and startup.get('STARTUP_SERIAL') == SERIAL, 'startup authority')
++    require(startup.get('STARTUP_SERIAL') == SERIAL, 'startup serial')
++    # T38: preparation may produce a reviewable DISABLED plan; execution always requires outer authority.
++    if authority:
++        require(startup.get('STARTUP_APPROVED_BY') == 'outer(codex)' and startup.get('STARTUP_ENABLED') == '1', 'startup authority')
++    else:
++        require((startup.get('STARTUP_APPROVED_BY'),startup.get('STARTUP_ENABLED')) in (('outer(codex)','1'),('DISABLED-PENDING-OUTER','0')), 'startup state')
+     require(startup.get('STARTUP_MEMBERS_SHA') == sha(folder/'payload/members.tsv'), 'member manifest binding')
+     by_name = {r['name']:r for r in plan['files']}
+     seen = set()
+@@ -70,7 +75,8 @@
+         require(by_name[name]['sha256'] == digest and by_name[name]['mode'] == mode, 'manifest hash or mode')
+     required_members={'entry.sh','watchdog.sh','config-common.sh','route-b-owner.sh','launch-common.sh','real-start-parent.sh','real-spawn.sh','start-parent.sh','spawn.sh','screen-gate','decoder-probe.jpeg','real-start-parent-bounded.sh','readiness-probe.sh','reentry-common.sh','reentry-seams.sh','exit-verdict.sh'}
+     require(required_members <= seen,'missing boot-copy member')
+-    for key,name in [('STARTUP_DECODER_SHA','screen-gate'),('STARTUP_PROBE_SHA','decoder-probe.jpeg')]:
++    # T38 (peer INITIAL-REVIEW finding 2): the bounded start-parent leaf is checked here too.
++    for key,name in [('STARTUP_DECODER_SHA','screen-gate'),('STARTUP_PROBE_SHA','decoder-probe.jpeg'),('STARTUP_START_PARENT_SHA','real-start-parent-bounded.sh')]:
+         require(startup.get(key)==by_name[name]['sha256'],'startup leaf '+name)
+     entry=(folder/'payload/entry.sh').read_text()
+     for name in ('watchdog.sh','route-b-owner.sh'):
