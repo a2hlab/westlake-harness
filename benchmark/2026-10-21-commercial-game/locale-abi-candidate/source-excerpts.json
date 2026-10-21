@@ -1,0 +1,2296 @@
+[
+  {
+    "path": "$REPO/benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/anl/app_native_loader.c",
+    "sha256": "946064aac445faff916d83d000f285c014bed3e6b5e23612884a73a085e52c41",
+    "bytes": 21918,
+    "lines": [
+      {
+        "line": 63,
+        "text": "static bool native_cluster_path(const char* text) {"
+      },
+      {
+        "line": 64,
+        "text": "    const char* packages[] = {\"com.ichi2.anki\", \"com.unciv.app\", \"app.organicmaps\","
+      },
+      {
+        "line": 65,
+        "text": "        \"com.nextcloud.client\", \"com.mcdonalds.app\", \"io.anuke.mindustry\","
+      },
+      {
+        "line": 66,
+        "text": "        \"com.emn8.mobilem8.nativeapp.bk\", \"im.vector.app\","
+      },
+      {
+        "line": 67,
+        "text": "        \"org.mozilla.firefox\", \"org.mozilla.fennec_fdroid\", \"org.videolan.vlc\", \"org.ppsspp.ppsspp\", \"com.shatteredpixel.shatteredpixeldungeon\", \"com.miHoYo.Yuanshen\"};"
+      },
+      {
+        "line": 68,
+        "text": "    for (size_t i=0; i<sizeof(packages)/sizeof(packages[0]); ++i) {"
+      },
+      {
+        "line": 69,
+        "text": "        const char* q=text;"
+      },
+      {
+        "line": 70,
+        "text": "        while ((q=strstr(q, packages[i])) != NULL) {"
+      },
+      {
+        "line": 71,
+        "text": "            size_t n=strlen(packages[i]);"
+      },
+      {
+        "line": 72,
+        "text": "            if ((q==text || q[-1]=='/') && (q[n]=='/' || q[n]==':' || q[n]=='\\0')) return true;"
+      },
+      {
+        "line": 73,
+        "text": "            q+=n;"
+      },
+      {
+        "line": 74,
+        "text": "        }"
+      },
+      {
+        "line": 75,
+        "text": "    }"
+      },
+      {
+        "line": 76,
+        "text": "    return false;"
+      },
+      {
+        "line": 77,
+        "text": "}"
+      },
+      {
+        "line": 78,
+        "text": ""
+      },
+      {
+        "line": 79,
+        "text": "/* G26: exact package component, matching the existing selector boundaries. */"
+      },
+      {
+        "line": 80,
+        "text": "static bool genshin_package_path(const char* text) {"
+      },
+      {
+        "line": 81,
+        "text": "    const char* package = \"com.miHoYo.Yuanshen\";"
+      },
+      {
+        "line": 82,
+        "text": "    const size_t n = strlen(package);"
+      },
+      {
+        "line": 83,
+        "text": "    const char* p = text;"
+      },
+      {
+        "line": 84,
+        "text": "    while ((p = strstr(p, package)) != NULL) {"
+      },
+      {
+        "line": 85,
+        "text": "        if ((p == text || p[-1] == '/') &&"
+      },
+      {
+        "line": 86,
+        "text": "            (p[n] == '/' || p[n] == ':' || p[n] == '\\0')) return true;"
+      },
+      {
+        "line": 87,
+        "text": "        p += n;"
+      },
+      {
+        "line": 88,
+        "text": "    }"
+      },
+      {
+        "line": 89,
+        "text": "    return false;"
+      },
+      {
+        "line": 90,
+        "text": "}"
+      },
+      {
+        "line": 446,
+        "text": "void* ANL_Dlopen(AnlDomain* domain, const char* path, int mode) {"
+      },
+      {
+        "line": 447,
+        "text": "    if (domain == NULL || !path_is_in_app_domain(domain, path)) {"
+      },
+      {
+        "line": 448,
+        "text": "        failf(\"path is outside app domain: %s\", path == NULL ? \"(null)\" : path);"
+      },
+      {
+        "line": 449,
+        "text": "        return NULL;"
+      },
+      {
+        "line": 450,
+        "text": "    }"
+      },
+      {
+        "line": 451,
+        "text": "    if ((mode & RTLD_GLOBAL) != 0) {"
+      },
+      {
+        "line": 452,
+        "text": "        failf(\"RTLD_GLOBAL is forbidden for app domains\");"
+      },
+      {
+        "line": 453,
+        "text": "        return NULL;"
+      },
+      {
+        "line": 454,
+        "text": "    }"
+      },
+      {
+        "line": 455,
+        "text": "    if (verify_runtime_ready(&domain->runtime_gate, \"dlopen\") != 0) {"
+      },
+      {
+        "line": 456,
+        "text": "        return NULL;"
+      },
+      {
+        "line": 457,
+        "text": "    }"
+      },
+      {
+        "line": 458,
+        "text": "    pthread_mutex_lock(&domain->flutter_mutex);"
+      },
+      {
+        "line": 459,
+        "text": "    const char* base = strrchr(path, '/');"
+      },
+      {
+        "line": 460,
+        "text": "    base = base == NULL ? path : base + 1;"
+      },
+      {
+        "line": 461,
+        "text": "    if (strcmp(base, \"libflutter.so\") == 0 &&"
+      },
+      {
+        "line": 462,
+        "text": "        (flutter_package_path(path) || flutter_package_path(domain->app_paths) ||"
+      },
+      {
+        "line": 463,
+        "text": "         flutter_package_path(domain->app_permitted_paths))) domain->flutter_selected = true;"
+      },
+      {
+        "line": 464,
+        "text": "    if (!domain->flutter_selected &&"
+      },
+      {
+        "line": 465,
+        "text": "        (native_cluster_path(path) || native_cluster_path(domain->app_paths) ||"
+      },
+      {
+        "line": 466,
+        "text": "         native_cluster_path(domain->app_permitted_paths))) domain->native_selected = true;"
+      },
+      {
+        "line": 467,
+        "text": "    if (!domain->flutter_selected &&"
+      },
+      {
+        "line": 468,
+        "text": "        (genshin_package_path(path) || genshin_package_path(domain->app_paths) ||"
+      },
+      {
+        "line": 469,
+        "text": "         genshin_package_path(domain->app_permitted_paths))) domain->genshin_selected = true;"
+      },
+      {
+        "line": 470,
+        "text": "    bool selected = domain->flutter_selected || domain->native_selected;"
+      },
+      {
+        "line": 471,
+        "text": "    if (selected && domain->flutter_state == 0 && path[0] == '/') {"
+      },
+      {
+        "line": 472,
+        "text": "        const char* slash = strrchr(path, '/');"
+      },
+      {
+        "line": 473,
+        "text": "        size_t length = slash == NULL ? 0 : (size_t)(slash - path);"
+      },
+      {
+        "line": 474,
+        "text": "        if (length >= sizeof(domain->selected_load_dir)) {"
+      },
+      {
+        "line": 475,
+        "text": "            pthread_mutex_unlock(&domain->flutter_mutex);"
+      },
+      {
+        "line": 476,
+        "text": "            failf(\"selected native load directory exceeds limits\");"
+      },
+      {
+        "line": 477,
+        "text": "            return NULL;"
+      },
+      {
+        "line": 478,
+        "text": "        }"
+      },
+      {
+        "line": 479,
+        "text": "        memcpy(domain->selected_load_dir, path, length);"
+      },
+      {
+        "line": 480,
+        "text": "        domain->selected_load_dir[length] = '\\0';"
+      },
+      {
+        "line": 481,
+        "text": "    }"
+      },
+      {
+        "line": 482,
+        "text": "    int prepared = selected ? flutter_prepare(domain) : 0;"
+      },
+      {
+        "line": 483,
+        "text": "    pthread_mutex_unlock(&domain->flutter_mutex);"
+      },
+      {
+        "line": 484,
+        "text": "    if (prepared != 0) return NULL;"
+      },
+      {
+        "line": 485,
+        "text": "    dlerror();"
+      },
+      {
+        "line": 486,
+        "text": "    void* handle = selected"
+      },
+      {
+        "line": 487,
+        "text": "        ? domain->runtime_gate.namespace_host_ops.open_namespace("
+      },
+      {
+        "line": 488,
+        "text": "            &domain->flutter, path, mode | RTLD_LOCAL)"
+      },
+      {
+        "line": 489,
+        "text": "        : domain->runtime_gate.namespace_host_ops.open_namespace("
+      },
+      {
+        "line": 490,
+        "text": "            &domain->app, path, mode | RTLD_LOCAL);"
+      },
+      {
+        "line": 491,
+        "text": "    if (handle == NULL) {"
+      },
+      {
+        "line": 492,
+        "text": "        const char* error = dlerror();"
+      },
+      {
+        "line": 493,
+        "text": "        failf(\"%s: dlopen_ns failed for %s: %s\", classify_load_error(error),"
+      },
+      {
+        "line": 494,
+        "text": "              path,"
+      },
+      {
+        "line": 495,
+        "text": "              error == NULL ? \"linker produced no diagnostic\" : error);"
+      },
+      {
+        "line": 496,
+        "text": "    } else {"
+      },
+      {
+        "line": 497,
+        "text": "        g_error[0] = '\\0';"
+      },
+      {
+        "line": 498,
+        "text": "    }"
+      },
+      {
+        "line": 499,
+        "text": "    return handle;"
+      },
+      {
+        "line": 500,
+        "text": "}"
+      }
+    ]
+  },
+  {
+    "path": "$REPO/benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/anl/flutter_domain.inc",
+    "sha256": "7422698e38f40f0a26e583d602c8826f5d7c4fb47059e1c114b4d3d825fdd99f",
+    "bytes": 4183,
+    "lines": [
+      {
+        "line": 18,
+        "text": "static int flutter_prepare(AnlDomain* domain) {"
+      },
+      {
+        "line": 19,
+        "text": "    if (domain->flutter_state != 0) return domain->flutter_state == 1 ? 0 : -1;"
+      },
+      {
+        "line": 20,
+        "text": "    domain->flutter_state = -1;"
+      },
+      {
+        "line": 21,
+        "text": "    if (!domain->has_bridge) return failf(\"Flutter pthread bridge configuration missing\");"
+      },
+      {
+        "line": 22,
+        "text": "    const char* private_root = domain->flutter_selected"
+      },
+      {
+        "line": 23,
+        "text": "        ? \"/system/android/lib64/westlake_flutter\" : \"/system/android/lib64/westlake_native\";"
+      },
+      {
+        "line": 24,
+        "text": "    char app_name[NS_NAME_MAX + 1], bridge_name[NS_NAME_MAX + 1];"
+      },
+      {
+        "line": 25,
+        "text": "    char search[3 * PATH_MAX], permitted[4 * PATH_MAX];"
+      },
+      {
+        "line": 26,
+        "text": "    unsigned long id = atomic_fetch_add_explicit(&g_domain_id, 1, memory_order_relaxed);"
+      },
+      {
+        "line": 27,
+        "text": "    /* Exact owned-name grammar required by the existing stock-host callbacks. */"
+      },
+      {
+        "line": 28,
+        "text": "    snprintf(app_name, sizeof(app_name), \"westlake.anl.app.%ld.%lu\", (long)getpid(), id);"
+      },
+      {
+        "line": 29,
+        "text": "    snprintf(bridge_name, sizeof(bridge_name), \"westlake.anl.bridge.%ld.%lu\", (long)getpid(), id);"
+      },
+      {
+        "line": 30,
+        "text": "    if (snprintf(search, sizeof(search), \"%s:%s%s%s\", private_root, domain->app_paths, domain->selected_load_dir[0] ? \":\" : \"\", domain->selected_load_dir) >= (int)sizeof(search) ||"
+      },
+      {
+        "line": 31,
+        "text": "        snprintf(permitted, sizeof(permitted), \"%s:%s:%s%s%s\", private_root,"
+      },
+      {
+        "line": 32,
+        "text": "                 domain->app_paths, domain->app_permitted_paths, domain->selected_load_dir[0] ? \":\" : \"\", domain->selected_load_dir) >= (int)sizeof(permitted))"
+      },
+      {
+        "line": 33,
+        "text": "        return failf(\"Flutter namespace paths exceed limits\");"
+      },
+      {
+        "line": 34,
+        "text": ""
+      },
+      {
+        "line": 35,
+        "text": "    /* Host owns all namespace operations in default. Its existing bridge has"
+      },
+      {
+        "line": 36,
+        "text": "     * CREATE_INHERIT_DEFAULT; the app gets only this explicit shared-name list."
+      },
+      {
+        "line": 37,
+        "text": "     * Do not call dlns_* directly from the sealed ANL DSO. */"
+      },
+      {
+        "line": 38,
+        "text": "    const char* shared ="
+      },
+      {
+        "line": 39,
+        "text": "        \"libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:\""
+      },
+      {
+        "line": 40,
+        "text": "        \"liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:\""
+      },
+      {
+        "line": 41,
+        "text": "        \"libwestlake_bionic_pthread_bridge.so\";"
+      },
+      {
+        "line": 42,
+        "text": "    /* Exact app -> bridge inheritance; no new owner or GLOBAL publication. */"
+      },
+      {
+        "line": 43,
+        "text": "    if (!domain->flutter_selected && domain->genshin_selected)"
+      },
+      {
+        "line": 44,
+        "text": "        shared = \"libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:\""
+      },
+      {
+        "line": 45,
+        "text": "                 \"liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:\""
+      },
+      {
+        "line": 46,
+        "text": "                 \"libwestlake_bionic_pthread_bridge.so:libmediandk.so\";"
+      },
+      {
+        "line": 47,
+        "text": "    int rc = domain->runtime_gate.namespace_host_ops.create_configured_namespaces("
+      },
+      {
+        "line": 48,
+        "text": "        &domain->flutter_bridge, bridge_name,"
+      },
+      {
+        "line": 49,
+        "text": "        domain->flutter_bridge_search, domain->flutter_bridge_permitted, shared,"
+      },
+      {
+        "line": 50,
+        "text": "        \"libwestlake_bionic_pthread_bridge.so\", &domain->runtime_gate.pthread_bridge_ops,"
+      },
+      {
+        "line": 51,
+        "text": "        &domain->flutter_bootstrap_handle, &domain->flutter, app_name, search, permitted);"
+      },
+      {
+        "line": 52,
+        "text": "    if (rc != 0) return failf(\"Flutter default-owner namespace configuration failed: %d\", rc);"
+      },
+      {
+        "line": 53,
+        "text": "    const char* preload[] = {\"libandroid.so\", \"libGLESv2.so\", \"libjnigraphics.so\"};"
+      },
+      {
+        "line": 54,
+        "text": "    for (size_t i = 0; domain->flutter_selected && i < sizeof(preload)/sizeof(preload[0]); ++i) {"
+      },
+      {
+        "line": 55,
+        "text": "        domain->flutter_handles[i] = domain->runtime_gate.namespace_host_ops.open_namespace("
+      },
+      {
+        "line": 56,
+        "text": "            &domain->flutter, preload[i], RTLD_NOW | RTLD_LOCAL);"
+      },
+      {
+        "line": 57,
+        "text": "        if (domain->flutter_handles[i] == NULL)"
+      },
+      {
+        "line": 58,
+        "text": "            return failf(\"Flutter private preload %s: %s\", preload[i], dlerror());"
+      },
+      {
+        "line": 59,
+        "text": "    }"
+      },
+      {
+        "line": 60,
+        "text": "    domain->flutter_state = 1;"
+      },
+      {
+        "line": 61,
+        "text": "    fprintf(stderr, \"[ANL-N2] kind=%s namespace=%s search=%s permitted=%s; providers ready\\n\", domain->flutter_selected ? \"flutter\" : \"native\", app_name, search, permitted);"
+      },
+      {
+        "line": 62,
+        "text": "    return 0;"
+      }
+    ]
+  },
+  {
+    "path": "$REPO/benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/host/candidate-stock-host.c",
+    "sha256": "ea50c2d052c9f53d653cb3691726304b54fc33494427d1326c5ad47113505c20",
+    "bytes": 27836,
+    "lines": [
+      {
+        "line": 184,
+        "text": "        dlns_init(bridge_namespace, bridge_name);"
+      },
+      {
+        "line": 185,
+        "text": "        result = dlns_create2(bridge_namespace, bridge_search_paths,"
+      },
+      {
+        "line": 186,
+        "text": "                              CREATE_INHERIT_DEFAULT);"
+      },
+      {
+        "line": 187,
+        "text": "        if (result != 0) {"
+      },
+      {
+        "line": 188,
+        "text": "            return NamespaceResultFence(result);"
+      },
+      {
+        "line": 189,
+        "text": "        }"
+      },
+      {
+        "line": 190,
+        "text": "        result = dlns_set_namespace_separated(bridge_namespace->name, true);"
+      },
+      {
+        "line": 191,
+        "text": "        if (result != 0) {"
+      },
+      {
+        "line": 192,
+        "text": "            return NamespaceResultFence(result);"
+      },
+      {
+        "line": 193,
+        "text": "        }"
+      },
+      {
+        "line": 194,
+        "text": "        result = dlns_set_namespace_permitted_paths("
+      },
+      {
+        "line": 195,
+        "text": "            bridge_namespace->name, bridge_permitted_paths);"
+      },
+      {
+        "line": 196,
+        "text": "        if (result != 0) {"
+      },
+      {
+        "line": 197,
+        "text": "            return NamespaceResultFence(result);"
+      },
+      {
+        "line": 198,
+        "text": "        }"
+      },
+      {
+        "line": 199,
+        "text": "        result = dlns_set_namespace_allowed_libs("
+      },
+      {
+        "line": 200,
+        "text": "            bridge_namespace->name, bridge_shared_sonames);"
+      },
+      {
+        "line": 201,
+        "text": "        if (result != 0) {"
+      },
+      {
+        "line": 202,
+        "text": "            return NamespaceResultFence(result);"
+      },
+      {
+        "line": 203,
+        "text": "        }"
+      },
+      {
+        "line": 204,
+        "text": ""
+      },
+      {
+        "line": 205,
+        "text": "        if (bridge_bootstrap_soname != NULL) {"
+      },
+      {
+        "line": 206,
+        "text": "            typedef int (*InstallBridgeOps)(const WlpbHostOpsV1 *ops);"
+      },
+      {
+        "line": 207,
+        "text": "            InstallBridgeOps install = NULL;"
+      },
+      {
+        "line": 208,
+        "text": "            void *symbol;"
+      },
+      {
+        "line": 209,
+        "text": ""
+      },
+      {
+        "line": 210,
+        "text": "            dlerror();"
+      },
+      {
+        "line": 211,
+        "text": "            bootstrap_handle = dlopen_ns("
+      },
+      {
+        "line": 212,
+        "text": "                bridge_namespace, bridge_bootstrap_soname,"
+      },
+      {
+        "line": 213,
+        "text": "                RTLD_NOW | RTLD_LOCAL);"
+      },
+      {
+        "line": 214,
+        "text": "            if (bootstrap_handle == NULL) {"
+      },
+      {
+        "line": 215,
+        "text": "                return NamespaceResultFence(ENOENT);"
+      },
+      {
+        "line": 216,
+        "text": "            }"
+      },
+      {
+        "line": 217,
+        "text": "            dlerror();"
+      },
+      {
+        "line": 218,
+        "text": "            symbol = dlsym(bootstrap_handle, \"WLPB_InstallHostOps\");"
+      },
+      {
+        "line": 219,
+        "text": "            if (symbol == NULL || dlerror() != NULL ||"
+      },
+      {
+        "line": 220,
+        "text": "                sizeof(symbol) != sizeof(install)) {"
+      },
+      {
+        "line": 221,
+        "text": "                (void)dlclose(bootstrap_handle);"
+      },
+      {
+        "line": 222,
+        "text": "                return NamespaceResultFence(ENOEXEC);"
+      },
+      {
+        "line": 223,
+        "text": "            }"
+      },
+      {
+        "line": 224,
+        "text": "            (void)memcpy(&install, &symbol, sizeof(install));"
+      },
+      {
+        "line": 225,
+        "text": "            result = install(pthread_bridge_ops);"
+      },
+      {
+        "line": 226,
+        "text": "            if (result != 0) {"
+      },
+      {
+        "line": 227,
+        "text": "                (void)dlclose(bootstrap_handle);"
+      },
+      {
+        "line": 228,
+        "text": "                return NamespaceResultFence(result);"
+      },
+      {
+        "line": 229,
+        "text": "            }"
+      },
+      {
+        "line": 234,
+        "text": "    const char* u11_original_search = app_search_paths;"
+      },
+      {
+        "line": 235,
+        "text": "    char u11_search[4 * PATH_MAX], u11_permitted[5 * PATH_MAX];"
+      },
+      {
+        "line": 236,
+        "text": "    const char* u11_zlib_root = U11ZlibRoot(app_search_paths, app_permitted_paths);"
+      },
+      {
+        "line": 237,
+        "text": "    if (u11_zlib_root != NULL) {"
+      },
+      {
+        "line": 238,
+        "text": "        int search_length = snprintf(u11_search, sizeof(u11_search), \"%s:%s\", u11_zlib_root, app_search_paths);"
+      },
+      {
+        "line": 239,
+        "text": "        int permitted_length = snprintf(u11_permitted, sizeof(u11_permitted), \"%s:%s\", u11_zlib_root, app_permitted_paths);"
+      },
+      {
+        "line": 240,
+        "text": "        if (search_length < 0 || permitted_length < 0 ||"
+      },
+      {
+        "line": 241,
+        "text": "            search_length >= (int)sizeof(u11_search) || permitted_length >= (int)sizeof(u11_permitted))"
+      },
+      {
+        "line": 242,
+        "text": "            return NamespaceResultFence(ENAMETOOLONG);"
+      },
+      {
+        "line": 243,
+        "text": "        app_search_paths = u11_search;"
+      },
+      {
+        "line": 244,
+        "text": "        app_permitted_paths = u11_permitted;"
+      },
+      {
+        "line": 245,
+        "text": "    }"
+      },
+      {
+        "line": 246,
+        "text": "    dlns_init(app_namespace, app_name);"
+      },
+      {
+        "line": 247,
+        "text": "    result = dlns_create2(app_namespace, app_search_paths,"
+      },
+      {
+        "line": 248,
+        "text": "                          LOCAL_NS_PREFERED);"
+      },
+      {
+        "line": 249,
+        "text": "    if (result != 0) {"
+      },
+      {
+        "line": 250,
+        "text": "        return NamespaceResultFence(result);"
+      },
+      {
+        "line": 251,
+        "text": "    }"
+      },
+      {
+        "line": 252,
+        "text": "    result = dlns_set_namespace_separated(app_namespace->name, true);"
+      },
+      {
+        "line": 253,
+        "text": "    if (result != 0) {"
+      },
+      {
+        "line": 254,
+        "text": "        return NamespaceResultFence(result);"
+      },
+      {
+        "line": 255,
+        "text": "    }"
+      },
+      {
+        "line": 256,
+        "text": "    result = dlns_set_namespace_permitted_paths("
+      },
+      {
+        "line": 257,
+        "text": "        app_namespace->name, app_permitted_paths);"
+      },
+      {
+        "line": 258,
+        "text": "    if (result != 0) {"
+      },
+      {
+        "line": 259,
+        "text": "        return NamespaceResultFence(result);"
+      },
+      {
+        "line": 260,
+        "text": "    }"
+      },
+      {
+        "line": 261,
+        "text": "    /* Westlake OpenInAndroidNamespace: use a direct edge to the existing"
+      },
+      {
+        "line": 262,
+        "text": "     * owner. OH musl inheritance is one hop. Only the exact Flutter/native package lists with private search prefixes"
+      },
+      {
+        "line": 263,
+        "text": "     * request this branch; baseline control domains do not."
+      },
+      {
+        "line": 264,
+        "text": "     * No system search roots and no extra DFX/runtime instances in the app. */"
+      },
+      {
+        "line": 265,
+        "text": "    const bool flutter_private = wants_bridge &&"
+      },
+      {
+        "line": 266,
+        "text": "        strncmp(app_search_paths, \"/system/android/lib64/westlake_flutter:\","
+      },
+      {
+        "line": 267,
+        "text": "                strlen(\"/system/android/lib64/westlake_flutter:\")) == 0 &&"
+      },
+      {
+        "line": 268,
+        "text": "        (flutter_package_path(app_search_paths) || flutter_package_path(app_permitted_paths));"
+      },
+      {
+        "line": 269,
+        "text": "    const bool native_private = wants_bridge &&"
+      },
+      {
+        "line": 270,
+        "text": "        strncmp(u11_original_search, \"/system/android/lib64/westlake_native:\","
+      },
+      {
+        "line": 271,
+        "text": "                strlen(\"/system/android/lib64/westlake_native:\")) == 0 &&"
+      },
+      {
+        "line": 272,
+        "text": "        (native_cluster_path(app_search_paths) || native_cluster_path(app_permitted_paths));"
+      },
+      {
+        "line": 273,
+        "text": "    if (flutter_private || native_private) {"
+      },
+      {
+        "line": 274,
+        "text": "        Dl_namespace system_owner, runtime_owner;"
+      },
+      {
+        "line": 275,
+        "text": "        result = dlns_get(\"default\", &system_owner);"
+      },
+      {
+        "line": 276,
+        "text": "        if (result != 0) return NamespaceResultFence(result);"
+      },
+      {
+        "line": 277,
+        "text": "        result = dlns_get(\"westlake.sealed.child\", &runtime_owner);"
+      },
+      {
+        "line": 278,
+        "text": "        if (result != 0) return NamespaceResultFence(result);"
+      },
+      {
+        "line": 279,
+        "text": "        result = dlns_inherit(app_namespace, &system_owner,"
+      },
+      {
+        "line": 280,
+        "text": "            \"libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:libstdc++.so:libOpenSLES.so\");"
+      },
+      {
+        "line": 281,
+        "text": "        if (result != 0) return NamespaceResultFence(result);"
+      },
+      {
+        "line": 282,
+        "text": "        result = dlns_inherit(app_namespace, &runtime_owner,"
+      },
+      {
+        "line": 283,
+        "text": "            \"liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so\");"
+      },
+      {
+        "line": 284,
+        "text": "        if (result != 0) return NamespaceResultFence(result);"
+      },
+      {
+        "line": 285,
+        "text": "        const bool needs_runtime = flutter_private ||"
+      },
+      {
+        "line": 286,
+        "text": "            strstr(app_search_paths, \"/com.emn8.mobilem8.nativeapp.bk/\") ||"
+      },
+      {
+        "line": 287,
+        "text": "            strstr(app_search_paths, \"/com.mcdonalds.app/\") ||"
+      },
+      {
+        "line": 288,
+        "text": "            strstr(app_search_paths, \"/app.organicmaps/\") ||"
+      },
+      {
+        "line": 289,
+        "text": "            strstr(app_search_paths, \"/im.vector.app/\") ||"
+      },
+      {
+        "line": 290,
+        "text": "            strstr(app_search_paths, \"/org.ppsspp.ppsspp/\");"
+      },
+      {
+        "line": 291,
+        "text": "        if (needs_runtime) {"
+      },
+      {
+        "line": 292,
+        "text": "        /* real-work WLSCPL_InheritAndroidRuntimeV1 publishes the resident object"
+      },
+      {
+        "line": 293,
+        "text": "         * by exact absolute path after inheritance. Ordinary lookup follows lazy"
+      },
+      {
+        "line": 294,
+        "text": "         * owner edges. Device acceptance requires one runtime instance. */"
+      },
+      {
+        "line": 295,
+        "text": "        void* resident = dlopen_ns(app_namespace,"
+      },
+      {
+        "line": 296,
+        "text": "            \"/system/android/lib64/liboh_android_runtime.so\","
+      },
+      {
+        "line": 297,
+        "text": "            RTLD_NOW | RTLD_GLOBAL);"
+      },
+      {
+        "line": 298,
+        "text": "        if (resident == NULL) {"
+      },
+      {
+        "line": 299,
+        "text": "            APPSPAWN_LOGE(\"[N3-OWNER] resident runtime unavailable: %{public}s\", dlerror());"
+      },
+      {
+        "line": 300,
+        "text": "            return NamespaceResultFence(ENOENT);"
+      },
+      {
+        "line": 301,
+        "text": "        }"
+      },
+      {
+        "line": 302,
+        "text": "        APPSPAWN_LOGI(\"[N3-OWNER] resident runtime published for %{public}s\", app_name);"
+      },
+      {
+        "line": 303,
+        "text": "        }"
+      },
+      {
+        "line": 304,
+        "text": "        if (native_private && (strstr(app_search_paths, \"/io.anuke.mindustry/\") ||"
+      },
+      {
+        "line": 305,
+        "text": "                               strstr(app_permitted_paths, \"/io.anuke.mindustry/\") ||"
+      },
+      {
+        "line": 306,
+        "text": "                               strstr(app_search_paths, \"/org.ppsspp.ppsspp/\") ||"
+      },
+      {
+        "line": 307,
+        "text": "                               strstr(app_permitted_paths, \"/org.ppsspp.ppsspp/\"))) {"
+      },
+      {
+        "line": 308,
+        "text": "            /* Open the OH audio implementation from its platform owner, not a"
+      },
+      {
+        "line": 309,
+        "text": "             * second copy inside the app. Android extension IIDs come from the"
+      },
+      {
+        "line": 310,
+        "text": "             * private Westlake ABI library loaded below. */"
+      },
+      {
+        "line": 311,
+        "text": "            void* audio = dlopen_ns(app_namespace, \"/system/lib64/libOpenSLES.so\","
+      },
+      {
+        "line": 312,
+        "text": "                                    RTLD_NOW | RTLD_GLOBAL);"
+      },
+      {
+        "line": 313,
+        "text": "            if (audio == NULL) {"
+      },
+      {
+        "line": 314,
+        "text": "                APPSPAWN_LOGE(\"[N4-AUDIO] app-owner open failed: %{public}s\", dlerror());"
+      },
+      {
+        "line": 315,
+        "text": "                return NamespaceResultFence(ENOENT);"
+      },
+      {
+        "line": 316,
+        "text": "            }"
+      },
+      {
+        "line": 317,
+        "text": "            const char* audio_symbols[] = {"
+      },
+      {
+        "line": 318,
+        "text": "                \"slCreateEngine\", \"SL_IID_ENGINE\", \"SL_IID_VOLUME\", \"SL_IID_PLAY\", \"SL_IID_BUFFERQUEUE\""
+      },
+      {
+        "line": 319,
+        "text": "            };"
+      },
+      {
+        "line": 320,
+        "text": "            for (size_t symbol_index = 0;"
+      },
+      {
+        "line": 321,
+        "text": "                 symbol_index < sizeof(audio_symbols) / sizeof(audio_symbols[0]); ++symbol_index) {"
+      },
+      {
+        "line": 322,
+        "text": "                if (dlsym(audio, audio_symbols[symbol_index]) == NULL) {"
+      },
+      {
+        "line": 323,
+        "text": "                    APPSPAWN_LOGE(\"[N4-AUDIO] provider lacks %{public}s\", audio_symbols[symbol_index]);"
+      },
+      {
+        "line": 324,
+        "text": "                    return NamespaceResultFence(ENOENT);"
+      },
+      {
+        "line": 325,
+        "text": "                }"
+      },
+      {
+        "line": 326,
+        "text": "            }"
+      },
+      {
+        "line": 327,
+        "text": "        }"
+      },
+      {
+        "line": 328,
+        "text": "    }"
+      },
+      {
+        "line": 329,
+        "text": "    if (wants_bridge) {"
+      },
+      {
+        "line": 330,
+        "text": "        result = dlns_inherit(app_namespace, bridge_namespace,"
+      },
+      {
+        "line": 331,
+        "text": "                              bridge_shared_sonames);"
+      },
+      {
+        "line": 332,
+        "text": "        if (result != 0) {"
+      },
+      {
+        "line": 333,
+        "text": "            return NamespaceResultFence(result);"
+      },
+      {
+        "line": 334,
+        "text": "        }"
+      },
+      {
+        "line": 335,
+        "text": "        Dl_namespace compat_owner;"
+      },
+      {
+        "line": 336,
+        "text": "        if (U10ShareResidentCompat(&compat_owner) == 0 &&"
+      },
+      {
+        "line": 337,
+        "text": "            !flutter_private && !native_private) {"
+      },
+      {
+        "line": 338,
+        "text": "            int compat_result = dlns_inherit(app_namespace, &compat_owner,"
+      },
+      {
+        "line": 339,
+        "text": "                                             \"libbionic_compat.so\");"
+      },
+      {
+        "line": 340,
+        "text": "            if (compat_result != 0) {"
+      },
+      {
+        "line": 341,
+        "text": "                APPSPAWN_LOGE(\"[U10-COMPAT-VISIBLE] unavailable inherit result=%{public}d; namespace continues\", compat_result);"
+      },
+      {
+        "line": 342,
+        "text": "            }"
+      },
+      {
+        "line": 343,
+        "text": "        }"
+      },
+      {
+        "line": 344,
+        "text": "    }"
+      },
+      {
+        "line": 345,
+        "text": "    if (flutter_private || native_private) {"
+      },
+      {
+        "line": 346,
+        "text": "        /* OH 6.1 musl ignores DF_1_GLOBAL: its add_syms/removal is controlled"
+      },
+      {
+        "line": 347,
+        "text": "         * by dlopen mode. Promote only the declared ABI DSO in selected app"
+      },
+      {
+        "line": 348,
+        "text": "         * domains, not arbitrary app libraries or system providers. */"
+      },
+      {
+        "line": 349,
+        "text": "        const char* abi = flutter_private"
+      },
+      {
+        "line": 350,
+        "text": "            ? \"/system/android/lib64/westlake_flutter/libwestlake_native_abi.so\""
+      },
+      {
+        "line": 351,
+        "text": "            : \"/system/android/lib64/westlake_native/libwestlake_native_abi.so\";"
+      },
+      {
+        "line": 352,
+        "text": "        void* handle = dlopen_ns(app_namespace, abi, RTLD_NOW | RTLD_GLOBAL);"
+      },
+      {
+        "line": 353,
+        "text": "        if (handle == NULL) return NamespaceResultFence(ENOENT);"
+      },
+      {
+        "line": 354,
+        "text": "        fprintf(stderr, \"[N2-OWNER] %s ABI global ready; search=%s permitted=%s\\n\","
+      },
+      {
+        "line": 355,
+        "text": "                app_name, app_search_paths, app_permitted_paths);"
+      },
+      {
+        "line": 356,
+        "text": "    }"
+      },
+      {
+        "line": 357,
+        "text": "    if (u11_zlib_root != NULL) APPSPAWN_LOGI(\"[U11-ZLIB-ROUTE] ns=%{public}s root=%{public}s\", app_name, u11_zlib_root);"
+      },
+      {
+        "line": 358,
+        "text": "    return NamespaceResultFence(0);"
+      },
+      {
+        "line": 360,
+        "text": ""
+      },
+      {
+        "line": 361,
+        "text": "static WLASC_NOINLINE void *StockOpenNamespace("
+      },
+      {
+        "line": 362,
+        "text": "    void *app_namespace_opaque, const char *path, int mode)"
+      },
+      {
+        "line": 363,
+        "text": "{"
+      },
+      {
+        "line": 364,
+        "text": "    Dl_namespace *app_namespace = (Dl_namespace *)app_namespace_opaque;"
+      },
+      {
+        "line": 365,
+        "text": "    void *handle;"
+      },
+      {
+        "line": 366,
+        "text": ""
+      },
+      {
+        "line": 367,
+        "text": "    if (app_namespace == NULL || path == NULL || path[0] == '\\0' ||"
+      },
+      {
+        "line": 368,
+        "text": "        !NamespaceNameOwnedByCurrentProcess(app_namespace->name, \"app\") ||"
+      },
+      {
+        "line": 369,
+        "text": "        (mode & RTLD_GLOBAL) != 0) {"
+      },
+      {
+        "line": 370,
+        "text": "        return NamespaceHandleFence(NULL);"
+      },
+      {
+        "line": 371,
+        "text": "    }"
+      },
+      {
+        "line": 372,
+        "text": "    handle = dlopen_ns(app_namespace, path, mode | RTLD_LOCAL);"
+      },
+      {
+        "line": 373,
+        "text": "    return NamespaceHandleFence(handle);"
+      },
+      {
+        "line": 374,
+        "text": "}"
+      },
+      {
+        "line": 375,
+        "text": ""
+      }
+    ]
+  },
+  {
+    "path": "$REPO/benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/host/zlib-route.h",
+    "sha256": "695b7a95ecc9de90e92b8b80f5443182dcef601c7d45facb6291c141527eea32",
+    "bytes": 993,
+    "lines": [
+      {
+        "line": 1,
+        "text": "#ifndef WESTLAKE_U11_ZLIB_ROUTE_H"
+      },
+      {
+        "line": 2,
+        "text": "#define WESTLAKE_U11_ZLIB_ROUTE_H"
+      },
+      {
+        "line": 3,
+        "text": ""
+      },
+      {
+        "line": 4,
+        "text": "#include <stdbool.h>"
+      },
+      {
+        "line": 5,
+        "text": "#include <string.h>"
+      },
+      {
+        "line": 6,
+        "text": ""
+      },
+      {
+        "line": 7,
+        "text": "static bool U11ZlibPackage(const char* paths, const char* package)"
+      },
+      {
+        "line": 8,
+        "text": "{"
+      },
+      {
+        "line": 9,
+        "text": "    if (paths == NULL) return false;"
+      },
+      {
+        "line": 10,
+        "text": "    const size_t length = strlen(package);"
+      },
+      {
+        "line": 11,
+        "text": "    const char* cursor = paths;"
+      },
+      {
+        "line": 12,
+        "text": "    while ((cursor = strstr(cursor, package)) != NULL) {"
+      },
+      {
+        "line": 13,
+        "text": "        if ((cursor == paths || cursor[-1] == '/') &&"
+      },
+      {
+        "line": 14,
+        "text": "            (cursor[length] == '/' || cursor[length] == ':' || cursor[length] == '\\0')) return true;"
+      },
+      {
+        "line": 15,
+        "text": "        cursor += length;"
+      },
+      {
+        "line": 16,
+        "text": "    }"
+      },
+      {
+        "line": 17,
+        "text": "    return false;"
+      },
+      {
+        "line": 18,
+        "text": "}"
+      },
+      {
+        "line": 19,
+        "text": ""
+      },
+      {
+        "line": 20,
+        "text": "static const char* U11ZlibRoot(const char* search, const char* permitted)"
+      },
+      {
+        "line": 21,
+        "text": "{"
+      },
+      {
+        "line": 22,
+        "text": "    const char* packages[] = {\"im.vector.app\", \"com.emn8.mobilem8.nativeapp.bk\"};"
+      },
+      {
+        "line": 23,
+        "text": "    for (size_t index = 0; index < sizeof(packages) / sizeof(packages[0]); ++index) {"
+      },
+      {
+        "line": 24,
+        "text": "        if (U11ZlibPackage(search, packages[index]) || U11ZlibPackage(permitted, packages[index]))"
+      },
+      {
+        "line": 25,
+        "text": "            return \"/system/android/lib64/westlake_native\";"
+      },
+      {
+        "line": 26,
+        "text": "    }"
+      },
+      {
+        "line": 27,
+        "text": "    return NULL;"
+      },
+      {
+        "line": 28,
+        "text": "}"
+      },
+      {
+        "line": 29,
+        "text": ""
+      },
+      {
+        "line": 30,
+        "text": "#endif"
+      }
+    ]
+  },
+  {
+    "path": "$REPO/benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/host/resident-compat.h",
+    "sha256": "e4f7321547d6cafac5734a7ff3b9338cc0e8a93e94ff5932bafa3caa23cb35e0",
+    "bytes": 2172,
+    "lines": [
+      {
+        "line": 1,
+        "text": "#ifndef WESTLAKE_U10_RESIDENT_COMPAT_H"
+      },
+      {
+        "line": 2,
+        "text": "#define WESTLAKE_U10_RESIDENT_COMPAT_H"
+      },
+      {
+        "line": 3,
+        "text": ""
+      },
+      {
+        "line": 4,
+        "text": "#include <dlfcn.h>"
+      },
+      {
+        "line": 5,
+        "text": "#include <errno.h>"
+      },
+      {
+        "line": 6,
+        "text": ""
+      },
+      {
+        "line": 7,
+        "text": "static int U10ShareResidentCompat(Dl_namespace* output_owner) {"
+      },
+      {
+        "line": 8,
+        "text": "    Dl_namespace resident_namespace;"
+      },
+      {
+        "line": 9,
+        "text": "    if (dlns_get(\"westlake.sealed.child\", &resident_namespace) != 0) {"
+      },
+      {
+        "line": 10,
+        "text": "        APPSPAWN_LOGE(\"[U10-COMPAT-VISIBLE] unavailable missing resident namespace; no loading fallback; namespace continues\");"
+      },
+      {
+        "line": 11,
+        "text": "        return ENOENT;"
+      },
+      {
+        "line": 12,
+        "text": "    }"
+      },
+      {
+        "line": 13,
+        "text": "    void* resident = dlopen_ns(&resident_namespace, \"libbionic_compat.so\", RTLD_NOW | RTLD_NOLOAD);"
+      },
+      {
+        "line": 14,
+        "text": "    if (resident == NULL) {"
+      },
+      {
+        "line": 15,
+        "text": "        APPSPAWN_LOGE(\"[U10-COMPAT-VISIBLE] unavailable unmapped resident compat; no loading fallback; namespace continues\");"
+      },
+      {
+        "line": 16,
+        "text": "        return ENOENT;"
+      },
+      {
+        "line": 17,
+        "text": "    }"
+      },
+      {
+        "line": 18,
+        "text": "    const char* names[] = {\"android_set_abort_message\", \"android_get_abort_message\", \"__gnu_strerror_r\"};"
+      },
+      {
+        "line": 19,
+        "text": "    void* symbols[3];"
+      },
+      {
+        "line": 20,
+        "text": "    int result = 0;"
+      },
+      {
+        "line": 21,
+        "text": "    for (size_t index = 0; index < 3; ++index) {"
+      },
+      {
+        "line": 22,
+        "text": "        symbols[index] = dlsym(resident, names[index]);"
+      },
+      {
+        "line": 23,
+        "text": "        if (symbols[index] == NULL) result = ENOEXEC;"
+      },
+      {
+        "line": 24,
+        "text": "    }"
+      },
+      {
+        "line": 25,
+        "text": "    Dl_namespace direct_namespace;"
+      },
+      {
+        "line": 26,
+        "text": "    Dl_namespace* owner_namespace = &resident_namespace;"
+      },
+      {
+        "line": 27,
+        "text": "    void* direct = NULL;"
+      },
+      {
+        "line": 28,
+        "text": "    if (result == 0 && dlns_get(\"default\", &direct_namespace) == 0) {"
+      },
+      {
+        "line": 29,
+        "text": "        direct = dlopen_ns(&direct_namespace, \"libbionic_compat.so\", RTLD_NOW | RTLD_NOLOAD);"
+      },
+      {
+        "line": 30,
+        "text": "        if (direct != NULL) {"
+      },
+      {
+        "line": 31,
+        "text": "            for (size_t index = 0; index < 3; ++index) {"
+      },
+      {
+        "line": 32,
+        "text": "                if (dlsym(direct, names[index]) != symbols[index]) result = ENOEXEC;"
+      },
+      {
+        "line": 33,
+        "text": "            }"
+      },
+      {
+        "line": 34,
+        "text": "            if (result == 0) owner_namespace = &direct_namespace;"
+      },
+      {
+        "line": 35,
+        "text": "        }"
+      },
+      {
+        "line": 36,
+        "text": "    }"
+      },
+      {
+        "line": 37,
+        "text": "    if (result == 0) {"
+      },
+      {
+        "line": 38,
+        "text": "        *output_owner = *owner_namespace;"
+      },
+      {
+        "line": 39,
+        "text": "        APPSPAWN_LOGI(\"[U10-COMPAT-VISIBLE] owner_verified view=%{public}s resident_view=westlake.sealed.child abort=%{public}p getter=%{public}p gnu=%{public}p inheritance=caller_owned\","
+      },
+      {
+        "line": 40,
+        "text": "                owner_namespace->name, symbols[0], symbols[1], symbols[2]);"
+      },
+      {
+        "line": 41,
+        "text": "    } else {"
+      },
+      {
+        "line": 42,
+        "text": "        APPSPAWN_LOGE(\"[U10-COMPAT-VISIBLE] unavailable result=%{public}d; no loading fallback; namespace continues\", result);"
+      },
+      {
+        "line": 43,
+        "text": "    }"
+      },
+      {
+        "line": 44,
+        "text": "    if (direct != NULL) (void)dlclose(direct);"
+      },
+      {
+        "line": 45,
+        "text": "    (void)dlclose(resident);"
+      },
+      {
+        "line": 46,
+        "text": "    return result;"
+      },
+      {
+        "line": 47,
+        "text": "}"
+      },
+      {
+        "line": 48,
+        "text": ""
+      },
+      {
+        "line": 49,
+        "text": "#endif"
+      }
+    ]
+  },
+  {
+    "path": "$BMS_DEPLOY/bms/src/.work/b68-generation/adapter/framework/appspawn-x/bionic_compat/src/bionic_locale_compat.c",
+    "sha256": "21e52d1e8025795b34f5d258f563699adc52c598c3abe16fc848a4fa56cbe88a",
+    "bytes": 3093,
+    "lines": [
+      {
+        "line": 1,
+        "text": "// Exact Bionic locale/ctype ABI required by the unmodified ZigZag arm64 DSOs."
+      },
+      {
+        "line": 2,
+        "text": "//"
+      },
+      {
+        "line": 3,
+        "text": "// AOSP16 implements strtoll_l/strtoull_l as strong aliases of strtoll/strtoull,"
+      },
+      {
+        "line": 4,
+        "text": "// so the locale argument is intentionally ignored here as well.  `_ctype_` is"
+      },
+      {
+        "line": 5,
+        "text": "// the historical Bionic/OpenBSD pointer ABI: consumers load the exported"
+      },
+      {
+        "line": 6,
+        "text": "// pointer, then index the 257-byte C-locale classification table at c + 1."
+      },
+      {
+        "line": 7,
+        "text": ""
+      },
+      {
+        "line": 8,
+        "text": "#include <locale.h>"
+      },
+      {
+        "line": 9,
+        "text": "#include <stdlib.h>"
+      },
+      {
+        "line": 10,
+        "text": ""
+      },
+      {
+        "line": 11,
+        "text": "long long strtoll_l(const char *nptr, char **endptr, int base, locale_t locale)"
+      },
+      {
+        "line": 12,
+        "text": "{"
+      },
+      {
+        "line": 13,
+        "text": "    (void)locale;"
+      },
+      {
+        "line": 14,
+        "text": "    return strtoll(nptr, endptr, base);"
+      },
+      {
+        "line": 15,
+        "text": "}"
+      },
+      {
+        "line": 16,
+        "text": ""
+      },
+      {
+        "line": 17,
+        "text": "unsigned long long strtoull_l("
+      },
+      {
+        "line": 18,
+        "text": "    const char *nptr, char **endptr, int base, locale_t locale)"
+      },
+      {
+        "line": 19,
+        "text": "{"
+      },
+      {
+        "line": 20,
+        "text": "    (void)locale;"
+      },
+      {
+        "line": 21,
+        "text": "    return strtoull(nptr, endptr, base);"
+      },
+      {
+        "line": 22,
+        "text": "}"
+      },
+      {
+        "line": 23,
+        "text": ""
+      },
+      {
+        "line": 24,
+        "text": "#define BIONIC_CT_U 0x01"
+      },
+      {
+        "line": 25,
+        "text": "#define BIONIC_CT_L 0x02"
+      },
+      {
+        "line": 26,
+        "text": "#define BIONIC_CT_N 0x04"
+      },
+      {
+        "line": 27,
+        "text": "#define BIONIC_CT_S 0x08"
+      },
+      {
+        "line": 28,
+        "text": "#define BIONIC_CT_P 0x10"
+      },
+      {
+        "line": 29,
+        "text": "#define BIONIC_CT_C 0x20"
+      },
+      {
+        "line": 30,
+        "text": "#define BIONIC_CT_X 0x40"
+      },
+      {
+        "line": 31,
+        "text": "#define BIONIC_CT_B 0x80"
+      },
+      {
+        "line": 32,
+        "text": ""
+      },
+      {
+        "line": 33,
+        "text": "static const char kBionicCtypeTable[1 + 256] = {"
+      },
+      {
+        "line": 34,
+        "text": "    0,"
+      },
+      {
+        "line": 35,
+        "text": "    BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C,"
+      },
+      {
+        "line": 36,
+        "text": "    BIONIC_CT_C, BIONIC_CT_C|BIONIC_CT_S, BIONIC_CT_C|BIONIC_CT_S, BIONIC_CT_C|BIONIC_CT_S, BIONIC_CT_C|BIONIC_CT_S, BIONIC_CT_C|BIONIC_CT_S, BIONIC_CT_C, BIONIC_CT_C,"
+      },
+      {
+        "line": 37,
+        "text": "    BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C,"
+      },
+      {
+        "line": 38,
+        "text": "    BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C, BIONIC_CT_C,"
+      },
+      {
+        "line": 39,
+        "text": "    BIONIC_CT_S|(char)BIONIC_CT_B, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P,"
+      },
+      {
+        "line": 40,
+        "text": "    BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P,"
+      },
+      {
+        "line": 41,
+        "text": "    BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_N,"
+      },
+      {
+        "line": 42,
+        "text": "    BIONIC_CT_N, BIONIC_CT_N, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P,"
+      },
+      {
+        "line": 43,
+        "text": "    BIONIC_CT_P, BIONIC_CT_U|BIONIC_CT_X, BIONIC_CT_U|BIONIC_CT_X, BIONIC_CT_U|BIONIC_CT_X, BIONIC_CT_U|BIONIC_CT_X, BIONIC_CT_U|BIONIC_CT_X, BIONIC_CT_U|BIONIC_CT_X, BIONIC_CT_U,"
+      },
+      {
+        "line": 44,
+        "text": "    BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U,"
+      },
+      {
+        "line": 45,
+        "text": "    BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U,"
+      },
+      {
+        "line": 46,
+        "text": "    BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_U, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P,"
+      },
+      {
+        "line": 47,
+        "text": "    BIONIC_CT_P, BIONIC_CT_L|BIONIC_CT_X, BIONIC_CT_L|BIONIC_CT_X, BIONIC_CT_L|BIONIC_CT_X, BIONIC_CT_L|BIONIC_CT_X, BIONIC_CT_L|BIONIC_CT_X, BIONIC_CT_L|BIONIC_CT_X, BIONIC_CT_L,"
+      },
+      {
+        "line": 48,
+        "text": "    BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L,"
+      },
+      {
+        "line": 49,
+        "text": "    BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L,"
+      },
+      {
+        "line": 50,
+        "text": "    BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_L, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_P, BIONIC_CT_C,"
+      },
+      {
+        "line": 51,
+        "text": "};"
+      },
+      {
+        "line": 52,
+        "text": ""
+      },
+      {
+        "line": 53,
+        "text": "_Static_assert(sizeof(kBionicCtypeTable) == 257,"
+      },
+      {
+        "line": 54,
+        "text": "               \"Bionic _ctype_ table layout drifted\");"
+      },
+      {
+        "line": 55,
+        "text": ""
+      },
+      {
+        "line": 56,
+        "text": "const char *_ctype_ = kBionicCtypeTable;"
+      }
+    ]
+  },
+  {
+    "path": "$BMS_DEPLOY/benchmark/2026-09-30-n4-native/build-abi.sh",
+    "sha256": "5d66488b73ae431899c0f21d0439fabe349aa6857e0cf9b513f57c70a35ee019",
+    "bytes": 1379,
+    "lines": [
+      {
+        "line": 1,
+        "text": "#!/usr/bin/env bash"
+      },
+      {
+        "line": 2,
+        "text": "set -euo pipefail"
+      },
+      {
+        "line": 3,
+        "text": "HERE=$(cd \"$(dirname \"$0\")\" && pwd)"
+      },
+      {
+        "line": 4,
+        "text": "REPO=$(cd \"$HERE/../..\" && pwd)"
+      },
+      {
+        "line": 5,
+        "text": "python3 \"$REPO/scripts/lab/check_frozen.py\" --source-root \"$REPO\""
+      },
+      {
+        "line": 6,
+        "text": "ROOT=$REPO/bms/src/.work/b68-generation"
+      },
+      {
+        "line": 7,
+        "text": "FROZEN=$ROOT/.work/product-tls-generation/frozen"
+      },
+      {
+        "line": 8,
+        "text": "TC=$FROZEN/toolchain"
+      },
+      {
+        "line": 9,
+        "text": "SYS=$FROZEN/sysroot"
+      },
+      {
+        "line": 10,
+        "text": "POOL=$ROOT/platform-pool/system/lib64"
+      },
+      {
+        "line": 11,
+        "text": "OUT=${FLUTTER_BUILD_OUT:-$REPO/bms/src/.work/n4-native/abi}"
+      },
+      {
+        "line": 12,
+        "text": "SRC=$REPO/benchmark/2026-09-30-n3-native/flutter"
+      },
+      {
+        "line": 13,
+        "text": "TARGET=aarch64-linux-ohos"
+      },
+      {
+        "line": 14,
+        "text": "export LD_LIBRARY_PATH=$TC/runtime"
+      },
+      {
+        "line": 15,
+        "text": "CC=$TC/bin/clang-15"
+      },
+      {
+        "line": 16,
+        "text": "CXX=$TC/bin/clang++"
+      },
+      {
+        "line": 17,
+        "text": "COMMON=(--target=$TARGET --sysroot=$SYS -B$TC/bin -isystem $SYS/include/$TARGET -fPIC -O2 -g -ffunction-sections -fdata-sections -D__OHOS__ -D_GNU_SOURCE -I$SRC/include)"
+      },
+      {
+        "line": 18,
+        "text": "LINK=(--target=$TARGET --sysroot=$SYS -B$TC/bin -B$SYS/lib/$TARGET -fuse-ld=lld -shared -Wl,-z,defs,-z,now,-z,relro,--no-undefined,--fatal-warnings,--gc-sections,--build-id=sha1,--hash-style=both -L$SYS/lib/$TARGET -L$OUT)"
+      },
+      {
+        "line": 19,
+        "text": "mkdir -p \"$OUT\""
+      },
+      {
+        "line": 20,
+        "text": "\"$CC\" \"${COMMON[@]}\" -std=c11 -c \"$HERE/src/native_abi.c\" -o \"$OUT/native_abi.o\""
+      },
+      {
+        "line": 21,
+        "text": "\"$CC\" \"${COMMON[@]}\" -std=c11 -fno-builtin -c \"$HERE/src/bionic_stdio_compat.c\" -o \"$OUT/stdio.o\""
+      },
+      {
+        "line": 22,
+        "text": "\"$CC\" \"${LINK[@]}\" -Wl,-z,global,-soname,libwestlake_native_abi.so -Wl,--version-script=$HERE/src/native_abi.map \"$OUT/native_abi.o\" \"$OUT/stdio.o\" -lc -lpthread -o \"$OUT/libwestlake_native_abi.so\""
+      },
+      {
+        "line": 23,
+        "text": "sha256sum \"$OUT/libwestlake_native_abi.so\""
+      }
+    ]
+  },
+  {
+    "path": "$BMS_DEPLOY/benchmark/2026-09-30-n4-native/src/native_abi.c",
+    "sha256": "6cf69a57a5318058aea1d2ce69f3b3a2355aa11231d5261a85435508443c3335",
+    "bytes": 7435,
+    "lines": [
+      {
+        "line": 1,
+        "text": "#define _GNU_SOURCE 1"
+      },
+      {
+        "line": 2,
+        "text": "#include <errno.h>"
+      },
+      {
+        "line": 3,
+        "text": "#include <netdb.h>"
+      },
+      {
+        "line": 4,
+        "text": "#include <dlfcn.h>"
+      },
+      {
+        "line": 5,
+        "text": "#include <stdint.h>"
+      },
+      {
+        "line": 6,
+        "text": "#include <string.h>"
+      },
+      {
+        "line": 7,
+        "text": "#include <pthread.h>"
+      },
+      {
+        "line": 8,
+        "text": "#include <stdio.h>"
+      },
+      {
+        "line": 9,
+        "text": "#include <stdlib.h>"
+      },
+      {
+        "line": 10,
+        "text": "#include <sys/select.h>"
+      },
+      {
+        "line": 11,
+        "text": "/* Copied functions: Westlake 532633da webview_bionic_shim.c. */"
+      },
+      {
+        "line": 12,
+        "text": "int __register_atfork(void (*prepare)(void), void (*parent)(void),"
+      },
+      {
+        "line": 13,
+        "text": "                      void (*child)(void), void *dso)"
+      },
+      {
+        "line": 14,
+        "text": "{"
+      },
+      {
+        "line": 15,
+        "text": "    (void)dso;"
+      },
+      {
+        "line": 16,
+        "text": "    fprintf(stderr, \"[WESTLAKE-WEBVIEW-BIONIC] __register_atfork\\n\");"
+      },
+      {
+        "line": 17,
+        "text": "    return pthread_atfork(prepare, parent, child);"
+      },
+      {
+        "line": 18,
+        "text": "}"
+      },
+      {
+        "line": 19,
+        "text": ""
+      },
+      {
+        "line": 20,
+        "text": "void __FD_CLR_chk(int fd, fd_set *set, size_t set_size)"
+      },
+      {
+        "line": 21,
+        "text": "{"
+      },
+      {
+        "line": 22,
+        "text": "    if (fd < 0 || (size_t)fd >= set_size * 8) {"
+      },
+      {
+        "line": 23,
+        "text": "        abort();"
+      },
+      {
+        "line": 24,
+        "text": "    }"
+      },
+      {
+        "line": 25,
+        "text": "    FD_CLR(fd, set);"
+      },
+      {
+        "line": 26,
+        "text": "}"
+      },
+      {
+        "line": 27,
+        "text": ""
+      },
+      {
+        "line": 28,
+        "text": "int __FD_ISSET_chk(int fd, const fd_set *set, size_t set_size)"
+      },
+      {
+        "line": 29,
+        "text": "{"
+      },
+      {
+        "line": 30,
+        "text": "    if (fd < 0 || (size_t)fd >= set_size * 8) {"
+      },
+      {
+        "line": 31,
+        "text": "        abort();"
+      },
+      {
+        "line": 32,
+        "text": "    }"
+      },
+      {
+        "line": 33,
+        "text": "    return FD_ISSET(fd, set);"
+      },
+      {
+        "line": 34,
+        "text": "}"
+      },
+      {
+        "line": 35,
+        "text": ""
+      },
+      {
+        "line": 36,
+        "text": "void __FD_SET_chk(int fd, fd_set *set, size_t set_size)"
+      },
+      {
+        "line": 37,
+        "text": "{"
+      },
+      {
+        "line": 38,
+        "text": "    if (fd < 0 || (size_t)fd >= set_size * 8) {"
+      },
+      {
+        "line": 39,
+        "text": "        abort();"
+      },
+      {
+        "line": 40,
+        "text": "    }"
+      },
+      {
+        "line": 41,
+        "text": "    FD_SET(fd, set);"
+      },
+      {
+        "line": 42,
+        "text": "}"
+      },
+      {
+        "line": 43,
+        "text": ""
+      },
+      {
+        "line": 44,
+        "text": "extern int* __errno_location(void);"
+      },
+      {
+        "line": 45,
+        "text": "int* __errno(void) {"
+      },
+      {
+        "line": 46,
+        "text": "    return __errno_location();"
+      },
+      {
+        "line": 47,
+        "text": "}"
+      },
+      {
+        "line": 48,
+        "text": ""
+      },
+      {
+        "line": 49,
+        "text": "int* __get_h_errno(void) {"
+      },
+      {
+        "line": 50,
+        "text": "    return &h_errno;"
+      }
+    ]
+  },
+  {
+    "path": "$BMS_DEPLOY/benchmark/2026-09-30-n4-native/src/native_abi.map",
+    "sha256": "362acdc8b9f469a1069f05f204e450a8d1aa8608c948edf23a3dd350a5618b72",
+    "bytes": 415,
+    "lines": [
+      {
+        "line": 1,
+        "text": "LIBC { global: __errno; __get_h_errno; __register_atfork; __FD_SET_chk; __FD_CLR_chk; __FD_ISSET_chk; __system_property_get; android_set_abort_message; __system_property_find; SL_IID_ANDROIDCONFIGURATION; SL_IID_ANDROIDSIMPLEBUFFERQUEUE; __sF; fprintf; vfprintf; fread; fwrite; fflush; fputc; fputs; fgets; fseek; ftell; feof; ferror; fclose; local: *; };"
+      },
+      {
+        "line": 2,
+        "text": ""
+      },
+      {
+        "line": 3,
+        "text": "LIBC_O { global: __system_property_read_callback; } LIBC;"
+      }
+    ]
+  },
+  {
+    "path": "$BMS_DEPLOY/benchmark/2026-09-30-n4-native/src/bionic_stdio_compat.c",
+    "sha256": "e5cfec3dd99abb4b5b47141568ed045e4afb7f254560876d709c61ecf98c447b",
+    "bytes": 6216,
+    "lines": [
+      {
+        "line": 1,
+        "text": "/*"
+      },
+      {
+        "line": 2,
+        "text": " * Namespace-local compatibility for Android's legacy __sF standard streams."
+      },
+      {
+        "line": 3,
+        "text": " *"
+      },
+      {
+        "line": 4,
+        "text": " * Old bionic exposed stdin/stdout/stderr as three inline FILE objects in"
+      },
+      {
+        "line": 5,
+        "text": " * __sF. OH musl uses pointer variables and a different private FILE layout."
+      },
+      {
+        "line": 6,
+        "text": " * Android code is allowed to pass &__sF[n] to stdio, but not inspect FILE's"
+      },
+      {
+        "line": 7,
+        "text": " * opaque bytes. Translate those three sentinel addresses at each stdio entry"
+      },
+      {
+        "line": 8,
+        "text": " * point and leave all ordinary FILE* values untouched."
+      },
+      {
+        "line": 9,
+        "text": " *"
+      },
+      {
+        "line": 10,
+        "text": " * The appspawn launcher preloads this at the Android/OH process boundary."
+      },
+      {
+        "line": 11,
+        "text": " * Every ordinary OH FILE* is forwarded unchanged; only the three otherwise"
+      },
+      {
+        "line": 12,
+        "text": " * invalid Android sentinel addresses are translated. Standalone A/B probes"
+      },
+      {
+        "line": 13,
+        "text": " * cover both ordinary stderr and APK DSOs importing versioned __sF@LIBC."
+      },
+      {
+        "line": 14,
+        "text": " */"
+      },
+      {
+        "line": 15,
+        "text": "#include <dlfcn.h>"
+      },
+      {
+        "line": 16,
+        "text": "#include <stdarg.h>"
+      },
+      {
+        "line": 17,
+        "text": "#include <stddef.h>"
+      },
+      {
+        "line": 18,
+        "text": "#include <stdio.h>"
+      },
+      {
+        "line": 19,
+        "text": ""
+      },
+      {
+        "line": 20,
+        "text": "typedef struct BionicLegacyFile {"
+      },
+      {
+        "line": 21,
+        "text": "    unsigned char opaque[152];"
+      },
+      {
+        "line": 22,
+        "text": "} BionicLegacyFile;"
+      },
+      {
+        "line": 23,
+        "text": ""
+      },
+      {
+        "line": 24,
+        "text": "__attribute__((visibility(\"default\"))) BionicLegacyFile __sF[3];"
+      },
+      {
+        "line": 25,
+        "text": ""
+      },
+      {
+        "line": 26,
+        "text": "static FILE* westlake_translate_file(FILE* stream) {"
+      },
+      {
+        "line": 27,
+        "text": "    if ((void*)stream == (void*)&__sF[0]) return stdin;"
+      },
+      {
+        "line": 28,
+        "text": "    if ((void*)stream == (void*)&__sF[1]) return stdout;"
+      },
+      {
+        "line": 29,
+        "text": "    if ((void*)stream == (void*)&__sF[2]) return stderr;"
+      },
+      {
+        "line": 30,
+        "text": "    return stream;"
+      }
+    ]
+  }
+]

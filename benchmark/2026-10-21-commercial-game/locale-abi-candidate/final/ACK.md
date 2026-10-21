@@ -1,0 +1,3 @@
+ACK G30-OFFLINE-CANDIDATE
+
+Exact d205 baseline; candidate4296/41984 reproduced twice. Three LIBC exports only; old44 dynamic tuples/2 objects/NEEDED/constructor target order preserved. Real locale257+90 and baseline/candidate native host seam regression passed;9 ABI guard cases passed. Candidate02 all55 declared inputs checked before/after and copied persistently. OS host dependency closure incomplete, OH binding/game remain UNKNOWN. No device/push, no __assert2. Outer executed VM after explicit handoff. Original rc124 and host01 errno assumption failure preserved. Use final/landing-paths.txt; no shared Git write retry.
