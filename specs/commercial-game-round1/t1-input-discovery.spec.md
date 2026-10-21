@@ -8,7 +8,7 @@ satisfies: [REQ-COMMERCIAL-GAME]
 ## 已定决策
 - 复用旧genshin-static-intake记录，先解析现存APK索引中候选manifest而非重复全树搜索。记录本地/OrbStack/hw248/macserver每个实际搜索根、命令及结果；远端只用已有配置，不输出凭据。
 - 搜索与首轮分析有界15分钟；无输入就交实际覆盖与下一动作，不继续等空任务。包名com.miHoYo.Yuanshen及国际版com.miHoYo.GenshinImpact都可记录，版本/签名/分包不同不得混合；优先既有国服输入。
-- 找到后记录SHA256/size/manifest package/version/minSdk/targetSdk/ABI和资源索引；可从已有远端存储复制目标到持久私有目录并核两端SHA，记录空间；不拷贝整套用户数据。不能解析的项标UNKNOWN。
+- 找到后逐个base/split记录SHA256/size/manifest package/versionCode/minSdk/targetSdk/ABI、签名证书摘要、splitName/uses-split依赖和资源索引；同版本号不代表可混包。资源分install-set必需、startup-assets已证首启动必需、full-content后下载三层，记录required_for_stage及依据；可从已有远端存储复制目标到持久私有目录并核两端SHA，记录空间；不拷贝整套用户数据。不能解析的项标UNKNOWN。
 - 输出README.md、results.json、input-index.json、source-index.json。补最小Rust选择器commercial_game_intake_receipt转调实际输出校验；该选择器当前未实现，不能报通过。
 ## 边界
 ### 允许修改
@@ -35,6 +35,6 @@ satisfies: [REQ-COMMERCIAL-GAME]
   审核: human
   假设 文件名不含原神或只有不同版本split
   当 检查manifest与签名关系
-  那么 以真实包名识别并按版本分组，缺base或资源记PARTIAL且不生成安装命令
+  那么 以真实包名及签名/版本/split依赖分组，缺base或安装必需split/资源记PARTIAL且不生成安装命令；full-content缺失不自动阻塞首次启动，manifest解析失败记UNKNOWN而非MISSING
 ## 排除范围
 上板、构建、运行修复、登录及可玩性验收。
