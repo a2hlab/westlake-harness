@@ -1,0 +1,662 @@
+[
+  {
+    "path": "$WORKSPACES/westlake-harness/bms/src/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/stock_host_patched/base/startup/appspawn/standard/appspawn_service.c",
+    "sha256": "3908576613252efe84142d20e48eb9b2f800765daa4b4f8ae66d0d3810f3bccb",
+    "first": 110,
+    "last": 142,
+    "lines": [
+      {
+        "line": 110,
+        "text": "static inline void DumpStatus(const char *appName, pid_t pid, int status, int *signal)"
+      },
+      {
+        "line": 111,
+        "text": "{"
+      },
+      {
+        "line": 112,
+        "text": "    if (WIFSIGNALED(status)) {"
+      },
+      {
+        "line": 113,
+        "text": "        *signal = WTERMSIG(status);"
+      },
+      {
+        "line": 114,
+        "text": "        APPSPAWN_LOGW(\"%{public}s with pid %{public}d exit with signal:%{public}d\", appName, pid, *signal);"
+      },
+      {
+        "line": 115,
+        "text": "    }"
+      },
+      {
+        "line": 116,
+        "text": "    if (WIFEXITED(status)) {"
+      },
+      {
+        "line": 117,
+        "text": "        *signal = WEXITSTATUS(status);"
+      },
+      {
+        "line": 118,
+        "text": "        APPSPAWN_LOGW(\"%{public}s with pid %{public}d exit with code:%{public}d\", appName, pid, *signal);"
+      },
+      {
+        "line": 119,
+        "text": "    }"
+      },
+      {
+        "line": 120,
+        "text": "}"
+      },
+      {
+        "line": 121,
+        "text": ""
+      },
+      {
+        "line": 122,
+        "text": "APPSPAWN_STATIC void WriteSignalInfoToFd(AppSpawnedProcess *appInfo, AppSpawnContent *content, int signal)"
+      },
+      {
+        "line": 123,
+        "text": "{"
+      },
+      {
+        "line": 124,
+        "text": "    APPSPAWN_CHECK(content->signalFd > 0, return, \"Invalid signal fd[%{public}d]\", content->signalFd);"
+      },
+      {
+        "line": 125,
+        "text": "    APPSPAWN_CHECK(appInfo->pid > 0, return, \"Invalid pid[%{public}d]\", appInfo->pid);"
+      },
+      {
+        "line": 126,
+        "text": "    APPSPAWN_CHECK(appInfo->uid > 0, return, \"Invalid uid[%{public}d]\", appInfo->uid);"
+      },
+      {
+        "line": 127,
+        "text": "    APPSPAWN_CHECK(appInfo->name != NULL, return, \"Invalid name\");"
+      },
+      {
+        "line": 128,
+        "text": ""
+      },
+      {
+        "line": 129,
+        "text": "    cJSON *root = cJSON_CreateObject();"
+      },
+      {
+        "line": 130,
+        "text": "    if (root == NULL) {"
+      },
+      {
+        "line": 131,
+        "text": "        APPSPAWN_LOGE(\"signal json write create root object unsuccess\");"
+      },
+      {
+        "line": 132,
+        "text": "        return;"
+      },
+      {
+        "line": 133,
+        "text": "    }"
+      },
+      {
+        "line": 134,
+        "text": "    cJSON_AddNumberToObject(root, \"pid\", appInfo->pid);"
+      },
+      {
+        "line": 135,
+        "text": "    cJSON_AddNumberToObject(root, \"uid\", appInfo->uid);"
+      },
+      {
+        "line": 136,
+        "text": "    cJSON_AddNumberToObject(root, \"signal\", signal);"
+      },
+      {
+        "line": 137,
+        "text": "    cJSON_AddStringToObject(root, \"bundleName\", appInfo->name);"
+      },
+      {
+        "line": 138,
+        "text": "    char *jsonString = cJSON_Print(root);"
+      },
+      {
+        "line": 139,
+        "text": "    cJSON_Delete(root);"
+      },
+      {
+        "line": 140,
+        "text": "    APPSPAWN_CHECK(jsonString != NULL, return, \"jsonString is NULL\");"
+      },
+      {
+        "line": 141,
+        "text": "    int ret = write(content->signalFd, jsonString, strlen(jsonString) + 1);"
+      },
+      {
+        "line": 142,
+        "text": "    if (ret < 0) {"
+      }
+    ]
+  },
+  {
+    "path": "$WORKSPACES/westlake-harness/bms/src/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/stock_host_patched/base/startup/appspawn/standard/appspawn_service.c",
+    "sha256": "3908576613252efe84142d20e48eb9b2f800765daa4b4f8ae66d0d3810f3bccb",
+    "first": 152,
+    "last": 192,
+    "lines": [
+      {
+        "line": 152,
+        "text": "{"
+      },
+      {
+        "line": 153,
+        "text": "    AppSpawnContent *content = GetAppSpawnContent();"
+      },
+      {
+        "line": 154,
+        "text": "    APPSPAWN_CHECK(content != NULL, return, \"Invalid content\");"
+      },
+      {
+        "line": 155,
+        "text": ""
+      },
+      {
+        "line": 156,
+        "text": "    if (pid == content->reservedPid) {"
+      },
+      {
+        "line": 157,
+        "text": "        APPSPAWN_LOGW(\"HandleDiedPid with reservedPid %{public}d\", pid);"
+      },
+      {
+        "line": 158,
+        "text": "        content->reservedPid = 0;"
+      },
+      {
+        "line": 159,
+        "text": "    }"
+      },
+      {
+        "line": 160,
+        "text": "    int signal = 0;"
+      },
+      {
+        "line": 161,
+        "text": "    AppSpawnedProcess *appInfo = GetSpawnedProcess(pid);"
+      },
+      {
+        "line": 162,
+        "text": "    if (appInfo == NULL) { // If an exception occurs during app spawning, kill pid, return failed"
+      },
+      {
+        "line": 163,
+        "text": "        WaitChildDied(pid);"
+      },
+      {
+        "line": 164,
+        "text": "        DumpStatus(\"unknown\", pid, status, &signal);"
+      },
+      {
+        "line": 165,
+        "text": "        return;"
+      },
+      {
+        "line": 166,
+        "text": "    }"
+      },
+      {
+        "line": 167,
+        "text": ""
+      },
+      {
+        "line": 168,
+        "text": "    appInfo->exitStatus = status;"
+      },
+      {
+        "line": 169,
+        "text": "    APPSPAWN_CHECK_ONLY_LOG(appInfo->uid == uid, \"Invalid uid %{public}u %{public}u\", appInfo->uid, uid);"
+      },
+      {
+        "line": 170,
+        "text": "    DumpStatus(appInfo->name, pid, status, &signal);"
+      },
+      {
+        "line": 171,
+        "text": "    WriteSignalInfoToFd(appInfo, content, signal);"
+      },
+      {
+        "line": 172,
+        "text": "    ProcessMgrHookExecute(STAGE_SERVER_APP_DIED, GetAppSpawnContent(), appInfo);"
+      },
+      {
+        "line": 173,
+        "text": ""
+      },
+      {
+        "line": 174,
+        "text": "    // move app info to died queue in NWEBSPAWN, or delete appinfo"
+      },
+      {
+        "line": 175,
+        "text": "    TerminateSpawnedProcess(appInfo);"
+      },
+      {
+        "line": 176,
+        "text": "}"
+      },
+      {
+        "line": 177,
+        "text": ""
+      },
+      {
+        "line": 178,
+        "text": "APPSPAWN_STATIC void ProcessSignal(const struct signalfd_siginfo *siginfo)"
+      },
+      {
+        "line": 179,
+        "text": "{"
+      },
+      {
+        "line": 180,
+        "text": "    APPSPAWN_DUMPI(\"ProcessSignal signum %{public}d %{public}d\", siginfo->ssi_signo, siginfo->ssi_pid);"
+      },
+      {
+        "line": 181,
+        "text": "    switch (siginfo->ssi_signo) {"
+      },
+      {
+        "line": 182,
+        "text": "        case SIGCHLD: { // delete pid from app map"
+      },
+      {
+        "line": 183,
+        "text": "            pid_t pid;"
+      },
+      {
+        "line": 184,
+        "text": "            int status;"
+      },
+      {
+        "line": 185,
+        "text": "            while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {"
+      },
+      {
+        "line": 186,
+        "text": "                APPSPAWN_CHECK(WIFSIGNALED(status) || WIFEXITED(status), return,"
+      },
+      {
+        "line": 187,
+        "text": "                    \"ProcessSignal with wrong status:%{public}d\", status);"
+      },
+      {
+        "line": 188,
+        "text": "                HandleDiedPid(pid, siginfo->ssi_uid, status);"
+      },
+      {
+        "line": 189,
+        "text": "            }"
+      },
+      {
+        "line": 190,
+        "text": "#if (defined(CJAPP_SPAWN) || defined(NATIVE_SPAWN))"
+      },
+      {
+        "line": 191,
+        "text": "            if (OH_ListGetCnt(&GetAppSpawnMgr()->appQueue) == 0 &&"
+      },
+      {
+        "line": 192,
+        "text": "                OH_ListGetCnt(&GetAppSpawnMgr()->appSpawnQueue) == 0) {"
+      }
+    ]
+  },
+  {
+    "path": "$WORKSPACES/westlake-inputs/oh61-oh-root/oh_mirror/base/hiviewdfx/faultloggerd/common/dfxlog/dfx_log.h",
+    "sha256": "017c32d9895a1b2b2554c88d51d995f2b0cc1423cc134691b914e16eb797455e",
+    "first": 20,
+    "last": 90,
+    "lines": [
+      {
+        "line": 20,
+        "text": "#ifdef DFX_LOG_HILOG_BASE"
+      },
+      {
+        "line": 21,
+        "text": "#include <log_base.h>"
+      },
+      {
+        "line": 22,
+        "text": "#else"
+      },
+      {
+        "line": 23,
+        "text": "#include <hilog/log.h>"
+      },
+      {
+        "line": 24,
+        "text": "#endif"
+      },
+      {
+        "line": 25,
+        "text": "#include \"dfx_log_define.h\""
+      },
+      {
+        "line": 26,
+        "text": "#endif"
+      },
+      {
+        "line": 27,
+        "text": ""
+      },
+      {
+        "line": 28,
+        "text": "#ifdef __cplusplus"
+      },
+      {
+        "line": 29,
+        "text": "extern \"C\" {"
+      },
+      {
+        "line": 30,
+        "text": "#endif"
+      },
+      {
+        "line": 31,
+        "text": ""
+      },
+      {
+        "line": 32,
+        "text": "#ifndef DFX_NO_PRINT_LOG"
+      },
+      {
+        "line": 33,
+        "text": ""
+      },
+      {
+        "line": 34,
+        "text": "#ifdef DFX_LOG_HILOG_BASE"
+      },
+      {
+        "line": 35,
+        "text": "#ifdef DFX_LOG_UNWIND"
+      },
+      {
+        "line": 36,
+        "text": "#define DFXLOGD(fmt, ...) HILOG_BASE_DEBUG(LOG_CORE, fmt, ##__VA_ARGS__)"
+      },
+      {
+        "line": 37,
+        "text": "#else"
+      },
+      {
+        "line": 38,
+        "text": "#define DFXLOGD(fmt, ...)"
+      },
+      {
+        "line": 39,
+        "text": "#endif"
+      },
+      {
+        "line": 40,
+        "text": "#define DFXLOGI(fmt, ...) HILOG_BASE_INFO(LOG_CORE, fmt, ##__VA_ARGS__)"
+      },
+      {
+        "line": 41,
+        "text": "#define DFXLOGW(fmt, ...) HILOG_BASE_WARN(LOG_CORE, fmt, ##__VA_ARGS__)"
+      },
+      {
+        "line": 42,
+        "text": "#define DFXLOGE(fmt, ...) HILOG_BASE_ERROR(LOG_CORE, fmt, ##__VA_ARGS__)"
+      },
+      {
+        "line": 43,
+        "text": "#define DFXLOGF(fmt, ...) \\"
+      },
+      {
+        "line": 44,
+        "text": "    HILOG_BASE_FATAL(LOG_CORE, \"[%{public}s:%{public}d] \" fmt, (__FILE_NAME__), (__LINE__), ##__VA_ARGS__)"
+      },
+      {
+        "line": 45,
+        "text": ""
+      },
+      {
+        "line": 46,
+        "text": "#ifdef DFX_LOG_UNWIND"
+      },
+      {
+        "line": 47,
+        "text": "#ifdef ALLOW_TO_STDERR"
+      },
+      {
+        "line": 48,
+        "text": "#define DFXLOGU(fmt, ...) \\"
+      },
+      {
+        "line": 49,
+        "text": "    HILOG_BASE_INFO(LOG_CORE, \"[%{public}s:%{public}d] \" fmt, (__FILE_NAME__), (__LINE__), ##__VA_ARGS__); \\"
+      },
+      {
+        "line": 50,
+        "text": "    fprintf(stderr, \"%s\\n\", fmt)"
+      },
+      {
+        "line": 51,
+        "text": "#else"
+      },
+      {
+        "line": 52,
+        "text": "#define DFXLOGU(fmt, ...) \\"
+      },
+      {
+        "line": 53,
+        "text": "    HILOG_BASE_INFO(LOG_CORE, \"[%{public}s:%{public}d] \" fmt, (__FILE_NAME__), (__LINE__), ##__VA_ARGS__)"
+      },
+      {
+        "line": 54,
+        "text": "#endif"
+      },
+      {
+        "line": 55,
+        "text": "#else"
+      },
+      {
+        "line": 56,
+        "text": "#define DFXLOGU(fmt, ...)"
+      },
+      {
+        "line": 57,
+        "text": "#endif"
+      },
+      {
+        "line": 58,
+        "text": ""
+      },
+      {
+        "line": 59,
+        "text": "#else"
+      },
+      {
+        "line": 60,
+        "text": ""
+      },
+      {
+        "line": 61,
+        "text": "#define DFXLOGD(fmt, ...) HILOG_DEBUG(LOG_CORE, fmt, ##__VA_ARGS__)"
+      },
+      {
+        "line": 62,
+        "text": "#define DFXLOGI(fmt, ...) HILOG_INFO(LOG_CORE, fmt, ##__VA_ARGS__)"
+      },
+      {
+        "line": 63,
+        "text": "#define DFXLOGW(fmt, ...) HILOG_WARN(LOG_CORE, fmt, ##__VA_ARGS__)"
+      },
+      {
+        "line": 64,
+        "text": "#define DFXLOGE(fmt, ...) HILOG_ERROR(LOG_CORE, fmt, ##__VA_ARGS__)"
+      },
+      {
+        "line": 65,
+        "text": "#define DFXLOGF(fmt, ...) \\"
+      },
+      {
+        "line": 66,
+        "text": "    HILOG_FATAL(LOG_CORE, \"[%{public}s:%{public}d] \" fmt, (__FILE_NAME__), (__LINE__), ##__VA_ARGS__)"
+      },
+      {
+        "line": 67,
+        "text": ""
+      },
+      {
+        "line": 68,
+        "text": "#ifdef DFX_LOG_UNWIND"
+      },
+      {
+        "line": 69,
+        "text": "#define DFXLOGU(fmt, ...) \\"
+      },
+      {
+        "line": 70,
+        "text": "    HILOG_INFO(LOG_CORE, \"[%{public}s:%{public}d] \" fmt, (__FILE_NAME__), (__LINE__), ##__VA_ARGS__)"
+      },
+      {
+        "line": 71,
+        "text": "#else"
+      },
+      {
+        "line": 72,
+        "text": "#define DFXLOGU(fmt, ...)"
+      },
+      {
+        "line": 73,
+        "text": "#endif"
+      },
+      {
+        "line": 74,
+        "text": ""
+      },
+      {
+        "line": 75,
+        "text": "#endif"
+      },
+      {
+        "line": 76,
+        "text": ""
+      },
+      {
+        "line": 77,
+        "text": "#else"
+      },
+      {
+        "line": 78,
+        "text": ""
+      },
+      {
+        "line": 79,
+        "text": "#define DFXLOGD(fmt, ...)"
+      },
+      {
+        "line": 80,
+        "text": "#define DFXLOGI(fmt, ...)"
+      },
+      {
+        "line": 81,
+        "text": "#define DFXLOGW(fmt, ...)"
+      },
+      {
+        "line": 82,
+        "text": "#define DFXLOGE(fmt, ...)"
+      },
+      {
+        "line": 83,
+        "text": "#define DFXLOGF(fmt, ...)"
+      },
+      {
+        "line": 84,
+        "text": "#define DFXLOGU(fmt, ...)"
+      },
+      {
+        "line": 85,
+        "text": "#endif"
+      },
+      {
+        "line": 86,
+        "text": ""
+      },
+      {
+        "line": 87,
+        "text": "#ifdef __cplusplus"
+      },
+      {
+        "line": 88,
+        "text": "}"
+      },
+      {
+        "line": 89,
+        "text": "#endif"
+      },
+      {
+        "line": 90,
+        "text": "#endif"
+      }
+    ]
+  },
+  {
+    "path": "$WORKSPACES/westlake-inputs/oh61-oh-root/oh_mirror/base/hiviewdfx/faultloggerd/common/dfxlog/dfx_log_define.h",
+    "sha256": "09cb0330747d06f0c3f1097e6ed8e5b98101946bde699ad7b390d5b72b683afc",
+    "first": 23,
+    "last": 29,
+    "lines": [
+      {
+        "line": 23,
+        "text": "#undef LOG_DOMAIN"
+      },
+      {
+        "line": 24,
+        "text": "#undef LOG_TAG"
+      },
+      {
+        "line": 25,
+        "text": "#define LOG_DOMAIN 0xD002D11"
+      },
+      {
+        "line": 26,
+        "text": "#define LOG_TAG \"DfxFaultLogger\""
+      },
+      {
+        "line": 27,
+        "text": ""
+      },
+      {
+        "line": 28,
+        "text": "#define LOG_BUF_LEN 1024"
+      },
+      {
+        "line": 29,
+        "text": ""
+      }
+    ]
+  },
+  {
+    "path": "$WORKSPACES/westlake-harness/scripts/lab/sc17_run.sh",
+    "sha256": "df102c9ae526797f8ceda0db98d964493a4e68e8fc177923dc49d1f1fb0592bc",
+    "first": 64,
+    "last": 66,
+    "lines": [
+      {
+        "line": 64,
+        "text": "echo \"faultlog: $(dev \"ls /data/log/faultlog/temp/ | grep -- '-$CHILD-'\")\""
+      },
+      {
+        "line": 65,
+        "text": "f=$(dev \"ls /data/log/faultlog/temp/ | grep -- '-$CHILD-' | head -1\")"
+      },
+      {
+        "line": 66,
+        "text": "[ -n \"$f\" ] && dev \"grep -m1 Reason /data/log/faultlog/temp/$f; grep -m1 -A1 'Fault thread' /data/log/faultlog/temp/$f; grep -m1 '#00 pc' /data/log/faultlog/temp/$f\""
+      }
+    ]
+  }
+]

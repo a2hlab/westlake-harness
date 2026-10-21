@@ -1,0 +1,514 @@
+[
+  {
+    "source": {
+      "path": "$REPO/benchmark/2026-10-01-n6-native/source-evidence/egl_wrapper_entry.cpp",
+      "sha256": "3fbb8a7faed4d7fc25a332cee0ba9df9ee20615d497351ae8f503f9c542a2ed9",
+      "bytes": 46482
+    },
+    "lineage_only_not_exact_deployed_source_proof": true,
+    "first_line": 301,
+    "last_line": 353,
+    "lines": [
+      {
+        "line": 301,
+        "text": "static __eglMustCastToProperFunctionPointerType FindBuiltinWrapper(const char* procname)"
+      },
+      {
+        "line": 302,
+        "text": "{"
+      },
+      {
+        "line": 303,
+        "text": "#if (defined(__aarch64__) || defined(__x86_64__))"
+      },
+      {
+        "line": 304,
+        "text": "    static void* dlglv3Handle = dlopen(\"/system/lib64/libGLESv3.so\", RTLD_NOW | RTLD_LOCAL);"
+      },
+      {
+        "line": 305,
+        "text": "#else"
+      },
+      {
+        "line": 306,
+        "text": "    static void* dlglv3Handle = dlopen(\"/system/lib/platformsdk/libGLESv3.so\", RTLD_NOW | RTLD_LOCAL);"
+      },
+      {
+        "line": 307,
+        "text": "#endif"
+      },
+      {
+        "line": 308,
+        "text": "    if (dlglv3Handle == nullptr) {"
+      },
+      {
+        "line": 309,
+        "text": "        WLOGE(\"Failed to load GLES library using dl open\");"
+      },
+      {
+        "line": 310,
+        "text": "        return nullptr;"
+      },
+      {
+        "line": 311,
+        "text": "    }"
+      },
+      {
+        "line": 312,
+        "text": "    void* proc = dlsym(dlglv3Handle, procname);"
+      },
+      {
+        "line": 313,
+        "text": "    if (proc) {"
+      },
+      {
+        "line": 314,
+        "text": "        return (__eglMustCastToProperFunctionPointerType)proc;"
+      },
+      {
+        "line": 315,
+        "text": "    }"
+      },
+      {
+        "line": 316,
+        "text": "    return nullptr;"
+      },
+      {
+        "line": 317,
+        "text": "}"
+      },
+      {
+        "line": 318,
+        "text": ""
+      },
+      {
+        "line": 319,
+        "text": "__eglMustCastToProperFunctionPointerType EglGetProcAddressImpl(const char *procname)"
+      },
+      {
+        "line": 320,
+        "text": "{"
+      },
+      {
+        "line": 321,
+        "text": "    ClearError();"
+      },
+      {
+        "line": 322,
+        "text": "    WLOGD(\"\");"
+      },
+      {
+        "line": 323,
+        "text": "    if (gExtensionMap.find(procname) != gExtensionMap.end()) {"
+      },
+      {
+        "line": 324,
+        "text": "        return gExtensionMap.at(procname);"
+      },
+      {
+        "line": 325,
+        "text": "    }"
+      },
+      {
+        "line": 326,
+        "text": ""
+      },
+      {
+        "line": 327,
+        "text": "    __eglMustCastToProperFunctionPointerType addr = FindBuiltinWrapper(procname);"
+      },
+      {
+        "line": 328,
+        "text": "    if (addr) {"
+      },
+      {
+        "line": 329,
+        "text": "        return __eglMustCastToProperFunctionPointerType(addr);"
+      },
+      {
+        "line": 330,
+        "text": "    }"
+      },
+      {
+        "line": 331,
+        "text": ""
+      },
+      {
+        "line": 332,
+        "text": "    EglWrapperLoader& loader(EglWrapperLoader::GetInstance());"
+      },
+      {
+        "line": 333,
+        "text": "    void *func = loader.GetProcAddrFromDriver(procname);"
+      },
+      {
+        "line": 334,
+        "text": ""
+      },
+      {
+        "line": 335,
+        "text": "    if (!func) {"
+      },
+      {
+        "line": 336,
+        "text": "        EglWrapperDispatchTablePtr table = &gWrapperHook;"
+      },
+      {
+        "line": 337,
+        "text": "        if (table->isLoad && table->egl.eglGetProcAddress) {"
+      },
+      {
+        "line": 338,
+        "text": "            func = reinterpret_cast<void *>(table->egl.eglGetProcAddress(procname));"
+      },
+      {
+        "line": 339,
+        "text": "        }"
+      },
+      {
+        "line": 340,
+        "text": "    }"
+      },
+      {
+        "line": 341,
+        "text": ""
+      },
+      {
+        "line": 342,
+        "text": "    if (func) {"
+      },
+      {
+        "line": 343,
+        "text": "        return __eglMustCastToProperFunctionPointerType(func);"
+      },
+      {
+        "line": 344,
+        "text": "    }"
+      },
+      {
+        "line": 345,
+        "text": ""
+      },
+      {
+        "line": 346,
+        "text": "#ifdef OPENGL_WRAPPER_ENABLE_GL4"
+      },
+      {
+        "line": 347,
+        "text": "    auto it = gCustomMap.find(procname);"
+      },
+      {
+        "line": 348,
+        "text": "    if (it != gCustomMap.end()) {"
+      },
+      {
+        "line": 349,
+        "text": "        return __eglMustCastToProperFunctionPointerType(it->second);"
+      },
+      {
+        "line": 350,
+        "text": "    }"
+      },
+      {
+        "line": 351,
+        "text": "#endif"
+      },
+      {
+        "line": 352,
+        "text": "    WLOGD(\"FindEglExtApi did not find an entry for %{public}s\", procname);"
+      },
+      {
+        "line": 353,
+        "text": "    return nullptr;"
+      }
+    ]
+  },
+  {
+    "source": {
+      "path": "$REPO/benchmark/2026-10-01-n6-native/src/flutter_egl.cpp",
+      "sha256": "14f79c5b35fd7f7a95a7b5501c7dcb52af58aa1462018187377defab8c26d5e0",
+      "bytes": 10380
+    },
+    "lineage_only_not_exact_deployed_source_proof": true,
+    "first_line": 103,
+    "last_line": 140,
+    "lines": [
+      {
+        "line": 103,
+        "text": "extern \"C\" __attribute__((visibility(\"default\")))"
+      },
+      {
+        "line": 104,
+        "text": "EGLSurface eglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,"
+      },
+      {
+        "line": 105,
+        "text": "                                   EGLNativeWindowType window,"
+      },
+      {
+        "line": 106,
+        "text": "                                   const EGLint* attrib_list) {"
+      },
+      {
+        "line": 107,
+        "text": "    resolve_egl_hijack_funcs();"
+      },
+      {
+        "line": 108,
+        "text": ""
+      },
+      {
+        "line": 109,
+        "text": "    EGLNativeWindowType actualWindow = window;"
+      },
+      {
+        "line": 110,
+        "text": "    if (g_oh_anw_get_oh_fn && window) {"
+      },
+      {
+        "line": 111,
+        "text": "        void* unwrapped = g_oh_anw_get_oh_fn(window);"
+      },
+      {
+        "line": 112,
+        "text": "        if (unwrapped) {"
+      },
+      {
+        "line": 113,
+        "text": "            n6_log(3, 4, 0xD000F00, \"OH_EglHijack\","
+      },
+      {
+        "line": 114,
+        "text": "                       \"eglCreateWindowSurface: detected ANW shim %p, \""
+      },
+      {
+        "line": 115,
+        "text": "                       \"unwrapped to OH NativeWindow=%p\","
+      },
+      {
+        "line": 116,
+        "text": "                       window, unwrapped);"
+      },
+      {
+        "line": 117,
+        "text": "            actualWindow = (EGLNativeWindowType) unwrapped;"
+      },
+      {
+        "line": 118,
+        "text": "        }"
+      },
+      {
+        "line": 119,
+        "text": "    }"
+      },
+      {
+        "line": 120,
+        "text": ""
+      },
+      {
+        "line": 121,
+        "text": "    if (!g_real_eglCreateWindowSurface_fn) {"
+      },
+      {
+        "line": 122,
+        "text": "        n6_log(3, 7, 0xD000F00, \"OH_EglHijack\","
+      },
+      {
+        "line": 123,
+        "text": "                   \"eglCreateWindowSurface: libEGL.so eglCreateWindowSurface \""
+      },
+      {
+        "line": 124,
+        "text": "                   \"not resolved — returning EGL_NO_SURFACE\");"
+      },
+      {
+        "line": 125,
+        "text": "        return EGL_NO_SURFACE;"
+      },
+      {
+        "line": 126,
+        "text": "    }"
+      },
+      {
+        "line": 127,
+        "text": ""
+      },
+      {
+        "line": 128,
+        "text": "    EGLSurface surface = g_real_eglCreateWindowSurface_fn("
+      },
+      {
+        "line": 129,
+        "text": "        dpy, config, actualWindow, attrib_list);"
+      },
+      {
+        "line": 130,
+        "text": "    if (surface != EGL_NO_SURFACE && actualWindow != window &&"
+      },
+      {
+        "line": 131,
+        "text": "        g_oh_anw_notify_presented_fn) {"
+      },
+      {
+        "line": 132,
+        "text": "        std::lock_guard<std::mutex> lock(g_egl_surface_owner_mutex);"
+      },
+      {
+        "line": 133,
+        "text": "        g_egl_surface_owner[surface] = window;"
+      },
+      {
+        "line": 134,
+        "text": "    }"
+      },
+      {
+        "line": 135,
+        "text": "    n6_log(3, 4, 0xD000F00, \"OH_EglHijack\","
+      },
+      {
+        "line": 136,
+        "text": "               \"eglCreateWindowSurface: dpy=%p config=%p window=%p (orig=%p) \""
+      },
+      {
+        "line": 137,
+        "text": "               \"-> EGLSurface=%p\","
+      },
+      {
+        "line": 138,
+        "text": "               dpy, config, actualWindow, window, surface);"
+      },
+      {
+        "line": 139,
+        "text": "    return surface;"
+      },
+      {
+        "line": 140,
+        "text": "}"
+      }
+    ]
+  },
+  {
+    "source": {
+      "path": "$REPO/benchmark/2026-10-21-commercial-game/reuse/reuse-matrix.json",
+      "sha256": "a04f76133055dd15c5b45c954149f36431b89a20f373a355e83d1fcd8d111980",
+      "bytes": 9015
+    },
+    "lineage_only_not_exact_deployed_source_proof": true,
+    "first_line": 1,
+    "last_line": 28,
+    "lines": [
+      {
+        "line": 1,
+        "text": "{"
+      },
+      {
+        "line": 2,
+        "text": "  \"rows\": ["
+      },
+      {
+        "line": 3,
+        "text": "    {"
+      },
+      {
+        "line": 4,
+        "text": "      \"item\": \"shared bridge / Android-on-OH runtime (liboh_android_runtime f28bd1b3, adapter bridge)\","
+      },
+      {
+        "line": 5,
+        "text": "      \"class\": \"public_reusable_candidate\","
+      },
+      {
+        "line": 6,
+        "text": "      \"source_refs\": ["
+      },
+      {
+        "line": 7,
+        "text": "        \"benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-source-review/artifact-archive.json\","
+      },
+      {
+        "line": 8,
+        "text": "        \"benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final-v2-operations-draft-r2/evidence-bindings.json\""
+      },
+      {
+        "line": 9,
+        "text": "      ],"
+      },
+      {
+        "line": 10,
+        "text": "      \"output_sha256\": \"f28bd1b3d44e2944f77911c2ad71376869f7f3ebc6dcd8434dfea869f4056db0\","
+      },
+      {
+        "line": 11,
+        "text": "      \"validated_scope\": \"Boat v2 runtime built from source with rc0 logs archived on hw248 (archive 94bd6138, 1295292B, remote_verified); seven deployed artifacts pinned by SHA\","
+      },
+      {
+        "line": 12,
+        "text": "      \"reuse_condition\": \"only if Genshin's actual first fatal point lands in the same bridge path; needs Genshin input + its own run\","
+      },
+      {
+        "line": 13,
+        "text": "      \"genshin\": \"UNKNOWN\""
+      },
+      {
+        "line": 14,
+        "text": "    },"
+      },
+      {
+        "line": 15,
+        "text": "    {"
+      },
+      {
+        "line": 16,
+        "text": "      \"item\": \"JNI RegisterNatives graphics compat shim (Surface/BBQ/SurfaceControl/ANativeWindow\\u2194OHNativeWindow)\","
+      },
+      {
+        "line": 17,
+        "text": "      \"class\": \"public_reusable_candidate\","
+      },
+      {
+        "line": 18,
+        "text": "      \"source_refs\": ["
+      },
+      {
+        "line": 19,
+        "text": "        \"benchmark/2026-10-10-boat-runtime-port-spec/source/android_graphics_compat_shim.cpp\""
+      },
+      {
+        "line": 20,
+        "text": "      ],"
+      },
+      {
+        "line": 21,
+        "text": "      \"output_sha256\": null,"
+      },
+      {
+        "line": 22,
+        "text": "      \"validated_scope\": \"Source registers graphics JNI; pin-compatible is a source comment, NOT a general cross-provider ABI guarantee. Exact framework, native window owner/layout and namespace must be re-bound.\","
+      },
+      {
+        "line": 23,
+        "text": "      \"reuse_condition\": \"Genshin must use the same framework Surface path; a Unity/Vulkan swapchain path is not proven\","
+      },
+      {
+        "line": 24,
+        "text": "      \"genshin\": \"UNKNOWN\","
+      },
+      {
+        "line": 25,
+        "text": "      \"output_sha256_note\": \"No separate deployed shim-to-this-TU output equivalence established in this slice.\""
+      },
+      {
+        "line": 26,
+        "text": "    },"
+      },
+      {
+        "line": 27,
+        "text": "    {"
+      },
+      {
+        "line": 28,
+        "text": "      \"item\": \"window size / landscape parent session 1920x1200\","
+      }
+    ]
+  }
+]
