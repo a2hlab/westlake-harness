@@ -109,3 +109,11 @@ Eight observations are appended after the unchanged original 50 objects: G08 sou
 G13 installed the unchanged original Genshin APK and retained queryable UID20011077; independent evidence binds the actual loaded candidate to its process-root SHA. The original failed loader receipt remains failed. Genshin was not launched and has zero screenshots. Both installer aliases were restored to51e1, root was resealed RO, power restored, and the lock released. The7c24 candidate is historical window state, not the current deployment. T36/T37 offline checks do not establish a white-screen fix; T38/G14 stopped work remains unexecuted.
 
 [Append-only checks and landing inputs](../2026-10-21-current-api-observations/README.md) pin the previous50 objects and historical315 files. Local rendering is verified; remote publication of this update is not claimed.
+
+## 2026-10-21 ordinary icon launch observation (G17)
+
+The current view now contains **59 observations with 1358 exact source/build/evidence references**. The original58 objects, including G13's accepted installation and G14's stop at their historical timestamps, remain unchanged. Later normal-ui-01 observed an actual Genshin icon launch: white at t2, PID10029/UID20011077 present at t2 and absent at t10/t20, desktop at t20, and process exit1 in the completed filtered log. Three screenshots were captured; none is a game frame.
+
+The earlier MHYComboCrypto `__errno` relocation failure, Unity library-load failures (`libGLESv2.so` dependency / `libmain.so`), and terminal `UnityPlayer.nativeRestartActivityIndicator()` UnsatisfiedLinkError are separate observations, not a proven causal chain. G16 localization remains in progress; no unfixed draft conclusion is used. The prior static REA method record supplies context only. No new device/REA/runtime-build action was performed by G17.
+
+[Normal UI evidence](../2026-10-21-commercial-game/normal-ui-01/README.md) and [G17 append-only checks](../2026-10-21-launch-observation-update/README.md) distinguish failed launch observation from game rendering or public-API acceptance. All prior README lines are preserved.

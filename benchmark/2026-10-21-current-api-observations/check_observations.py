@@ -42,22 +42,22 @@ def check(data, source_root):
     original_pin = next(p for p in pins['preimages'] if p['path'].endswith('/observations.json'))
     require(sha(HERE / 'original-50.json') == original_pin['sha256'], 'original 50 snapshot changed')
     require(len(original['rows']) == 50 and data['rows'][:50] == original['rows'], 'original 50 row objects changed')
-    require(len(data['rows']) == 58, 'expected 50 original + 8 added rows')
-    require(data['rows'][50:] == read(HERE / 'added-rows.json'), 'new observation snapshot changed')
+    require(len(data['rows']) >= 58, 'expected original 58-row prefix')
+    require(data['rows'][50:58] == read(HERE / 'added-rows.json'), 'new observation snapshot changed')
     require(data['historical_rows'] == 315 and data['historical_semantics_changed'] is False, 'historical315 boundary changed')
     require(data['remote_publication_verified'] is False, 'local rendering is not remote publication')
-    require(len({r['id'] for r in data['rows']}) == 58, 'duplicate observation ID')
+    require(len({r['id'] for r in data['rows'][:58]}) == 58, 'duplicate observation ID')
     for item in pins['readonly_anchors']:
         check_ref(source_root, item)
     render_pin = next(p for p in pins['readonly_anchors'] if p['path'].endswith('/render.py'))
     require(sha(API / 'render.py') == render_pin['sha256'], 'local renderer changed')
     count = 0
-    for row in data['rows']:
+    for row in data['rows'][:58]:
         for group in ('source', 'build', 'evidence'):
             for item in row[group]:
                 check_ref(source_root, item)
                 count += 1
-    added = {r['id']: r for r in data['rows'][50:]}
+    added = {r['id']: r for r in data['rows'][50:58]}
     for row in added.values():
         require(row['frozen'] is False and row['platform'] and row['limitations'], 'new row lacks bounded version/scope')
     g13 = added['OBS-20261021-G13-INSTALL']
@@ -78,7 +78,7 @@ def negative_cases(data, source_root):
     cases.append(('missing reference', lambda: check_ref(source_root, {
         'path': 'benchmark/2026-10-21-current-api-observations/intentionally-missing.json',
         'sha256': '0' * 64}), 'missing/nonregular'))
-    wrong = dict(data['rows'][-1]['evidence'][0], sha256='0' * 64)
+    wrong = dict(data['rows'][57]['evidence'][0], sha256='0' * 64)
     cases.append(('reference SHA drift', lambda: check_ref(source_root, wrong), 'SHA drift'))
     results = []
     for name, call, expected in cases:
