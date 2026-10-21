@@ -1,0 +1,1 @@
+ACK(T37 appendix / T38 review): SLICE-01-REVIEW.md为当前判词。新ROOT disabled装配165/165；4项新的真实entry/main连接观察复现。迁移采用正常重启可行；最终执行/恢复绑定、epoch失败恢复连接、video/runtime/settings前像和实际门禁仍待闭合。native原始results SHA ebd6a6a5b4765cc5e3b519a0e3e04117e36db97e0bd799ba117b4c67ee262da9已核并归档，未复跑。旧T37 427清单及全部既定校验不变。仅本附录增量landing；无设备/作者修改/bus重试/commit/push。本文件未代写canonical黑板。

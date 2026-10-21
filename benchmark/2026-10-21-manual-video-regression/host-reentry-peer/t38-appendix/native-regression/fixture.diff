@@ -1,0 +1,68 @@
+--- original-run-retirement-tests.sh
++++ private-adapted-suite.sh
+@@ -9,11 +9,11 @@
+ # (birth-checked ownership guard), capture_frame/context, sleep. Fake /proc.
+ # No device, no network, no signal. Exits non-zero on any mismatch.
+ set -u
+-HERE=$(CDPATH= cd -P "$(dirname "$0")" && pwd -P)
++HERE='$HOME/orca/workspaces/westlake-harness/benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-01/tests'
+ NEW=$(CDPATH= cd -P "$HERE/.." && pwd -P)
+ REPO=$(CDPATH= cd -P "$NEW/../../.." && pwd -P)
+ R3=${RETIRE_UNDER_TEST:-"$NEW/src/watchdog-reentry-r3.sh"}
+-R2P="$REPO/benchmark/2026-10-19-toutiao-icon-reentry/candidate-payload-r2/payload"
++R2P='$REGRESSION_ROOT/helpers'
+ WORK=$(mktemp -d "${TMPDIR:-/tmp}/rc-retire.XXXXXX") || { echo "mktemp failed" >&2; exit 2; }
+ trap 'chmod -R u+rwx "$WORK" 2>/dev/null; rm -rf "$WORK"' EXIT
+ pass=0; fail=0
+@@ -74,12 +74,24 @@
+ stat_row() { # <pid> <state> <birth> <ppid>
+ 	printf '%s (id.article.news) %s %s 5402 0 0 -1 1077936448 920061 5333 8232 0 23249 10693 4 74 20 0 332 0 %s 246606372864 259552 18446744073709551615 0 0 0 0 0 0 4612 4097 1073841402 0 0 0 17 5 0 0 0 0 0\n' "$1" "$2" "$4" "$3"
+ }
+-put_proc() { rm -rf "$PROC/$1"; mkdir -p "$PROC/$1"; stat_row "$1" "$2" "$3" "$PARENT" > "$PROC/$1/stat"; }
++put_proc() { rm -rf "$PROC/$1"; mkdir -p "$PROC/$1"; stat_row "$1" "$2" "$3" "$PARENT" > "$PROC/$1/stat"; fixture_uid=0
++ [ "$1" = 8555 ] || [ "$1:$3" = "$CHILD:$CB" ] || [ "$1:$3" = 8001:9100 ] || fixture_uid=0
++ case "$1:$3" in "$CHILD:$CB"|8001:9100|8555:*) fixture_uid=$RB_OWNER_UID;; esac
++ printf 'Uid:\t%s\t%s\t%s\t%s\n' "$fixture_uid" "$fixture_uid" "$fixture_uid" "$fixture_uid" > "$PROC/$1/status"
++ ln -s /system/bin/appspawn "$PROC/$1/exe"
++}
++# Same ownership seam as the original rb_owned_pids scripted list, now per PID;
++# real strict enumeration, rb_uid and rb_birth remain active.
++rb_owned() {
++ case " $OWNED_EXTRA " in *" $1 "*) return 0;; esac
++ [ "$1" = "$child" ] && [ "$(rb_birth "$1")" = "$child_birth" ]
++}
++
+ PARENT=5177; PARENT_B=5834; CHILD=7172; CB=7475
+ reset_all() {
+-	rm -rf "$F"; mkdir -p "$F/lock"; rm -rf "$PROC/$CHILD" "$PROC/8001"
++	rm -rf "$F"; mkdir -p "$F/lock"; rm -rf "$PROC/$CHILD" "$PROC/8001" "$PROC/8555"
+ 	printf '%s\n' "$BOOT0" > "$PROC/sys/kernel/random/boot_id"
+-	self_birth=3933; BOOT=$BOOT0; printf '%s %s %s\n' "$$" "$self_birth" "$BOOT" > "$F/lock/owner"
++	self_birth=3933; put_proc "$$" S "$self_birth"; BOOT=$BOOT0; printf '%s %s %s\n' "$$" "$self_birth" "$BOOT" > "$F/lock/owner"
+ 	: > "$F/events.log"; : > "$F/state"; printf '1\n' > "$F/sequence"
+ 	parent=$PARENT; parent_birth=$PARENT_B; child=$CHILD; child_birth=$CB; seq=1
+ 	instance; INST0=$(cat "$F/instance.txt")
+@@ -92,7 +104,7 @@
+ focus() { printf '%s\n' "$@" > "$FOCUS_FILE"; }
+ loop() { ( rc_reentry_loop; echo "rc=$?" > "$WORK/looprc"; printf '%s\n' "$ret_key" > "$WORK/loopkey" ) 2>/dev/null; LRC=$(cat "$WORK/looprc"); }
+ spawn_ok_script() { # fake spawn.sh: creates the new child in fake /proc
+-	printf '#!/bin/sh\necho SPAWNED >> "%s/spawns"\nmkdir -p "%s/8001"\nprintf "%%s\\n" "%s" > "%s/8001/stat"\necho "HOST_SPAWN result=0 pid=8001"\n' \
++	printf '#!/bin/sh\necho SPAWNED >> "%s/spawns"\nmkdir -p "%s/8001"\nprintf "%%s\\n" "%s" > "%s/8001/stat"\nprintf "Uid: 20011206 20011206 20011206 20011206\\n" > "$TT_PROC/8001/status"\nln -s /system/bin/appspawn "$TT_PROC/8001/exe"\necho "HOST_SPAWN result=0 pid=8001"\n' \
+ 		"$WORK" "$PROC" "$(stat_row 8001 S 9100 "$PARENT")" "$PROC" > "$F/spawn.sh"
+ }
+ spawns() { if [ -f "$WORK/spawns" ]; then grep -c SPAWNED "$WORK/spawns"; else echo 0; fi; }
+@@ -167,12 +179,12 @@
+ eq window.child_field_kept "$CHILD" "$child"
+ rm -f "$WORK/spawns"; spawn_ok_script; focus desktop "host 30"; loop
+ eq window.retired_pid.no_spawn 0 "$(spawns)"; eq window.retired_pid.consume 1 "$(evc 'consume_live_or_window child=gone win=unknown')"
+-OWNED_EXTRA=8555; make_dump "$WMS_SRC" "PopupWindow:4bc 0 8555 35 1001 1 0 -1 0 [ 0 0 1 1920 ]"
++OWNED_EXTRA=8555; put_proc 8555 S 9000; make_dump "$WMS_SRC" "PopupWindow:4bc 0 8555 35 1001 1 0 -1 0 [ 0 0 1 1920 ]"
+ rc_owned_window_present; eq window.other_owned.yes yes "$rc_owned_result"
+ make_dump "$WMS_SRC" "com.ss.android.artic 0 $CHILD 32 1001 1 0 -1 0 [ 0 0 1200 1920 ]" "PopupWindow:4bc 0 8555 35 1001 1 0 -1 0 [ 0 0 1 1920 ]"
+ rc_owned_window_present; eq window.both.yes yes "$rc_owned_result"
+ rm -f "$WORK/spawns"; focus desktop "host 30"; FOCUS_I=0; loop; eq window.other_owned.no_spawn 0 "$(spawns)"
+-OWNED_EXTRA=; printf 'garbage\n' > "$WMS_SRC"; rc_owned_window_present; eq window.unreadable.unknown unknown "$rc_owned_result"
++OWNED_EXTRA=; rm -rf "$PROC/8555"; printf 'garbage\n' > "$WMS_SRC"; rc_owned_window_present; eq window.unreadable.unknown unknown "$rc_owned_result"
+ rm -f "$WORK/spawns"; FOCUS_I=0; loop; eq window.unreadable.no_spawn 0 "$(spawns)"
+ # Not retired: a window of the (alive) child is still owned=yes (r2 semantics kept).
+ reset_all; put_proc "$CHILD" S "$CB"; make_dump "$WMS_SRC" "com.ss.android.artic 0 $CHILD 32 1001 1 0 -1 0 [ 0 0 1200 1920 ]"

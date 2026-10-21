@@ -1,0 +1,57 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "case": "main_bootstrap_records_before_spawn",
+      "passed": true,
+      "argv": [
+        "/bin/sh",
+        "case.sh"
+      ],
+      "script_sha256": "35632b195d1f29cfea6e8456e406c2c805b1c59953034be3654c90edb9ac31d1",
+      "rc": 0,
+      "stdout": "STATE SUPERVISOR_STARTING control_persistence_checked_before_launch\nAT_SPAWN epoch=phase=bound parent=5177:5834 mntns=mnt:[100] sock=333 sockfile=1:20 runid=1:21\nSTATE STOPPED existing_stop\nRESULT main_rc=0 starts=1 spawns=1 terms=0\n",
+      "stderr": "",
+      "scope": "Real production main/record/write functions, synthetic preconditions/process observations/start/spawn/monitor; no device signals."
+    },
+    {
+      "case": "main_bootstrap_unknown_still_spawns",
+      "passed": true,
+      "argv": [
+        "/bin/sh",
+        "case.sh"
+      ],
+      "script_sha256": "b75f9f9c32ebc1addb0e94434513c66712e4c458f42aa76c200dc7c342d46a0c",
+      "rc": 0,
+      "stdout": "STATE SUPERVISOR_STARTING control_persistence_checked_before_launch\nAT_SPAWN epoch=phase=unbound parent=5177:5834\nSTATE STOPPED existing_stop\nRESULT main_rc=0 starts=1 spawns=1 epoch_rc=1 reason=epoch_not_bound terms=0\n",
+      "stderr": "",
+      "scope": "Real production main/record/write functions, synthetic preconditions/process observations/start/spawn/monitor; no device signals."
+    },
+    {
+      "case": "main_adopt_r3_no_epoch",
+      "passed": true,
+      "argv": [
+        "/bin/sh",
+        "case.sh"
+      ],
+      "script_sha256": "eb2cc2d60ccc1fa37192044aa8813fc1897b8e7deb4ace9d7a147567153f7445",
+      "rc": 0,
+      "stdout": "STATE SUPERVISOR_STARTING control_persistence_checked_before_launch\nAT_SPAWN epoch=MISSING\nSTATE STOPPED existing_stop\nRESULT main_rc=0 starts=0 spawns=1 epoch_rc=1 reason=epoch_record_missing terms=0\n",
+      "stderr": "",
+      "scope": "Real production main/record/write functions, synthetic preconditions/process observations/start/spawn/monitor; no device signals."
+    },
+    {
+      "case": "entry_existing_r3_socket",
+      "passed": true,
+      "rc": 2,
+      "stdout": "REFUSE EXISTING_SOCKET_NO_TAKEOVER\n",
+      "stderr": "",
+      "entry_sha256": "583df035cccbc8750b79bbe15266e311d07780f3fa2f4401f21c224f716b7647",
+      "config_fixture": "AUTH_STATE_ROOT=$HERE; ROOT=$HERE; AUTH_SOCKET=$HERE/socket; AUTH_BOOT=fixture; STARTUP_DECODER_SHA=fixture; STARTUP_PROBE_SHA=fixture; STARTUP_TAP_WAIT_POLICY=until-human-or-stop-or-boot-change\nfail(){ echo REFUSE \"$*\"; exit 2; }\nsha256sum(){ echo \"fixture  file\"; }\ntimeout(){ echo feed; }\n",
+      "launch_fixture": "foreground_window_id(){ echo 31; }\n",
+      "scope": "Unmodified entry with local config/foreground/decoder seams; existing pathname gate before guardian exec. No device access."
+    }
+  ],
+  "device_access": false,
+  "candidate_accepted": false
+}
