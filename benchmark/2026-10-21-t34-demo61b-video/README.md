@@ -1,4 +1,21 @@
-# Demo61b video migration — not yet accepted
+# Demo61b video migration — guardian retained, video not yet accepted
+
+G01 subsequently retained the separate r3 guardian on 61b and verified the actual
+Toutiao feed. The original five runtime files and compat absence were preserved.
+Natural-exit reentry was **NOT_OBSERVED**; video remains **NOT_SEALED**.
+W05 is a separate in-progress window; this page does not report its result.
+
+- [G01 actual retain, feed and 731-second closure](guardian-window-01-public/README.md)
+- [r3 source and generation recipe](reentry-retirement-01/README.md)
+- [Exact generated payload/hash chain and original generation receipts](reentry-retirement-01/deploy-package-r3-root/CHAIN.json)
+- [Guarded deployment and original-plan recovery](guardian-deployment-01/README.md)
+- [Verified G01 archive: 3485 payloads, 2515180 bytes](guardian-archive-01/README.md)
+
+The additive API view now records 49 observations, preserving its preceding 48
+objects, historical 315 grades and all eight frozen entries. G01 is a guardian
+deployment observation, not a new public Android API.
+
+## Earlier W04 result
 
 W04 verified all six candidate files in physical, parent and child views:
 18 observations match in SHA and file identity. Both the first observation
@@ -14,8 +31,8 @@ acceptance is not. The signal11 exit is observed without attributing its cause.
 - [Verified W04 archive: 6,743 payloads, 933,743 bytes](archive-04/README.md)
 - [Reusable bounded execution and recovery drivers](window-driver-01/README.md)
 
-The API increment now contains 48 observations and 1,219 exact file references,
-preserving the preceding 47 objects, historical315 semantics and all eight
+At W04 publication the API increment contained 48 observations and 1,219 exact file references,
+preserving the preceding 47 objects, historical 315 semantics and all eight
 frozen entries. This is a failed-migration/restoration observation, not a new API freeze.
 
 ## Earlier W03-b result
