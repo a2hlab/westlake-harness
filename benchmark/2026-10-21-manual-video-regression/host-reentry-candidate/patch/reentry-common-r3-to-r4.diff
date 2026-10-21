@@ -1,0 +1,68 @@
+--- ../../2026-10-19-toutiao-icon-reentry/candidate-payload-r2/payload/reentry-common.sh	2026-10-21 09:15:20
++++ src/reentry-common-r4.sh	2026-10-21 16:40:55
+@@ -12,6 +12,8 @@
+ #   rc_focus_state         -> sets rc_focus_result to exactly one token line:
+ #                               "desktop"      strict verified SceneBoard desktop focus
+ #                               "host <wid>"   strict verified imehost0 host focus (WinId=wid)
++#                               "newhost <wid>" (r4) verified imehost0 host process whose WinId differs
++#                                              from the parent's bound WL_PARENT_ID (recreated host)
+ #                               "other"        some other / unverifiable focused window
+ #                               "error"        WMS unreadable / ambiguous
+ #   rc_owned_window_present -> sets rc_owned_result to "yes" | "no" | "unknown": is any window owned by the bound
+@@ -77,6 +79,11 @@
+ 			;;
+ 		other)
+ 			# A non-desktop, non-host focused window cancels any pending qualification.
++			# r4: an explicit reason from rc_focus_state is logged once per change (no silent other).
++			if [ -n "${rc_focus_reason:-}" ] && [ "${rc_focus_reason:-}" != "${rc_last_other_reason:-}" ]; then
++				rc_event focus_other "reason=$rc_focus_reason"
++			fi
++			rc_last_other_reason=${rc_focus_reason:-}
+ 			rc_arm=UNARMED
+ 			rc_sleep
+ 			continue
+@@ -87,7 +94,8 @@
+ 			rc_sleep
+ 			continue
+ 			;;
+-		host)
++		host|newhost)
++			rc_last_other_reason=
+ 			if [ "$rc_arm" != DESKTOP_SEEN ]; then
+ 				# Host foreground without a preceding desktop focus (host-at-start,
+ 				# notification->host, or already consumed): consume silently, no spawn.
+@@ -129,6 +137,34 @@
+ 					rc_event refuse_gate "gate=${rc_gate_reason:-unknown}_no_spawn_no_signal"
+ 					return 2
+ 			fi
++			if [ "$rc_fkind" = newhost ]; then
++				# r4: recreated host. Switch the parent epoch once (exact old parent, no child,
++				# proven socket owner), then fall through to the unchanged single spawn.
++				rc_parent_epoch_switch "$rc_fwid"
++				rc_epoch_rc=$?
++				case "$rc_epoch_rc" in
++				0) : ;;
++				1)
++					rc_event parent_epoch_refused "reason=${rc_epoch_reason:-unknown} wid=$rc_fwid"
++					rc_arm=UNARMED
++					rc_sleep
++					continue
++					;;
++				*)
++					# Partial/unknown after an action: sticky hold, never a second parent or spawn.
++					rc_hold=1
++					rc_event parent_epoch_partial_hold "reason=${rc_epoch_reason:-unknown} wid=$rc_fwid"
++					rc_arm=UNARMED
++					rc_sleep
++					continue
++					;;
++				esac
++				if ! rc_gates_ok; then
++					keep_lock=1
++					rc_event refuse_gate "gate=${rc_gate_reason:-unknown}_after_epoch_no_spawn"
++					return 2
++				fi
++			fi
+ 
+ 				# Both calls run in this shell: child/birth/seq and fatal exits persist.
+ 				rc_spawn_result=

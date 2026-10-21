@@ -1,0 +1,292 @@
+{
+  "schema": "t36-r4b-peer-replay/v1",
+  "snapshot_pins": {
+    "observed_at": "2026-10-21T09:02:26.758029+00:00",
+    "author_head": "a06156a958101aa60e26c80bb74d70aff87079fa",
+    "uncommitted_snapshot": true,
+    "files": [
+      {
+        "path": "src/watchdog-reentry-r4b.sh",
+        "snapshot": "peer-replay/r4b-snapshot/watchdog-reentry-r4.sh",
+        "sha256": "3aba9d8ebfe850ce0f5bcd81b0da5df684cd8465c714b54c7726174c5d248664",
+        "bytes": 41198
+      },
+      {
+        "path": "src/reentry-common-r4.sh",
+        "snapshot": "peer-replay/r4b-snapshot/reentry-common-r4.sh",
+        "sha256": "b806eb6c1bb390be357f2ac689024bf3947217611bf637850cfc65e7538681c9",
+        "bytes": 8910
+      }
+    ]
+  },
+  "peer_harness_sha256": {
+    "replay.py": "3f647fe10792411f9beda407bb4d96f8b7b2933c9b4352da0a40e4a88d4a2282",
+    "replay_candidate.py": "b77d22a7ff74b5d75c4ea62bf786716fe72bd58303f6a8250dcd650ba83c9839"
+  },
+  "fixture_sha256": "8b7c3ea161c0bba340c7275c2ef15e5ebe2bece148f4cd85021b933e9cbee44c",
+  "cases": [
+    {
+      "case": "epoch_success",
+      "peer_kind": "control",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=31 sock=333\nACTION_TERM\nACTION_UNLINK\nACTION_START\nEVENT parent_epoch_switched old=5177:5834 new=8080:222 wid=31\nRESULT rc=0 terms=1 unlinks=1 starts=1 reason= parent=8080 hold=0\n",
+      "stderr": "",
+      "required": "rc=0 terms=1 unlinks=1 starts=1",
+      "passed": true,
+      "script_sha256": "8fd0b7c089c050e80dfb15ace3f0fd632101f9375bca1cde969ba4b8a29af190"
+    },
+    {
+      "case": "live_direct_child",
+      "peer_kind": "control",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=children_present:9000 parent=5177 hold=0\n",
+      "stderr": "",
+      "required": "rc=1 terms=0 unlinks=0 starts=0 reason=children_present:9000",
+      "passed": true,
+      "script_sha256": "a935e92e17638fba743c6892b6adde486878f5f7b0063623f075421c1361dbc7"
+    },
+    {
+      "case": "enumeration_error",
+      "peer_kind": "control",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=children_unknown parent=5177 hold=0\n",
+      "stderr": "",
+      "required": "rc=1 terms=0 unlinks=0 starts=0 reason=children_unknown",
+      "passed": true,
+      "script_sha256": "b80d81af8b335f6ebab876e32e03d5eaf2901a513f6f234c9cb93648d2a9fba8"
+    },
+    {
+      "case": "stranger_socket_holder",
+      "peer_kind": "control",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=socket_owner_unknown parent=5177 hold=0\n",
+      "stderr": "",
+      "required": "rc=1 terms=0 unlinks=0 starts=0 reason=socket_owner_unknown",
+      "passed": true,
+      "script_sha256": "fee9932fb5ba47ae5acf1e9db0b64bb7385fe07391793bb08d8d66d165acf2d6"
+    },
+    {
+      "case": "stop_timeout",
+      "peer_kind": "control",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=31 sock=333\nACTION_TERM\nRESULT rc=2 terms=1 unlinks=0 starts=0 reason=old_parent_not_exited parent=5177 hold=1\nRESULT rc=2 terms=1 unlinks=0 starts=0 reason=epoch_hold parent=5177 hold=1\n",
+      "stderr": "",
+      "required": "rc=2 terms=1 unlinks=0 starts=0 reason=epoch_hold",
+      "passed": true,
+      "script_sha256": "1aee86c9533f4165967f28b93ad50d9d0587ca95c5f5792d52f3e8d243f096c3"
+    },
+    {
+      "case": "birth_read_failure_after_term",
+      "peer_kind": "counterexample",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=31 sock=333\nACTION_TERM\nRESULT rc=2 terms=1 unlinks=0 starts=0 reason=old_parent_exit_unknown parent=5177 hold=1\n",
+      "stderr": "",
+      "required": "rc=2 terms=1 unlinks=0 starts=0 reason=old_parent_exit_unknown",
+      "passed": true,
+      "script_sha256": "eb6da3c5c8f71eed6d2d102448d7b3b1fb6018ce3f552eb73e28ef07e212c20b"
+    },
+    {
+      "case": "pid_reuse_after_term",
+      "peer_kind": "counterexample",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=31 sock=333\nACTION_TERM\nRESULT rc=2 terms=1 unlinks=0 starts=0 reason=old_parent_pid_reused parent=5177 hold=1\n",
+      "stderr": "",
+      "required": "rc=2 terms=1 unlinks=0 starts=0 reason=old_parent_pid_reused",
+      "passed": true,
+      "script_sha256": "9306e76114ecf8c8c022b0f1b3987ab99693ee42c09e6405e904ddcb3f39bc42"
+    },
+    {
+      "case": "malformed_proc_stat",
+      "peer_kind": "counterexample",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=children_unknown parent=5177 hold=0\n",
+      "stderr": "",
+      "required": "rc=1 terms=0 unlinks=0 starts=0 reason=children_unknown",
+      "passed": true,
+      "script_sha256": "d22a31ad17d62537cc001f648b513485ef16822901ef942cec8b415ed228fb8a"
+    },
+    {
+      "case": "missing_proc_root",
+      "peer_kind": "counterexample",
+      "rc": 0,
+      "stdout": "RESULT rc=1\n",
+      "stderr": "",
+      "required": "RESULT rc=1",
+      "passed": true,
+      "script_sha256": "b27293da67509168a3f67d40d5cb215e79324de4417db28fcfb92a4fba6648be"
+    },
+    {
+      "case": "missing_fd_directory",
+      "peer_kind": "counterexample",
+      "rc": 0,
+      "stdout": "RESULT rc=1 holders=\n",
+      "stderr": "",
+      "required": "RESULT rc=1 holders=",
+      "passed": true,
+      "script_sha256": "986631500185d6bb396edf7dbcba3b2069b260965e3760bb2320822842c3e3fc"
+    },
+    {
+      "case": "failed_fd_readlink",
+      "peer_kind": "counterexample",
+      "rc": 0,
+      "stdout": "RESULT rc=1 holders=\n",
+      "stderr": "",
+      "required": "RESULT rc=1 holders=",
+      "passed": true,
+      "script_sha256": "cad7585e7008832fa8e7a2195df17dc7290a1ffc5de96462544e79d71cb51f39"
+    },
+    {
+      "case": "nonlistener_socket_row",
+      "peer_kind": "counterexample",
+      "rc": 0,
+      "stdout": "RESULT rc=1 inode=\n",
+      "stderr": "",
+      "required": "RESULT rc=1 inode=",
+      "passed": true,
+      "script_sha256": "93a8d898f6bed0b137bb619469af6bc7e898de62fc60552c568346f3122d549f"
+    },
+    {
+      "case": "live_child_new_host_loop",
+      "peer_kind": "control",
+      "rc": 0,
+      "stdout": "EVENT consume_live_or_window child=alive win=unknown wid=30\nEVENT consume_live_or_window child=alive win=unknown wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT rc=0 terms=0 unlinks=0 starts=0 reason= parent=5177 hold=0\n",
+      "stderr": "",
+      "required": "rc=0 terms=0 unlinks=0 starts=0",
+      "passed": true,
+      "script_sha256": "ac8738e67c13b600fab820b80f0546eddc3dacd971e3f44746d03be3a79a8f62"
+    },
+    {
+      "case": "failed_start_sticky",
+      "peer_kind": "control",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=31 sock=333\nACTION_TERM\nACTION_UNLINK\nRESULT rc=2 terms=1 unlinks=1 starts=1 reason=new_parent_start_nonzero parent=5177 hold=1\nRESULT rc=2 terms=1 unlinks=1 starts=1 reason=epoch_hold parent=5177 hold=1\n",
+      "stderr": "",
+      "required": "rc=2 terms=1 unlinks=1 starts=1 reason=epoch_hold",
+      "passed": true,
+      "script_sha256": "6e45036017e1ecff3a64bcb71ae4c52ae22e32198b2cad771b040c08970ca599"
+    },
+    {
+      "case": "newhost_two_edges_one_epoch_spawn",
+      "peer_kind": "control",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=30 sock=333\nACTION_TERM\nACTION_UNLINK\nEVENT parent_epoch_switched old=5177:5834 new=9090:222 wid=30\nEVENT child_retirement_cleared spawn_started\nEVENT reentry_spawn_ok ok 8080 222\nEVENT consume_live_or_window child=alive win=no wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT rc=0 terms=1 unlinks=1 starts=1 reason= parent=9090 hold=0\nCOUNTS terms=1 starts=1 spawns=1 parent=9090 child=8080 seq=2\n",
+      "stderr": "",
+      "required": "COUNTS terms=1 starts=1 spawns=1 parent=9090 child=8080 seq=2",
+      "passed": true,
+      "script_sha256": "de51b9e46813300cdbd2c4b4a6b8693c7cac9d4eaf52ef85c3dc1efc86129acf"
+    },
+    {
+      "case": "newhost_owned_enum_failure",
+      "peer_kind": "counterexample",
+      "rc": 0,
+      "stdout": "EVENT consume_live_or_window child=gone win=unknown wid=30\nEVENT consume_live_or_window child=gone win=unknown wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT rc=0 terms=0 unlinks=0 starts=0 reason= parent=5177 hold=0\nCOUNTS terms=0 starts=0 spawns=0\n",
+      "stderr": "",
+      "required": "COUNTS terms=0 starts=0 spawns=0",
+      "passed": true,
+      "script_sha256": "6ea0caac860eb25311b411f4ed040a1ddd897499460baeb56669cd6e6f5c60b7"
+    },
+    {
+      "case": "epoch_record_missing",
+      "peer_kind": "r4b-added",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=epoch_record_missing parent=5177 hold=0\n",
+      "stderr": "",
+      "required": "rc=1 terms=0 unlinks=0 starts=0 reason=epoch_record_missing",
+      "passed": true,
+      "script_sha256": "d588fd9e06e2d9c506e18de849528c8afb7470354d0eed64162fd00ca64c7029"
+    },
+    {
+      "case": "epoch_parent_mismatch",
+      "peer_kind": "r4b-added",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=epoch_parent_mismatch parent=5177 hold=0\n",
+      "stderr": "",
+      "required": "rc=1 terms=0 unlinks=0 starts=0 reason=epoch_parent_mismatch",
+      "passed": true,
+      "script_sha256": "5a91353e6230a757ab4abc078b5a3025f16316a70ff95c300dc7734778affffd"
+    },
+    {
+      "case": "epoch_namespace_changed",
+      "peer_kind": "r4b-added",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=epoch_binding_changed parent=5177 hold=0\n",
+      "stderr": "",
+      "required": "rc=1 terms=0 unlinks=0 starts=0 reason=epoch_binding_changed",
+      "passed": true,
+      "script_sha256": "036fd0f18b3bbed96246962498d1a2313029a2a18e0f2800926531d76be404c5"
+    },
+    {
+      "case": "epoch_record_stopping_after_crash",
+      "peer_kind": "r4b-added",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=epoch_not_bound parent=5177 hold=0\n",
+      "stderr": "",
+      "required": "rc=1 terms=0 unlinks=0 starts=0 reason=epoch_not_bound",
+      "passed": true,
+      "script_sha256": "77f86f391b898bc887e9a92faf28faddc8aad858b35de64de3f71d85e9073844"
+    },
+    {
+      "case": "owned_unclassifiable_before_term",
+      "peer_kind": "r4b-added",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=owned_enumeration_unknown parent=5177 hold=0\n",
+      "stderr": "",
+      "required": "rc=1 terms=0 unlinks=0 starts=0 reason=owned_enumeration_unknown",
+      "passed": true,
+      "script_sha256": "d45d52bb49bc7b853fea2a307444685b0db3fac451062f3949df83cf7421939b"
+    },
+    {
+      "case": "listener_reappears_after_exit",
+      "peer_kind": "r4b-added",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=31 sock=333\nACTION_TERM\nRESULT rc=2 terms=1 unlinks=0 starts=0 reason=socket_listener_after_exit:1 parent=5177 hold=1\n",
+      "stderr": "",
+      "required": "rc=2 terms=1 unlinks=0 starts=0 reason=socket_listener_after_exit:1",
+      "passed": true,
+      "script_sha256": "115a8d582e884416826a99ff2cc2845009ff0907577f1b6ba78a9e4fb2d4f9a3"
+    },
+    {
+      "case": "same_host_launch_owned_enum_unknown",
+      "peer_kind": "r4b-added",
+      "rc": 0,
+      "stdout": "EVENT consume_live_or_window child=gone win=unknown wid=30\nEVENT consume_live_or_window child=gone win=unknown wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT rc=0 terms=0 unlinks=0 starts=0 reason= parent=5177 hold=0\nCOUNTS spawns=0\n",
+      "stderr": "",
+      "required": "COUNTS spawns=0",
+      "passed": true,
+      "script_sha256": "a375868de342a06fd8442b2df222ec9bbb2b18ff5a3b17f9e7178d7437e9c75e"
+    },
+    {
+      "case": "malformed_stat_primitive",
+      "peer_kind": "r4b-added",
+      "rc": 0,
+      "stdout": "RESULT rc=1 kids=\n",
+      "stderr": "",
+      "required": "RESULT rc=1 kids=",
+      "passed": true,
+      "script_sha256": "ddf76aeac2475007aefcfed46146cf9d8b90162775f1fc94fa11d626000c2461"
+    },
+    {
+      "case": "wellformed_stat_primitive_control",
+      "peer_kind": "r4b-added",
+      "rc": 0,
+      "stdout": "RESULT rc=0 kids=9000\n",
+      "stderr": "",
+      "required": "RESULT rc=0 kids=9000",
+      "passed": true,
+      "script_sha256": "16cd795fa521c5015ba877cf56b0f56a4d187c285aacd1878771ecd17698fa66"
+    },
+    {
+      "case": "newhost_loop_exit_unknown",
+      "peer_kind": "r4b-added",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=30 sock=333\nACTION_TERM\nEVENT parent_epoch_partial_hold reason=old_parent_exit_unknown wid=30\nEVENT reentry_hold_fail_closed wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT rc=0 terms=1 unlinks=0 starts=0 reason=old_parent_exit_unknown parent=5177 hold=1\nCOUNTS terms=1 starts=0 spawns=0\n",
+      "stderr": "",
+      "required": "COUNTS terms=1 starts=0 spawns=0",
+      "passed": true,
+      "script_sha256": "30cb0ce80c9933a167b49ae3c1d12e77d16c8664dadc71164091135dc772056b"
+    }
+  ],
+  "all_passed": true,
+  "candidate_accepted": false,
+  "device_access": false
+}
