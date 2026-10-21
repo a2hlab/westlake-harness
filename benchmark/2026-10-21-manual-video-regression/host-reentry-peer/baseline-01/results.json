@@ -1,0 +1,169 @@
+{
+  "schema": "t37-baseline-replay/v1",
+  "source_root": "benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-01/deploy-package-r3-root/payload",
+  "source_sha256": {
+    "boot-entry.sh": "7fbfdf05844718e9d3b7139b526716fe1180bf56c77ff2b8763a224dc912eb29",
+    "config-common.sh": "f7c8e077dc11d9d71acd13aad42ec4a08ff1a6272cd4767853f2740718231c16",
+    "entry.sh": "ad76c65653e860cefbedb27cdb08dce5880f254566b64a33c36df84165801a95",
+    "exit-verdict.sh": "c07513405efa8e6cd2bbdc1aeb8b35a72be269c856a8ac316eaf70a147df8736",
+    "launch-common.sh": "d065f354392096819c93c808b89205355d62b333ff115fbadb8b9db38cbaa507",
+    "members.tsv": "b5fd108c2af5a07729609b9fefe5b77124adfa01dffd21af00e3c7ca54a717bb",
+    "readiness-probe.sh": "2d3ce1546c9df1e3a222e23f19c39f8f4aec82fb551d59f37dbe7fd343573717",
+    "real-spawn.sh": "46337ba8364d871c19fb077e29a4087f37921bf609c70e9f3c1f98e1fff124a3",
+    "real-start-parent-bounded.sh": "f77f0f70dd1b64c3cea2260390c7eda7216562632703983c9210bd698869ed4d",
+    "real-start-parent.sh": "8e1d214e7e74b8b0072ff2f50b0ded774547eec3b186cf25be8f55b87170a294",
+    "recovery.cfg": "31cda1edc7f4b4366dc55609ef4f088ad965e71552f703cd6dd70b3548a1d9b5",
+    "reentry-common.sh": "43d7b073467708770c8c69724633666e410d45581f8c0099d5098c31215e78ab",
+    "reentry-seams.sh": "febc7094b9d90b6a8c6c305199395d92da1ccde42d2b82b8c2754f0cb60f9d04",
+    "rollback-inert.cfg": "826cb3640248cc2b5c55d82e0efdbdde94843958308649ac461570d8a6191dd3",
+    "route-b-owner.sh": "6bce7c3c8f84ad1047313c5dd76bcb084637d9095b9163dc710c88aaee12fe4c",
+    "spawn.sh": "5310fa014fd8fc5116318b25299f08f13d703d356a0bd0671fd722acb7c1f5c2",
+    "start-parent.sh": "e00e5889283de3ee63038a85e6ea7a9a2d7cb765da30e8c800bbfa551d21f910",
+    "startup.env": "5a8f555e1af68da471986ed27140b1457bb832287d595dfa9c925f9374f012a1",
+    "startup.expected.sha256": "7b896bac0cc453464e535f2250901b222a70572a712fa3241d160e5026305bd9",
+    "watchdog.sh": "8bf74a08b71474e39e90fcdb012eed5e420f7352fa131cef2aa63b9c5bd80ef9"
+  },
+  "source_unchanged": true,
+  "argv": [
+    "/bin/sh",
+    "case.sh",
+    "fixture"
+  ],
+  "device_access": false,
+  "scope": "Extracted production functions; synthetic OS/process/transport seams; entry and actual OS operations not executed.",
+  "cases": [
+    {
+      "case": "new_host_binding",
+      "kind": "counterexample",
+      "meaning": "Verified host with changed WID is silently other; no rebind.",
+      "expected_observation": "RESULT focus=other",
+      "rc": 0,
+      "stdout": "RESULT focus=error\n",
+      "stderr": "case.sh: line 648: rc_validate_wms: command not found\n",
+      "reproduced": false,
+      "script_sha256": "3393c0b53044ae1e1823a93c9434626c861cdf22bc77be53c6eae60abd361422"
+    },
+    {
+      "case": "same_host_binding",
+      "kind": "control",
+      "meaning": "Matching WID is recognized.",
+      "expected_observation": "RESULT focus=host 30",
+      "rc": 0,
+      "stdout": "RESULT focus=error\n",
+      "stderr": "case.sh: line 648: rc_validate_wms: command not found\n",
+      "reproduced": false,
+      "script_sha256": "e37b7c793623fb231943a502160b9510f3e422849678309c50b9333c06511d3c"
+    },
+    {
+      "case": "enumeration_failure_window",
+      "kind": "counterexample",
+      "meaning": "Enumeration failure becomes no owned window.",
+      "expected_observation": "RESULT owned=no",
+      "rc": 0,
+      "stdout": "RESULT owned=unknown\n",
+      "stderr": "case.sh: line 655: rc_validate_wms: command not found\n",
+      "reproduced": false,
+      "script_sha256": "768e9ed063d5642d2166846476bc47d1e7299c427899407029a230ad92e429bf"
+    },
+    {
+      "case": "enumeration_failure_launch",
+      "kind": "counterexample",
+      "meaning": "Failed enumeration permits spawn helper entry.",
+      "expected_observation": "RESULT rc=0 calls=1",
+      "rc": 0,
+      "stdout": "EVENT child_retirement_cleared spawn_started\nRESULT rc=0 calls=1\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "282b343c568ff8bd0d28e9a27e087e30d91630ada8f8d4f964f754531b8c9abd"
+    },
+    {
+      "case": "retired_tuple_reuse",
+      "kind": "control",
+      "meaning": "Strictly retired tuple remains gone after numeric PID reuse.",
+      "expected_observation": "RESULT rc=0 state=gone",
+      "rc": 0,
+      "stdout": "RESULT rc=0 state=gone\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "07b82770ee0b67974995511363052b8a99f24b7e56a967ff7be12941e999a8e9"
+    },
+    {
+      "case": "unretired_reuse",
+      "kind": "control",
+      "meaning": "Unconfirmed reuse refuses.",
+      "expected_observation": "RESULT rc=1 reason=child_identity",
+      "rc": 0,
+      "stdout": "RESULT rc=1 reason=child_identity\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "0f3f5018db9f65b857992c6769c4218a1ed0dbb285551878a81347a986b76b94"
+    },
+    {
+      "case": "parent_drift",
+      "kind": "control",
+      "meaning": "Parent identity loss refuses.",
+      "expected_observation": "RESULT rc=1 reason=parent_identity",
+      "rc": 0,
+      "stdout": "RESULT rc=1 reason=parent_identity\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "83c96d58d5963bf493061bb8d13c105544f9230c83a68a6a71af7878257262f9"
+    },
+    {
+      "case": "live_child_two_edges",
+      "kind": "control",
+      "meaning": "Warm live child cannot spawn.",
+      "expected_observation": "RESULT calls=0",
+      "rc": 0,
+      "stdout": "EVENT consume_live_or_window child=alive win=unknown wid=30\nEVENT consume_live_or_window child=alive win=unknown wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT calls=0\n",
+      "stderr": "case.sh: line 655: rc_validate_wms: command not found\ncase.sh: line 655: rc_validate_wms: command not found\n",
+      "reproduced": true,
+      "script_sha256": "c22e8f2efd2c952ebfd3bf295992affbd4680fb054ccb74c8ebbb6a867297c1f"
+    },
+    {
+      "case": "two_edges_one_spawn",
+      "kind": "control",
+      "meaning": "Successful spawn persists child in current shell.",
+      "expected_observation": "RESULT calls=1 child=8080 seq=2",
+      "rc": 0,
+      "stdout": "EVENT consume_live_or_window child=gone win=unknown wid=30\nEVENT consume_live_or_window child=gone win=unknown wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT calls=0 child=7172 seq=1\n",
+      "stderr": "case.sh: line 655: rc_validate_wms: command not found\ncase.sh: line 655: rc_validate_wms: command not found\n",
+      "reproduced": false,
+      "script_sha256": "b25307a458d766d47c7016115ba7f599a2a98c559c26fc72b3f8854478a2a845"
+    },
+    {
+      "case": "unknown_spawn_two_edges",
+      "kind": "control",
+      "meaning": "Indeterminate spawn sticks in hold.",
+      "expected_observation": "RESULT calls=1 hold=1",
+      "rc": 0,
+      "stdout": "EVENT consume_live_or_window child=gone win=unknown wid=30\nEVENT consume_live_or_window child=gone win=unknown wid=30\nEVENT consume_live_or_window child=gone win=unknown wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT calls=0 hold=0\n",
+      "stderr": "case.sh: line 655: rc_validate_wms: command not found\ncase.sh: line 655: rc_validate_wms: command not found\ncase.sh: line 655: rc_validate_wms: command not found\n",
+      "reproduced": false,
+      "script_sha256": "61ca30bd539cd71dbbe57cc283c85aad4b91e4b7732ec71d43800a0d7f208d86"
+    },
+    {
+      "case": "malformed_wms",
+      "kind": "control",
+      "meaning": "Malformed window dump is unknown.",
+      "expected_observation": "RESULT owned=unknown",
+      "rc": 0,
+      "stdout": "RESULT owned=unknown\n",
+      "stderr": "case.sh: line 655: rc_validate_wms: command not found\n",
+      "reproduced": true,
+      "script_sha256": "b1f84e444383cecb922117d16637a28c595481f626a15742950fc1894a09ad25"
+    },
+    {
+      "case": "retired_pid_window",
+      "kind": "control",
+      "meaning": "Window at retired PID is unattributable.",
+      "expected_observation": "RESULT owned=unknown",
+      "rc": 0,
+      "stdout": "RESULT owned=unknown\n",
+      "stderr": "case.sh: line 655: rc_validate_wms: command not found\n",
+      "reproduced": true,
+      "script_sha256": "35a97578f0d6396adb7f6c4262ebf95b35e80ebcb7df212e8ad0d33f815b5f12"
+    }
+  ],
+  "all_reproduced": false
+}

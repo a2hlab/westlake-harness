@@ -1,0 +1,169 @@
+{
+  "schema": "t37-baseline-replay/v1",
+  "source_root": "benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-01/deploy-package-r3-root/payload",
+  "source_sha256": {
+    "boot-entry.sh": "7fbfdf05844718e9d3b7139b526716fe1180bf56c77ff2b8763a224dc912eb29",
+    "config-common.sh": "f7c8e077dc11d9d71acd13aad42ec4a08ff1a6272cd4767853f2740718231c16",
+    "entry.sh": "ad76c65653e860cefbedb27cdb08dce5880f254566b64a33c36df84165801a95",
+    "exit-verdict.sh": "c07513405efa8e6cd2bbdc1aeb8b35a72be269c856a8ac316eaf70a147df8736",
+    "launch-common.sh": "d065f354392096819c93c808b89205355d62b333ff115fbadb8b9db38cbaa507",
+    "members.tsv": "b5fd108c2af5a07729609b9fefe5b77124adfa01dffd21af00e3c7ca54a717bb",
+    "readiness-probe.sh": "2d3ce1546c9df1e3a222e23f19c39f8f4aec82fb551d59f37dbe7fd343573717",
+    "real-spawn.sh": "46337ba8364d871c19fb077e29a4087f37921bf609c70e9f3c1f98e1fff124a3",
+    "real-start-parent-bounded.sh": "f77f0f70dd1b64c3cea2260390c7eda7216562632703983c9210bd698869ed4d",
+    "real-start-parent.sh": "8e1d214e7e74b8b0072ff2f50b0ded774547eec3b186cf25be8f55b87170a294",
+    "recovery.cfg": "31cda1edc7f4b4366dc55609ef4f088ad965e71552f703cd6dd70b3548a1d9b5",
+    "reentry-common.sh": "43d7b073467708770c8c69724633666e410d45581f8c0099d5098c31215e78ab",
+    "reentry-seams.sh": "febc7094b9d90b6a8c6c305199395d92da1ccde42d2b82b8c2754f0cb60f9d04",
+    "rollback-inert.cfg": "826cb3640248cc2b5c55d82e0efdbdde94843958308649ac461570d8a6191dd3",
+    "route-b-owner.sh": "6bce7c3c8f84ad1047313c5dd76bcb084637d9095b9163dc710c88aaee12fe4c",
+    "spawn.sh": "5310fa014fd8fc5116318b25299f08f13d703d356a0bd0671fd722acb7c1f5c2",
+    "start-parent.sh": "e00e5889283de3ee63038a85e6ea7a9a2d7cb765da30e8c800bbfa551d21f910",
+    "startup.env": "5a8f555e1af68da471986ed27140b1457bb832287d595dfa9c925f9374f012a1",
+    "startup.expected.sha256": "7b896bac0cc453464e535f2250901b222a70572a712fa3241d160e5026305bd9",
+    "watchdog.sh": "8bf74a08b71474e39e90fcdb012eed5e420f7352fa131cef2aa63b9c5bd80ef9"
+  },
+  "source_unchanged": true,
+  "argv": [
+    "/bin/sh",
+    "case.sh",
+    "fixture"
+  ],
+  "device_access": false,
+  "scope": "Extracted production functions; synthetic OS/process/transport seams; entry and actual OS operations not executed.",
+  "cases": [
+    {
+      "case": "new_host_binding",
+      "kind": "counterexample",
+      "meaning": "Verified host with changed WID is silently other; no rebind.",
+      "expected_observation": "RESULT focus=other",
+      "rc": 0,
+      "stdout": "RESULT focus=other\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "ee6dca39ede3f98f128f6ff608548bff205d653ba0533c7cb63b04a931800a59"
+    },
+    {
+      "case": "same_host_binding",
+      "kind": "control",
+      "meaning": "Matching WID is recognized.",
+      "expected_observation": "RESULT focus=host 30",
+      "rc": 0,
+      "stdout": "RESULT focus=host 30\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "d363c0bbc91cd432df4fd32896198f4a4621c6ffb0f036229f47735617c72d92"
+    },
+    {
+      "case": "enumeration_failure_window",
+      "kind": "counterexample",
+      "meaning": "Enumeration failure becomes no owned window.",
+      "expected_observation": "RESULT owned=no",
+      "rc": 0,
+      "stdout": "RESULT owned=no\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "2e1f83466e4aaba9c80b8dc7fced3c72e33b1fded553dbc7ab631512db392947"
+    },
+    {
+      "case": "enumeration_failure_launch",
+      "kind": "counterexample",
+      "meaning": "Failed enumeration permits spawn helper entry.",
+      "expected_observation": "RESULT rc=0 calls=1",
+      "rc": 0,
+      "stdout": "EVENT child_retirement_cleared spawn_started\nRESULT rc=0 calls=1\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "84a473cfa94fe3afca627accfb75db35b089c73e12ecc1e3fc6a297819847e0a"
+    },
+    {
+      "case": "retired_tuple_reuse",
+      "kind": "control",
+      "meaning": "Strictly retired tuple remains gone after numeric PID reuse.",
+      "expected_observation": "RESULT rc=0 state=gone",
+      "rc": 0,
+      "stdout": "RESULT rc=0 state=gone\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "587753884fdc800902db25217f36f344fc56f6e0ab1dd62e94a6e631cd4cf53b"
+    },
+    {
+      "case": "unretired_reuse",
+      "kind": "control",
+      "meaning": "Unconfirmed reuse refuses.",
+      "expected_observation": "RESULT rc=1 reason=child_identity",
+      "rc": 0,
+      "stdout": "RESULT rc=1 reason=child_identity\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "92a6896ff6e7410274aee2ca4d75e424d81e7b0213cc00e2bd83504487bde3a1"
+    },
+    {
+      "case": "parent_drift",
+      "kind": "control",
+      "meaning": "Parent identity loss refuses.",
+      "expected_observation": "RESULT rc=1 reason=parent_identity",
+      "rc": 0,
+      "stdout": "RESULT rc=1 reason=parent_identity\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "639d6d586a543481bc654fb2ff025cf613aec5ce909f4bec799ec4d549c8fe75"
+    },
+    {
+      "case": "live_child_two_edges",
+      "kind": "control",
+      "meaning": "Warm live child cannot spawn.",
+      "expected_observation": "RESULT calls=0",
+      "rc": 0,
+      "stdout": "EVENT consume_live_or_window child=alive win=no wid=30\nEVENT consume_live_or_window child=alive win=no wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT calls=0\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "5514084443160a61b23e442f418be5b88658a2a88dbd6edcfb09ac7373de87e5"
+    },
+    {
+      "case": "two_edges_one_spawn",
+      "kind": "control",
+      "meaning": "Successful spawn persists child in current shell.",
+      "expected_observation": "RESULT calls=1 child=8080 seq=2",
+      "rc": 0,
+      "stdout": "EVENT child_retirement_cleared spawn_started\nEVENT reentry_spawn_ok ok 8080 222\nEVENT consume_live_or_window child=alive win=no wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT calls=1 child=8080 seq=2\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "3119cf4a4590dab578d9dcff2e11dcad6c5a8bd621a7ef8dd8c4f94eedaac396"
+    },
+    {
+      "case": "unknown_spawn_two_edges",
+      "kind": "control",
+      "meaning": "Indeterminate spawn sticks in hold.",
+      "expected_observation": "RESULT calls=1 hold=1",
+      "rc": 0,
+      "stdout": "EVENT child_retirement_cleared spawn_started\nEVENT reentry_spawn_unknown_hold unknown spawn_command_nonzero\nEVENT reentry_hold_fail_closed wid=30\nEVENT reentry_hold_fail_closed wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT calls=1 hold=1\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "d6611f0c6066549e294b9c9e7db870e7dc59512260778a98d3a697c9a7359059"
+    },
+    {
+      "case": "malformed_wms",
+      "kind": "control",
+      "meaning": "Malformed window dump is unknown.",
+      "expected_observation": "RESULT owned=unknown",
+      "rc": 0,
+      "stdout": "RESULT owned=unknown\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "5a572820b03c50a6a3f682bd47178844463837017383146b4d87a99931b52c96"
+    },
+    {
+      "case": "retired_pid_window",
+      "kind": "control",
+      "meaning": "Window at retired PID is unattributable.",
+      "expected_observation": "RESULT owned=unknown",
+      "rc": 0,
+      "stdout": "RESULT owned=unknown\n",
+      "stderr": "",
+      "reproduced": true,
+      "script_sha256": "3141d3669223fb46f65eccf7a6cacee3958be783752905cf9ea337a3c9a47a34"
+    }
+  ],
+  "all_reproduced": true
+}

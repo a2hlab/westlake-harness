@@ -1,0 +1,289 @@
+{
+  "schema": "t37-new-candidate-safety/v2",
+  "cases": [
+    {
+      "case": "epoch_success",
+      "kind": "control",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=31 sock=333\nACTION_TERM\nACTION_UNLINK\nACTION_START\nEVENT parent_epoch_switched old=5177:5834 new=8080:222 wid=31\nRESULT rc=0 terms=1 unlinks=1 starts=1 reason= parent=8080 hold=0\n",
+      "stderr": "",
+      "expected_observation": "rc=0 terms=1 unlinks=1 starts=1",
+      "script_sha256": "c4ee4398ce11263bfbb0eb9dfcbe2e697ca179b007120a6db8651b9f0d163db3",
+      "safety_verdict": "pass",
+      "historical_observation_matches": true
+    },
+    {
+      "case": "live_direct_child",
+      "kind": "control",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=children_present:9000 parent=5177 hold=0\n",
+      "stderr": "",
+      "expected_observation": "rc=1 terms=0 unlinks=0 starts=0",
+      "script_sha256": "c593caeb3e75868993475e278823ad70d0c70e43f7660a5ab25d49db91281c5d",
+      "safety_verdict": "pass",
+      "historical_observation_matches": true
+    },
+    {
+      "case": "enumeration_error",
+      "kind": "control",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=children_unknown parent=5177 hold=0\n",
+      "stderr": "",
+      "expected_observation": "rc=1 terms=0 unlinks=0 starts=0 reason=children_unknown",
+      "script_sha256": "6e68c93629f2908cd5c04e169b36b8cb2fd95cae952b7a52d5f6f33ff4d68ad5",
+      "safety_verdict": "pass",
+      "historical_observation_matches": true
+    },
+    {
+      "case": "stranger_socket_holder",
+      "kind": "control",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=socket_owner_unknown parent=5177 hold=0\n",
+      "stderr": "",
+      "expected_observation": "rc=1 terms=0 unlinks=0 starts=0",
+      "script_sha256": "5f12c29d159c612fa9a7c0139a3ef4d16b3d57580adf0a4a8e902b714983a369",
+      "safety_verdict": "pass",
+      "historical_observation_matches": true
+    },
+    {
+      "case": "stop_timeout",
+      "kind": "control",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=31 sock=333\nACTION_TERM\nRESULT rc=2 terms=1 unlinks=0 starts=0 reason=old_parent_not_exited parent=5177 hold=1\nRESULT rc=2 terms=1 unlinks=0 starts=0 reason=epoch_hold parent=5177 hold=1\n",
+      "stderr": "",
+      "expected_observation": "rc=2 terms=1 unlinks=0 starts=0 reason=epoch_hold",
+      "script_sha256": "c26b6066245a4df7bfc2c20d4a64327d8ec2c86c70038ad31252970b82bd292e",
+      "safety_verdict": "pass",
+      "historical_observation_matches": true
+    },
+    {
+      "case": "birth_read_failure_after_term",
+      "kind": "counterexample",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=31 sock=333\nACTION_TERM\nRESULT rc=2 terms=1 unlinks=0 starts=0 reason=old_parent_exit_unknown parent=5177 hold=1\n",
+      "stderr": "",
+      "expected_observation": "rc=0 terms=1 unlinks=1 starts=1",
+      "script_sha256": "1bf916d301ebd0d41ae0a3e0589f2f500fe6d9e9a243cbacd572524098d76033",
+      "safety_verdict": "pass",
+      "historical_observation_matches": false
+    },
+    {
+      "case": "pid_reuse_after_term",
+      "kind": "counterexample",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=31 sock=333\nACTION_TERM\nRESULT rc=2 terms=1 unlinks=0 starts=0 reason=old_parent_pid_reused parent=5177 hold=1\n",
+      "stderr": "",
+      "expected_observation": "rc=0 terms=1 unlinks=1 starts=1",
+      "script_sha256": "69d7d7a83364bedf68524a2f6e0c81aaada6b0f41fdc54fe5cc5a841d38d9632",
+      "safety_verdict": "pass",
+      "historical_observation_matches": false
+    },
+    {
+      "case": "malformed_proc_stat",
+      "kind": "counterexample",
+      "rc": 0,
+      "stdout": "RESULT rc=1 terms=0 unlinks=0 starts=0 reason=children_unknown parent=5177 hold=0\n",
+      "stderr": "",
+      "expected_observation": "rc=0 terms=1 unlinks=1 starts=1",
+      "script_sha256": "a3e315904a84aa901a274452d93961b44bd3c6adb93072916179a17c54fd8adb",
+      "safety_verdict": "pass",
+      "historical_observation_matches": false
+    },
+    {
+      "case": "missing_proc_root",
+      "kind": "counterexample",
+      "rc": 0,
+      "stdout": "RESULT rc=1\n",
+      "stderr": "",
+      "expected_observation": "RESULT rc=0",
+      "script_sha256": "a2ffabd99537e53ff76c33a76db8d8fa760c37cf3173459994cc41e49f8bf033",
+      "safety_verdict": "pass",
+      "historical_observation_matches": false
+    },
+    {
+      "case": "missing_fd_directory",
+      "kind": "counterexample",
+      "rc": 0,
+      "stdout": "RESULT rc=1 holders=5177\n",
+      "stderr": "",
+      "expected_observation": "RESULT rc=0 holders=",
+      "script_sha256": "376c894c4aca23b0ba1948aa5deaef9f07ca4bb2f352cd4ac96b6550eed2f873",
+      "safety_verdict": "pass",
+      "historical_observation_matches": false
+    },
+    {
+      "case": "failed_fd_readlink",
+      "kind": "counterexample",
+      "rc": 0,
+      "stdout": "RESULT rc=1 holders=\n",
+      "stderr": "",
+      "expected_observation": "RESULT rc=0 holders=",
+      "script_sha256": "d683888e374e3d85fa6ec3dc49acdd8eeae4aad2f0f7b78de21478ef02848d03",
+      "safety_verdict": "pass",
+      "historical_observation_matches": false
+    },
+    {
+      "case": "nonlistener_socket_row",
+      "kind": "counterexample",
+      "rc": 0,
+      "stdout": "RESULT rc=1 inode=\n",
+      "stderr": "",
+      "expected_observation": "RESULT rc=0 inode=333",
+      "script_sha256": "e5134778e2bb114618c56f3418d9ff6a0ae31d29d1f01065be43058c1fe26795",
+      "safety_verdict": "pass",
+      "historical_observation_matches": false
+    },
+    {
+      "case": "live_child_new_host_loop",
+      "kind": "control",
+      "rc": 0,
+      "stdout": "EVENT consume_live_or_window child=alive win=no wid=30\nEVENT consume_live_or_window child=alive win=no wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT rc=0 terms=0 unlinks=0 starts=0 reason= parent=5177 hold=0\n",
+      "stderr": "",
+      "expected_observation": "rc=0 terms=0 unlinks=0 starts=0",
+      "script_sha256": "8878b66eaf43e60ddceaf8f90897ae298434707b907e4009458e01b1edf27ee0",
+      "safety_verdict": "pass",
+      "historical_observation_matches": true
+    },
+    {
+      "case": "failed_start_sticky",
+      "kind": "control",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=31 sock=333\nACTION_TERM\nACTION_UNLINK\nRESULT rc=2 terms=1 unlinks=1 starts=1 reason=new_parent_start_nonzero parent=5177 hold=1\nRESULT rc=2 terms=1 unlinks=1 starts=1 reason=epoch_hold parent=5177 hold=1\n",
+      "stderr": "",
+      "expected_observation": "rc=2 terms=1 unlinks=1 starts=1 reason=epoch_hold",
+      "script_sha256": "5af8a2a6ac1f9d7caaffa166f95520808f77da16a29f13666be63378105c65ba",
+      "safety_verdict": "pass",
+      "historical_observation_matches": true
+    },
+    {
+      "case": "newhost_two_edges_one_epoch_spawn",
+      "kind": "control",
+      "rc": 0,
+      "stdout": "EVENT parent_epoch_stop old=5177:5834 wid=30 sock=333\nACTION_TERM\nACTION_UNLINK\nACTION_START\nEVENT parent_epoch_switched old=5177:5834 new=9090:222 wid=30\nEVENT child_retirement_cleared spawn_started\nEVENT reentry_spawn_ok ok 8080 222\nEVENT consume_live_or_window child=alive win=no wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT rc=0 terms=1 unlinks=1 starts=1 reason= parent=9090 hold=0\nCOUNTS terms=1 starts=1 spawns=1 parent=9090 child=8080 seq=2\n",
+      "stderr": "",
+      "expected_observation": "COUNTS terms=1 starts=1 spawns=1 parent=9090 child=8080 seq=2",
+      "script_sha256": "7f8e2ce13cf94c5aeddd2d367772d20176262222eb4974c4df334c6b7a707962",
+      "safety_verdict": "pass",
+      "historical_observation_matches": true
+    },
+    {
+      "case": "newhost_owned_enum_failure",
+      "kind": "counterexample",
+      "rc": 0,
+      "stdout": "EVENT consume_live_or_window child=gone win=unknown wid=30\nEVENT consume_live_or_window child=gone win=unknown wid=30\nEVENT STOPPED existing_stop_no_delete\nRESULT rc=0 terms=0 unlinks=0 starts=0 reason= parent=5177 hold=0\nCOUNTS terms=0 starts=0 spawns=0\n",
+      "stderr": "",
+      "expected_observation": "COUNTS terms=1 starts=1 spawns=1",
+      "script_sha256": "85a31757d51d80a09756b7cb8a85b124de9750d8b4f1c95f2c6794a33460b51c",
+      "safety_verdict": "pass",
+      "historical_observation_matches": false
+    },
+    {
+      "case": "malformed_owned_uid",
+      "kind": "counterexample",
+      "rc": 0,
+      "stdout": "RESULT rc=1 owned=\n",
+      "stderr": "",
+      "expected_observation": "RESULT rc=0 owned=",
+      "script_sha256": "93c3ecde04d36804770f22477165b306a59209f8bcdd8a3b2cdddfc2ce0fc0f6",
+      "safety_verdict": "pass",
+      "historical_observation_matches": false
+    },
+    {
+      "case": "recorded_run_inode_changed",
+      "kind": "counterexample",
+      "rc": 0,
+      "stdout": "BEFORE phase=bound parent=5177:5834 mntns=mnt:[100] sock=333 sockfile=1:20 runid=1:20\nRESULT rc=1 terms=0 unlinks=0 starts=0 reason=epoch_binding_changed parent=5177 hold=0\n",
+      "stderr": "",
+      "expected_observation": "rc=0 terms=1 unlinks=1 starts=1",
+      "script_sha256": "e907690db213e754099209c206ea46a3ee3e05ed8a117abb96e863b1da6208c8",
+      "safety_verdict": "pass",
+      "historical_observation_matches": false
+    }
+  ],
+  "source_pins": {
+    "observed_at": "2026-10-21T09:10:55.526053+00:00",
+    "files": [
+      {
+        "path": "watchdog-reentry-r4.sh",
+        "sha256": "c73dadb3c0d6ba082c030d7c1096810129b5afec7e3aced4d896dce86e59f0e5",
+        "bytes": 41849
+      },
+      {
+        "path": "reentry-common-r4.sh",
+        "sha256": "b806eb6c1bb390be357f2ac689024bf3947217611bf637850cfc65e7538681c9",
+        "bytes": 8910
+      },
+      {
+        "path": "boot-entry.sh",
+        "sha256": "7fbfdf05844718e9d3b7139b526716fe1180bf56c77ff2b8763a224dc912eb29",
+        "bytes": 1635
+      },
+      {
+        "path": "config-common.sh",
+        "sha256": "f7c8e077dc11d9d71acd13aad42ec4a08ff1a6272cd4767853f2740718231c16",
+        "bytes": 2306
+      },
+      {
+        "path": "entry.sh",
+        "sha256": "ad76c65653e860cefbedb27cdb08dce5880f254566b64a33c36df84165801a95",
+        "bytes": 2079
+      },
+      {
+        "path": "exit-verdict.sh",
+        "sha256": "c07513405efa8e6cd2bbdc1aeb8b35a72be269c856a8ac316eaf70a147df8736",
+        "bytes": 7100
+      },
+      {
+        "path": "launch-common.sh",
+        "sha256": "d065f354392096819c93c808b89205355d62b333ff115fbadb8b9db38cbaa507",
+        "bytes": 2751
+      },
+      {
+        "path": "readiness-probe.sh",
+        "sha256": "2d3ce1546c9df1e3a222e23f19c39f8f4aec82fb551d59f37dbe7fd343573717",
+        "bytes": 6100
+      },
+      {
+        "path": "real-spawn.sh",
+        "sha256": "46337ba8364d871c19fb077e29a4087f37921bf609c70e9f3c1f98e1fff124a3",
+        "bytes": 207
+      },
+      {
+        "path": "real-start-parent-bounded.sh",
+        "sha256": "f77f0f70dd1b64c3cea2260390c7eda7216562632703983c9210bd698869ed4d",
+        "bytes": 866
+      },
+      {
+        "path": "real-start-parent.sh",
+        "sha256": "8e1d214e7e74b8b0072ff2f50b0ded774547eec3b186cf25be8f55b87170a294",
+        "bytes": 948
+      },
+      {
+        "path": "reentry-seams.sh",
+        "sha256": "febc7094b9d90b6a8c6c305199395d92da1ccde42d2b82b8c2754f0cb60f9d04",
+        "bytes": 4851
+      },
+      {
+        "path": "route-b-owner.sh",
+        "sha256": "6bce7c3c8f84ad1047313c5dd76bcb084637d9095b9163dc710c88aaee12fe4c",
+        "bytes": 5195
+      },
+      {
+        "path": "spawn.sh",
+        "sha256": "5310fa014fd8fc5116318b25299f08f13d703d356a0bd0671fd722acb7c1f5c2",
+        "bytes": 2137
+      },
+      {
+        "path": "start-parent.sh",
+        "sha256": "e00e5889283de3ee63038a85e6ea7a9a2d7cb765da30e8c800bbfa551d21f910",
+        "bytes": 1988
+      }
+    ],
+    "watchdog_sha256": "c73dadb3c0d6ba082c030d7c1096810129b5afec7e3aced4d896dce86e59f0e5",
+    "assembly_mode": "source_only_with_explicit_baseline_helpers",
+    "source_unchanged": true
+  },
+  "passed": true,
+  "candidate_accepted": false,
+  "scope": "Production functions with disclosed synthetic OS seams. Controls must execute successfully; refusal-only is insufficient. No deployment acceptance."
+}
