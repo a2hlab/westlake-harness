@@ -20,7 +20,8 @@ Rule set by this round: remote discovery searches only the input/artifact roots 
 
 | Source (alias) | State | Receipt | Observation |
 |---|---|---|---|
-| local APK stores (reused GENSHIN-T1 s08 list, SHA `07237009`) | MISSING | c01 | 441 entries (393 apk + 48 xapk) **manifest-read**: 0 UNKNOWN, 125 distinct packages, no `com.miHoYo.*` / genshin / hoyo package (`local-package-summary.json`) |
+| local APK stores (reused GENSHIN-T1 s08 list, SHA `07237009`), layer 1: 393 `.apk` | MISSING | c01 | `aapt2 dump badging` of each APK's own binary `AndroidManifest.xml`: 0 parse failures, 117 distinct packages, no `com.miHoYo.*` / genshin / hoyo |
+| same stores, layer 2: 48 `.xapk` | MISSING (container claim only) | c01 | `manifest.json` packer metadata: 45 distinct packages, none miHoYo. **Boundary:** this is container metadata, not the embedded base APK manifest, which was **not read**; a mislabelled container is not excluded |
 | local names + text indexes | MISSING | GENSHIN-T1 s03/s04/s07 (reused, not rerun) | — |
 | a2hlab `~/a2hlab/ws/inputs` | MISSING | r07 | toolchain dirs only, no apk/xapk/apks/obb |
 | hw248 documented artifact/input roots (`westlake-artifacts`, `*-inputs`, boat-v2 inputs, final61b-game) | MISSING | r08, r09 | 0 package files, 0 name matches (maxdepth 6) |
@@ -36,12 +37,28 @@ No claim of global absence. Tiers: install-set **MISSING**; startup-assets / ful
 derive them from). `input-index.json` has empty inputs and `install_command: null`. Every Genshin dimension
 (versionCode, signer, splitName/uses-split, ABI, SDK) is UNKNOWN. Small-app smoke results are not Genshin admission.
 
+Known tool defect (kept, not rewritten): `pkgnames.py`'s `split` field is always null because aapt2 reports
+`split=` inside the `package:` line; the split name is still present verbatim in `package_line`.
+
 ## Next action
 
-Outer/owner: restore a read route to macserver (both known routes refuse BatchMode ssh) or have the owner copy the
-`com.miHoYo.Yuanshen` install set (base + all splits, plus OBB/startup assets if present) from the macserver primary
-store into a private dir; or name the hw248 `LAB_STATE_DIR` mirror for one bounded name search. Then rerun G01
-manifest / signer / split reads on exact SHAs. No device task proposed.
+Outer loop selects an **official** acquisition source for the `com.miHoYo.Yuanshen` install set (base + every split,
+plus OBB/startup assets if present) into a private dir; fixing the macserver route is not a prerequisite. Then rerun
+G01 manifest / signer / split reads on exact SHAs. Optional bounded follow-ups: hw248 `LAB_STATE_DIR` mirror if its
+name is supplied; the 48 XAPK embedded base manifests if the reviewer wants layer 2 closed. No device task proposed.
+
+## Reproduce
+
+`tools/` holds the reproducible sources (no credentials, no user-bound paths; private root via
+`COMMERCIAL_G01_PRIVATE`, default `$HOME/.local/share/westlake/commercial-game-20261021/intake`):
+
+- `rec.sh` — receipt recorder (argv/rc/stdout/stderr/start/end); differs from the private original `05ce4640` only
+  in the parameterized root.
+- `pkgnames.py` — byte-identical to the private original (`d8e70583`) that produced c01;
+  `python3 -I tools/pkgnames.py <aapt2> <list>`.
+- `gen.py` — output generator; private original `5a23a9a0` kept unchanged. Public version adds the root env var,
+  `-p <port>` aliasing (no literal port), the two evidence layers, `tool_sources` and the official-source next_action.
+  Outputs were regenerated with the original start/end epochs; `results.json.tool_sources` records both hashes.
 
 ## Files
 

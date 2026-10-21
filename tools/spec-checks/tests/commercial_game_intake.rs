@@ -6,6 +6,8 @@ use std::process::Command;
 // NOT_SEARCHED-style state; MISSING keeps an empty input index and no install command; receipts
 // carry argv/rc/raw_refs and non-clean ones a class+note; public refs/argv have no user-bound
 // paths or raw IPs. Repo refs are re-hashed; private refs only when the private dir exists.
+// The two manifest evidence layers (APK AndroidManifest vs XAPK container manifest.json) stay
+// distinct and tool sources carry their private-original hashes.
 // Evidence quality stays human-reviewed (pending_review).
 const CHECK: &str = r#"
 import hashlib, json, os, re, sys
@@ -69,6 +71,17 @@ for c in res["command_receipts"]:
         assert c["class"].startswith("CANCELLED"), c["id"]
     for a in c["argv"]:
         assert "/Users/" not in a and not re.search(r"\b\d+\.\d+\.\d+\.\d+\b", a), "unaliased argv " + c["id"]
+summ = json.load(open(os.path.join(d, "local-package-summary.json")))
+lay = summ["evidence_layers"]
+assert set(lay) == {"apk_android_manifest", "xapk_container_manifest_json"}, lay.keys()
+assert "NOT read" in lay["xapk_container_manifest_json"]["boundary"], "xapk boundary must be explicit"
+assert sum(v["entries"] for v in lay.values()) == summ["entries"]
+ts = res["tool_sources"]
+assert {t["alias"].rsplit("/", 1)[1] for t in ts} == {"rec.sh", "pkgnames.py", "gen.py"}
+for t in ts:
+    assert re.fullmatch(r"[0-9a-f]{64}", t["private_original_sha256"]) and "identical_to_original" in t
+    src = open(os.path.join(root, t["alias"])).read()
+    assert "/Users/" not in src and not re.search(r"\b\d+\.\d+\.\d+\.\d+\b", src), "unaliased tool " + t["alias"]
 print("commercial_game_intake receipt ok: refs", len(refs), "rehashed", checked, "receipts", len(res["command_receipts"]))
 "#;
 
