@@ -9,8 +9,8 @@ no APK execution, no REA. One official download (513 290 344 B ≤ 2 GiB). The A
   public entry. The legacy `ys.mihoyo.com/main/` pages are old pre-registration content and were not used.
 - `h01` HEAD on the official porter link returns **HTTP 405**; kept as a failed receipt. Size was taken from a
   1-byte range GET (`h03`, 206) instead, before committing to the download.
-- No browser was available, so the Android link was derived statically from the captured page/JS originals; nothing
-  was guessed (no CDN version path was constructed by hand).
+- The Android URL was derived from the production branch in captured official JavaScript. The page runtime
+  branch selection was not observed. The derived official porter returned an observed 302; no CDN version path was invented.
 
 ## Source chain (`source-chain.json`, extracted by `tools/chain.py` with offsets into the originals)
 

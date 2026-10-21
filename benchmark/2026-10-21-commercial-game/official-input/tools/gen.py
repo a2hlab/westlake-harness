@@ -75,7 +75,7 @@ res = {"token": "COMMERCIAL-G03", "status": "LOCATED", "runtime_verdict": "NOT_T
                   "browser tool unavailable: URL derived statically from captured page/JS originals, not from a rendered click",
                   "globalOptions.environment assignment site not located; production assumed from deployment host (only production maps to a public ys-api host)",
                   "HEAD on the porter link returns 405; size taken from a 1-byte range GET instead",
-                  "an HTTP proxy is on the path (curl shows 'HTTP/1.0 200 Connection established'); TLS is end-to-end to the official hosts"],
+                  "normal HTTPS retrieval through curl with a CONNECT proxy; no independent TLS certificate-chain verification performed"],
        "unknowns": ["which bundled assets are required for first start", "full-content size and endpoints", "whether other channels (from_channel query) serve a different build",
                     "engine identity: no libunity.so/libil2cpp.so by name; libyuanshen.so 361798968 B plus assets/bin/Data/Managed/Metadata/global-metadata.dat suggest Unity IL2CPP but this is not verified"],
        "next_action": "Hand the exact SHA abd3c4d5… to the static scan lane (startup-chain / JNI / DT_NEEDED / GLES-Vulkan) via Codex/OC; derive startup-assets from that scan. Any board run needs a separate outer contract. Do not fetch full game content under this card.",
