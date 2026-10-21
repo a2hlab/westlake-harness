@@ -6662,6 +6662,174 @@
         }
       ],
       "frozen": false
+    },
+    {
+      "id": "OBS-20261021-G24-GLES-LOADER-TRIAL",
+      "kind": "原生加载器候选实测（不是新增安卓公共API，不是公共API冻结）",
+      "name": "G24 libGLESv2共享名候选实测：依赖错误推进到__register_atfork，游戏白屏后回桌面",
+      "status": "CANDIDATE_TRIAL_GAME_FAILED；无游戏帧；已恢复基线",
+      "method": "G18离线构建的libnativeloader候选（878c7019…，相对基线b8be63d2…仅在共享名单新增libGLESv2.so）经外环持锁apply（rc0）后，普通桌面图标启动原神一次；随后原rollback（rc0）恢复基线并解锁。",
+      "platform": "OH 5ea / arm64；boot a1d869b4-69a2-40a4-937e-4860f5b54239；parent 29504、child 31523（birth 1251118）、UID 20011077。只覆盖本次窗口，不外推其它版本或其它板。",
+      "apps": "com.miHoYo.Yuanshen：白屏后回桌面，child exit code 1；game_frames_observed=false，无首帧、无可玩结论。仅一个app，不满足2app冻结条件。",
+      "limitations": "本次完整启动至退出的日志中，原libyuanshen.so依赖libGLESv2.so的缺库错误未再出现，libyuanshen.so改为在重定位阶段缺__register_atfork；这只是有界的加载器推进，不等于GLES功能完成或游戏可用。较早libMHYComboCrypto.so的__errno缺失仍在（基线已有）；libGLESv3.so在ndk/default不可访问及OpenGLWrapper错误仍在；逃出main的仍为UnityPlayer.nativeRestartActivityIndicator UnsatisfiedLinkError。各错误间因果未证实。游戏child的maps未采到，不推断实际加载器inode或库实例。",
+      "deployment": "当前设备为已恢复基线：apply rc0、rollback rc0，319个基线目标全部一致，mount栈与Boat3一致，power恢复（30000/10000）且boot未变，锁于2026-10-21T20:43:19+08:00释放。候选不是当前部署；不新增公共API冻结。构建原始归档9b3f27bd…与G24执行原始归档57b760d3…均已远端SHA核验，大日志不入git。",
+      "source": [
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/shared-gles.patch",
+          "sha256": "f8b880a730ca45677c37ea0f4ff054cbb71a325c3699fcd03b02ab40647b0486",
+          "bytes": 1164
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/source-pins.json",
+          "sha256": "38a21bcfa51f679f86645def2742248382bdc27d778ea1875296dd09ad998e98",
+          "bytes": 3899
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/sources/baseline/src/native_loader.cpp",
+          "sha256": "cdd53c08d36d5c7bad6d80eeb8bce01cc3ba063a22bb86103ba1638b14920734",
+          "bytes": 7751
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/sources/candidate/src/native_loader.cpp",
+          "sha256": "cdd53c08d36d5c7bad6d80eeb8bce01cc3ba063a22bb86103ba1638b14920734",
+          "bytes": 7751
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/sources/candidate/policy/native_bridge_policy.v1.json",
+          "sha256": "8be85630e5737a4ab07602fda30c430bcd6bab459d3280282352e2ad3a0e14d5",
+          "bytes": 1589
+        }
+      ],
+      "build": [
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/build_candidate.py",
+          "sha256": "70328ec904affc0dd3c15955b10c847c014db81bab56b30a8b7dfac8205f38eb",
+          "bytes": 3425
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/upstream/build.py",
+          "sha256": "d42c8d96e4e1a46a1b2fd4589dba445b9cac537a6d79982c1bdbdfa4642a6331",
+          "bytes": 11328
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/upstream/source-identity.json",
+          "sha256": "4e454955d49038468a4f35f4dd1813900f93bf7ac96efe6708951076184c0cee",
+          "bytes": 4872
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/build-01-receipt.json",
+          "sha256": "59ccd8bac64e752324ab883a3377f6764c30eee3e186891b11eb7f9c48eae4d9",
+          "bytes": 6021
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/raw-index.json",
+          "sha256": "10294d5adaf071704243e830b86a5075e3a9d93211055e1f45c4ddfc9424147b",
+          "bytes": 184969
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/archive-receipt.json",
+          "sha256": "4f5f1f52d42fb952e6f99a52ef6fe3307540378ac411877c346b2c782c242247",
+          "bytes": 577
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/outer-archive/receipt.json",
+          "sha256": "207a762486ae142176a652685bb39aaea27e7184903f085dfdc13de3dc072d39",
+          "bytes": 1852
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/README.md",
+          "sha256": "04bc53eaf276373655465f36adbe548efd5e69f57ae45e8ade170cbf37dc6c21",
+          "bytes": 7556
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-loader-candidate/results.json",
+          "sha256": "6e485ebbe5fb876e5f45312ecb5d67d3c85b7c33784f6805699a6d00d9b7fc78",
+          "bytes": 2371
+        }
+      ],
+      "evidence": [
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/closed/README.md",
+          "sha256": "0a121fec90e8dd8e4ff38c099f6ef6598085c28fe0236de5c9404165b180e820",
+          "bytes": 1973
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/closed/results.json",
+          "sha256": "b7f3f0da736509c5da6dfd86cad591ee6bf8750b776012c90a6f5dfc982f02e7",
+          "bytes": 1414
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/closed/window-closed.json",
+          "sha256": "7efe457f8ab8c4c35d662b935b81a192a21e75eb0803a073494553b19d6c5e87",
+          "bytes": 358
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/closed/validation.json",
+          "sha256": "da701049cdaecdf8bc494ea1d193c69b1cca4a3d0d5b41bbf39f186538670fb7",
+          "bytes": 346
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/closed/remote-archive.json",
+          "sha256": "298d4f1d772e0933aa91eaaefeca3716fc112837b13d812fb2f6e5fd6ba6f8f3",
+          "bytes": 359
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/closed/power.txt",
+          "sha256": "1dafca37ee91a4ce73e1fad45792c9d41d3575cb8a076b0546ca8c362a7394c8",
+          "bytes": 1211
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/closed/game-first.jpeg",
+          "sha256": "3f921fe52cf5c4e3345642ae63ed8bce9a400796fabbf142ac635389d2bac8d9",
+          "bytes": 37991
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/closed/game-later.jpeg",
+          "sha256": "c82327b2a7216f3fb77ec0588b1582be4cb2e293bd321cb94e9a44546368501b",
+          "bytes": 101297
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/closed/restored-control.jpeg",
+          "sha256": "e4758f466b61c1c3b1457308e4c27da79f6adbc4a03df565a1e056a0dc637023",
+          "bytes": 77565
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/launch-review-01/README.md",
+          "sha256": "b33f650ed57deadf2667ac8799adee5c87ca25e070d639331d649d7a26c2a8c6",
+          "bytes": 2146
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/launch-review-01/results.json",
+          "sha256": "c9b3b5e3ef44ffc028eec0bf34632f4fbad1b21a22e715f9bd118bc55f2cd22d",
+          "bytes": 4224
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/launch-review-01/facts.txt",
+          "sha256": "14b2be44e8fdbb38195b75d1a3287a4f8a0d0c2b9bb5f93c15561e6a410e5d40",
+          "bytes": 111
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/launch-review-01/log-excerpts.json",
+          "sha256": "36a7a78f29406ca367a20fd058f212da181e2b14157ee37a5a2aecb07a5afc47",
+          "bytes": 13974
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/launch-review-01/validation.json",
+          "sha256": "69d4b4f4b129c7ec88b951c331f3c7943023fd22ec860341be08290671f96766",
+          "bytes": 194
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/launch-review-01/manifest.json",
+          "sha256": "851f740877cf2d9208d7c3d245fd33730c43502bb4bdff34e8d0e27a9aaa2cf2",
+          "bytes": 1220
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/gles-window02/launch-review-01/raw-index.json",
+          "sha256": "1b0130ab3caa9b5a263c8bc91b96e9392db7e6fd7d9257719d715a7da2ce6920",
+          "bytes": 171230
+        }
+      ],
+      "frozen": false
     }
   ]
 }

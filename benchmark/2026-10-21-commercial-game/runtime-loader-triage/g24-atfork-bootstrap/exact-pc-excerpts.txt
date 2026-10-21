@@ -1,0 +1,129 @@
+OBJECT loader 5b80:
+    5b68:      	ldr	w8, [x0]
+    5b6c:      	mov	x23, x0
+    5b70:      	add	x1, sp, #0x30
+    5b74:      	add	w8, w8, #0x1
+    5b78:      	str	w8, [x0]
+    5b7c:      	add	x0, sp, #0x38
+    5b80:      	bl	0x9410 <ANL_CreateDomain@plt>
+    5b84:      	ldr	w8, [x23]
+    5b88:      	cmp	w0, #0x0
+    5b8c:      	ldr	x9, [sp, #0x30]
+    5b90:      	stp	xzr, xzr, [sp, #0x18]
+
+OBJECT loader 65a8:
+    6590:      	mov	x24, x0
+    6594:      	ldr	x1, [sp, #0x8]
+    6598:      	ldr	w2, [sp, #0x14]
+    659c:      	add	w8, w8, #0x1
+    65a0:      	str	w8, [x0]
+    65a4:      	ldr	x0, [sp, #0x28]
+    65a8:      	bl	0x9470 <ANL_Dlopen@plt>
+    65ac:      	ldr	w8, [x24]
+    65b0:      	mov	x22, x0
+    65b4:      	stp	xzr, xzr, [x29, #-0x40]
+    65b8:      	stp	xzr, x0, [x29, #-0x30]
+
+OBJECT anl 35dc:
+    35c4:      	ldp	x10, x8, [x20]
+    35c8:      	add	x7, sp, #0x28
+    35cc:      	mov	x1, x23
+    35d0:      	str	xzr, [sp, #0x28]
+    35d4:      	stp	x21, x11, [sp]
+    35d8:      	stp	x10, x8, [sp, #0x10]
+    35dc:      	blr	x9
+    35e0:      	cbz	w0, 0x3604 <ANL_CreateDomain+0x410>
+    35e4:      	mov	w20, w0
+    35e8:      	mov	x0, x21
+    35ec:      	bl	0x4d20 <free@plt>
+
+OBJECT host ceac:
+    ce94:      	mov	x1, x21
+    ce98:      	mov	x0, x22
+    ce9c:      	bl	0x1c880 <dlns_init@plt>
+    cea0:      	mov	x0, x22
+    cea4:      	mov	x1, x28
+    cea8:      	mov	w2, #0x1                // =1
+    ceac:      	bl	0x1c890 <dlns_create2@plt>
+    ceb0:      	cbnz	w0, 0xcd18 <StockCreateConfiguredNamespaces+0xb0>
+    ceb4:      	ldr	x0, [sp, #0x18]
+    ceb8:      	mov	w1, #0x1                // =1
+    cebc:      	bl	0x1c8a0 <dlns_set_namespace_separated@plt>
+
+OBJECT host cefc:
+    cee4:      	mov	x22, x23
+    cee8:      	cbz	x26, 0xcf44 <StockCreateConfiguredNamespaces+0x2dc>
+    ceec:      	bl	0x1c8d0 <dlerror@plt>
+    cef0:      	mov	x0, x21
+    cef4:      	mov	x1, x26
+    cef8:      	mov	w2, #0x2                // =2
+    cefc:      	bl	0x1c8e0 <dlopen_ns@plt>
+    cf00:      	cbz	x0, 0xd4b4 <StockCreateConfiguredNamespaces+0x84c>
+    cf04:      	mov	x21, x0
+    cf08:      	bl	0x1c8d0 <dlerror@plt>
+    cf0c:      	adrp	x1, 0x9000 <write+0x9000>
+
+OBJECT host cfec:
+    cfd4:      	mov	x0, x20
+    cfd8:      	mov	x1, x19
+    cfdc:      	bl	0x1c880 <dlns_init@plt>
+    cfe0:      	mov	x0, x20
+    cfe4:      	mov	x1, x25
+    cfe8:      	mov	w2, #0x4                // =4
+    cfec:      	bl	0x1c890 <dlns_create2@plt>
+    cff0:      	cbnz	w0, 0xd014 <StockCreateConfiguredNamespaces+0x3ac>
+    cff4:      	mov	x0, x20
+    cff8:      	mov	w1, #0x1                // =1
+    cffc:      	bl	0x1c8a0 <dlns_set_namespace_separated@plt>
+
+OBJECT host d0fc:
+    d0e4:      	mov	w27, wzr
+    d0e8:      	mov	w26, wzr
+    d0ec:      	ldr	x8, [sp, #0x18]
+    d0f0:      	cbz	x8, 0xd16c <StockCreateConfiguredNamespaces+0x504>
+    d0f4:      	ldp	x2, x1, [sp, #0x10]
+    d0f8:      	mov	x0, x20
+    d0fc:      	bl	0x1c8f0 <dlns_inherit@plt>
+    d100:      	cbnz	w0, 0xd014 <StockCreateConfiguredNamespaces+0x3ac>
+    d104:      	add	x0, sp, #0x128
+    d108:      	bl	0xd9a8 <U10ShareResidentCompat>
+    d10c:      	cmp	w0, #0x0
+
+OBJECT host d130:
+    d118:      	orr	w8, w8, w27
+    d11c:      	tbnz	w8, #0x0, 0xd16c <StockCreateConfiguredNamespaces+0x504>
+    d120:      	adrp	x2, 0x9000 <write+0x9000>
+    d124:      	add	x2, x2, #0xb9
+    d128:      	add	x1, sp, #0x128
+    d12c:      	mov	x0, x20
+    d130:      	bl	0x1c8f0 <dlns_inherit@plt>
+    d134:      	cbz	w0, 0xd16c <StockCreateConfiguredNamespaces+0x504>
+    d138:      	mov	w2, #0x2c11             // =11281
+    d13c:      	mov	w7, w0
+    d140:      	adrp	x3, 0x4000 <write+0x4000>
+
+OBJECT host d190:
+    d178:      	adrp	x9, 0xa000 <write+0xa000>
+    d17c:      	add	x9, x9, #0xb2
+    d180:      	tst	w26, #0x1
+    d184:      	mov	x0, x20
+    d188:      	csel	x1, x9, x8, ne
+    d18c:      	mov	w2, #0x102              // =258
+    d190:      	bl	0x1c8e0 <dlopen_ns@plt>
+    d194:      	cbnz	x0, 0xd3a0 <StockCreateConfiguredNamespaces+0x738>
+    d198:      	mov	w0, #0x2                // =2
+    d19c:      	b	0xd014 <StockCreateConfiguredNamespaces+0x3ac>
+    d1a0:      	adrp	x0, 0x6000 <write+0x6000>
+
+OBJECT host d5bc:
+    d5a4:      	add	x8, x8, #0x1
+    d5a8:      	cbnz	w9, 0xd594 <StockOpenNamespace+0xa8>
+    d5ac:      	tbnz	w19, #0x8, 0xd570 <StockOpenNamespace+0x84>
+    d5b0:      	mov	x0, x21
+    d5b4:      	mov	x1, x20
+    d5b8:      	mov	w2, w19
+    d5bc:      	bl	0x1c8e0 <dlopen_ns@plt>
+    d5c0:      	b	0xd574 <StockOpenNamespace+0x88>
+
+000000000000d5c4 <NamespaceResultFence>:
+    d5c4:      	sub	sp, sp, #0x10

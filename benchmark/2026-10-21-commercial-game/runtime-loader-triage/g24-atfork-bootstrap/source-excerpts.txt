@@ -1,0 +1,405 @@
+FILE $MAIN/benchmark/2026-10-21-commercial-game/gles-loader-candidate/sources/candidate/src/native_loader_registry.cpp SHA256 db4201cbf7532bfc61f72d674e18756c647d919d932d0fd14b79e6417ab5d4fa
+215:   ++backend_calls_;
+216: 
+217:   const std::string app_search = Join(config.app_search_paths);
+218:   const std::string app_permitted = Join(config.app_permitted_paths);
+219:   const std::string bridge_search = Join(config.bridge_search_paths);
+220:   const std::string bridge_permitted = Join(config.bridge_permitted_paths);
+221:   const std::string bridge_sonames = Join(config.bridge_shared_sonames);
+222:   const bool has_bridge = !config.bridge_shared_sonames.empty();
+223: 
+224:   AnlDomainConfig backend_config = {};
+225:   backend_config.app_search_paths = app_search.c_str();
+226:   backend_config.app_permitted_paths = app_permitted.c_str();
+227:   backend_config.bridge_search_paths = has_bridge ? bridge_search.c_str() : nullptr;
+228:   backend_config.bridge_permitted_paths =
+229:       has_bridge ? bridge_permitted.c_str() : nullptr;
+230:   backend_config.bridge_shared_sonames =
+231:       has_bridge ? bridge_sonames.c_str() : nullptr;
+232:   backend_config.bridge_bootstrap_soname = has_bridge ?
+233:       config.bridge_bootstrap_soname.c_str() : nullptr;
+234: 
+235:   lock.unlock();
+236:   AnlDomain* raw_domain = nullptr;
+237:   int backend_result = 0;
+238:   {
+239:     BackendDepthGuard backend_depth;
+240:     backend_result = ANL_CreateDomain(&backend_config, &raw_domain);
+241:   }
+242:   std::string backend_error;
+243:   if (backend_result != 0 || raw_domain == nullptr) {
+244:     const char* borrowed = ANL_Dlerror();
+245:     backend_error = borrowed != nullptr ? borrowed :
+246:         (raw_domain == nullptr ? "ANL_CreateDomain returned a null domain"
+247:                                : "ANL_CreateDomain failed");
+
+FILE $MAIN/benchmark/2026-10-21-commercial-game/gles-loader-candidate/sources/candidate/include/nativeloader/native_bridge_policy.h SHA256 b5d3f6c18f417dd5b7c10274fe908e72569f289297c074fd11e795009dae0622
+14: inline constexpr int kSchemaVersion = 1;
+15: inline constexpr std::string_view kArchitecture = "arm64";
+16: inline constexpr std::string_view kBridgeBootstrapSoname =
+17:     "libwestlake_bionic_pthread_bridge.so";
+18: 
+19: inline constexpr std::array<std::string_view, 2> kBridgeSearchPaths = {
+20:     "/system/android/lib64",
+21:     "/system/lib64/platformsdk",
+22: };
+23: 
+24: inline constexpr std::array<std::string_view, 2> kBridgePermittedPaths = {
+25:     "/system/android/lib64",
+26:     "/system/lib64/platformsdk",
+27: };
+28: 
+29: inline constexpr std::array<std::string_view, 3> kSystemCallerRoots = {
+30:     "/apex/",
+31:     "/system/android/framework/",
+32:     "/system/framework/",
+33: };
+34: 
+35: inline constexpr std::array<SystemLibrary, 7> kSystemLibraries = {{
+36:     {"libsoundpool.so", "/system/android/lib64/libsoundpool.so"},
+37:     {"libicu_jni.so", "/system/android/lib64/libicu_jni.so"},
+38:     {"libjavacore.so", "/system/android/lib64/libjavacore.so"},
+39:     {"libopenjdk.so", "/system/android/lib64/libopenjdk.so"},
+40:     {"liboh_adapter_bridge.so", "/system/android/lib64/liboh_adapter_bridge.so"},
+41:     {"libmediandk.so", "/system/android/lib64/libmediandk.so"},
+42:     {"libmedia_jni.so", "/system/android/lib64/liboh_android_runtime.so"},
+43: }};
+44: 
+45: // This is adapter policy, not an app-provided allowlist. A generation is not
+46: // deployable until the closure gate binds every provider and transitive edge.
+47: inline constexpr std::array<std::string_view, 8> kBridgeSharedSonames = {
+48:     "libandroid.so",
+49:     "libEGL.so",
+50:     "liblog.so",
+51:     "libmediandk.so",
+52:     "libz.so",
+53:     "libwestlake_bionic_pthread_bridge.so",
+54:     "libstdc++.so",
+55:     "libGLESv2.so",
+56: };
+57: 
+58: }  // namespace westlake::nativeloader::policy
+
+FILE $MAIN/bms/src/adapter/framework/app-native-loader/src/app_native_loader.c SHA256 aa1cd7c09164f1e6eefb928e8bc856ecb4df3ce22f81842d6595911c5c1f1d06
+395: 
+396:     unsigned long id = atomic_fetch_add_explicit(&g_domain_id, 1, memory_order_relaxed);
+397:     char bridge_name[NS_NAME_MAX + 1] = {0};
+398:     char app_name[NS_NAME_MAX + 1] = {0};
+399: 
+400:     if (wants_bridge) {
+401:         snprintf(bridge_name, sizeof(bridge_name),
+402:                  "westlake.anl.bridge.%ld.%lu", (long)getpid(), id);
+403:     }
+404:     snprintf(app_name, sizeof(app_name), "westlake.anl.app.%ld.%lu",
+405:              (long)getpid(), id);
+406:     const char* shared = wants_bridge ? config->bridge_shared_sonames : NULL;
+407:     void* bootstrap_handle = NULL;
+408:     int rc = domain->runtime_gate.namespace_host_ops.create_configured_namespaces(
+409:         wants_bridge ? &domain->bridge : NULL,
+410:         wants_bridge ? bridge_name : NULL,
+411:         wants_bridge ? config->bridge_search_paths : NULL,
+412:         wants_bridge ? config->bridge_permitted_paths : NULL,
+413:         shared,
+414:         wants_bridge ? config->bridge_bootstrap_soname : NULL,
+415:         wants_bridge ? &domain->runtime_gate.pthread_bridge_ops : NULL,
+416:         &bootstrap_handle, &domain->app, app_name,
+417:         config->app_search_paths, config->app_permitted_paths);
+418:     if (rc != 0) {
+419:         free(domain);
+420:         return failf("default-owner namespace configuration failed: %d", rc);
+421:     }
+422:     domain->has_bridge = wants_bridge;
+423:     domain->bridge_bootstrap_handle = bootstrap_handle;
+424: 
+425:     g_error[0] = '\0';
+426:     *out_domain = domain;
+427:     return 0;
+
+FILE $U13_NATIVE/native-checks/n4-host.c SHA256 8be12abcb99ccc5f7fbd01f31d04b41a0b47db83d0ceac7f6bfda872b34e7b90
+184:         dlns_init(bridge_namespace, bridge_name);
+185:         result = dlns_create2(bridge_namespace, bridge_search_paths,
+186:                               CREATE_INHERIT_DEFAULT);
+187:         if (result != 0) {
+188:             return NamespaceResultFence(result);
+189:         }
+190:         result = dlns_set_namespace_separated(bridge_namespace->name, true);
+191:         if (result != 0) {
+192:             return NamespaceResultFence(result);
+193:         }
+194:         result = dlns_set_namespace_permitted_paths(
+195:             bridge_namespace->name, bridge_permitted_paths);
+196:         if (result != 0) {
+197:             return NamespaceResultFence(result);
+198:         }
+199:         result = dlns_set_namespace_allowed_libs(
+200:             bridge_namespace->name, bridge_shared_sonames);
+201:         if (result != 0) {
+202:             return NamespaceResultFence(result);
+203:         }
+204: 
+205:         if (bridge_bootstrap_soname != NULL) {
+206:             typedef int (*InstallBridgeOps)(const WlpbHostOpsV1 *ops);
+207:             InstallBridgeOps install = NULL;
+208:             void *symbol;
+209: 
+210:             dlerror();
+211:             bootstrap_handle = dlopen_ns(
+212:                 bridge_namespace, bridge_bootstrap_soname,
+213:                 RTLD_NOW | RTLD_LOCAL);
+214:             if (bootstrap_handle == NULL) {
+215:                 return NamespaceResultFence(ENOENT);
+216:             }
+217:             dlerror();
+218:             symbol = dlsym(bootstrap_handle, "WLPB_InstallHostOps");
+219:             if (symbol == NULL || dlerror() != NULL ||
+220:                 sizeof(symbol) != sizeof(install)) {
+221:                 (void)dlclose(bootstrap_handle);
+222:                 return NamespaceResultFence(ENOEXEC);
+223:             }
+224:             (void)memcpy(&install, &symbol, sizeof(install));
+225:             result = install(pthread_bridge_ops);
+226:             if (result != 0) {
+227:                 (void)dlclose(bootstrap_handle);
+228:                 return NamespaceResultFence(result);
+229:             }
+230:             *out_bridge_bootstrap_handle = bootstrap_handle;
+
+FILE $U13_NATIVE/native-checks/n4-host.c SHA256 8be12abcb99ccc5f7fbd01f31d04b41a0b47db83d0ceac7f6bfda872b34e7b90
+246:     dlns_init(app_namespace, app_name);
+247:     result = dlns_create2(app_namespace, app_search_paths,
+248:                           LOCAL_NS_PREFERED);
+249:     if (result != 0) {
+250:         return NamespaceResultFence(result);
+251:     }
+252:     result = dlns_set_namespace_separated(app_namespace->name, true);
+253:     if (result != 0) {
+254:         return NamespaceResultFence(result);
+255:     }
+256:     result = dlns_set_namespace_permitted_paths(
+257:         app_namespace->name, app_permitted_paths);
+258:     if (result != 0) {
+259:         return NamespaceResultFence(result);
+260:     }
+
+FILE $U13_NATIVE/native-checks/n4-host.c SHA256 8be12abcb99ccc5f7fbd01f31d04b41a0b47db83d0ceac7f6bfda872b34e7b90
+329:     if (wants_bridge) {
+330:         result = dlns_inherit(app_namespace, bridge_namespace,
+331:                               bridge_shared_sonames);
+332:         if (result != 0) {
+333:             return NamespaceResultFence(result);
+334:         }
+335:         Dl_namespace compat_owner;
+336:         if (U10ShareResidentCompat(&compat_owner) == 0 &&
+337:             !flutter_private && !native_private) {
+338:             int compat_result = dlns_inherit(app_namespace, &compat_owner,
+339:                                              "libbionic_compat.so");
+340:             if (compat_result != 0) {
+341:                 APPSPAWN_LOGE("[U10-COMPAT-VISIBLE] unavailable inherit result=%{public}d; namespace continues", compat_result);
+342:             }
+343:         }
+344:     }
+345:     if (flutter_private || native_private) {
+346:         /* OH 6.1 musl ignores DF_1_GLOBAL: its add_syms/removal is controlled
+347:          * by dlopen mode. Promote only the declared ABI DSO in selected app
+348:          * domains, not arbitrary app libraries or system providers. */
+349:         const char* abi = flutter_private
+350:             ? "/system/android/lib64/westlake_flutter/libwestlake_native_abi.so"
+351:             : "/system/android/lib64/westlake_native/libwestlake_native_abi.so";
+352:         void* handle = dlopen_ns(app_namespace, abi, RTLD_NOW | RTLD_GLOBAL);
+353:         if (handle == NULL) return NamespaceResultFence(ENOENT);
+354:         fprintf(stderr, "[N2-OWNER] %s ABI global ready; search=%s permitted=%s\n",
+355:                 app_name, app_search_paths, app_permitted_paths);
+356:     }
+357:     if (u11_zlib_root != NULL) APPSPAWN_LOGI("[U11-ZLIB-ROUTE] ns=%{public}s root=%{public}s", app_name, u11_zlib_root);
+
+FILE $BMS_DEPLOY/benchmark/2026-10-01-n5-native/source-evidence/oh61-dynlink.c SHA256 b65e80b894e110c3f54cb7f84337c03e4ffb298656af52ac8fce70018452ed63
+737: 
+738: /* The list of so that can be accessed during relocation include:
+739:  * - The is_global flag of the so is true which means accessible by default.
+740:  *   Global so includes exe, ld preload so and ldso.
+741:  * - We only check whether ns is accessible for the so if is_reloc_head_so_dep is true.
+742:  *
+743:  *   How to set is_reloc_head_so_dep:
+744:  *   When dlopen A, we set is_reloc_head_so_dep to true for
+745:  *   all direct and indirect dependent sos of A, including A itself. */
+746: static void add_can_search_so_list_in_dso(struct dso *dso_relocating, struct dso *start_check_dso) {
+747: 	struct dso *p = start_check_dso;
+748: 	for (; p; p = p->syms_next) {
+749: 		if (p->is_global) {
+750: 			add_reloc_can_search_dso(dso_relocating, p);
+751: 			continue;
+752: 		}
+753: 
+754: 		if (p->is_reloc_head_so_dep) {
+755: 			if (dso_relocating->namespace && check_sym_accessible(p, dso_relocating->namespace)) {
+756: 				add_reloc_can_search_dso(dso_relocating, p);
+757: 			}
+758: 		}
+759: 	}
+760: 
+761: 	return;
+762: }
+
+FILE $BMS_DEPLOY/benchmark/2026-10-01-n5-native/source-evidence/oh61-dynlink.c SHA256 b65e80b894e110c3f54cb7f84337c03e4ffb298656af52ac8fce70018452ed63
+1927: static struct dso *find_library_by_name(const char *name, const ns_t *ns, bool check_inherited)
+1928: {
+1929: 	LD_LOGD("find_library_by_name name:%{public}s, ns_name:%{public}s, check_inherited:%{public}d",
+1930: 		name,
+1931: 		ns ? ns->ns_name : "NULL",
+1932: 		!!check_inherited);
+1933: 	struct dso *p = search_dso_by_name(name, ns);
+1934: 	if (p) return p;
+1935: 	if (check_inherited && ns->ns_inherits) {
+1936: 		for (size_t i = 0; i < ns->ns_inherits->num; i++){
+1937: 			ns_inherit * inherit = ns->ns_inherits->inherits[i];
+1938: 			p = search_dso_by_name(name, inherit->inherited_ns);
+1939: 			if (p && is_sharable(inherit, name)) {
+1940: 			    if (app_has_same_name_so(name, ns) != -1) {
+1941: 			        return NULL;
+1942: 			    }
+1943: 			    return p;
+1944: 			}
+1945: 		}
+1946: 	}
+1947: 	return NULL;
+1948: }
+1949: /* Find loaded so by file stat */
+
+FILE $BMS_DEPLOY/benchmark/2026-10-01-n5-native/source-evidence/oh61-dynlink.c SHA256 b65e80b894e110c3f54cb7f84337c03e4ffb298656af52ac8fce70018452ed63
+2029: 		} else {
+2030: 			fd = open(name, O_RDONLY|O_CLOEXEC);
+2031: 			LD_LOGD("load_library is_accessible return true, open file fd:%{public}d .", fd);
+2032: 		}
+2033: 	} else {
+2034: 		/* Search for the name to see if it's already loaded */
+2035: 		/* Search in namespace */
+2036: 		p = find_library_by_name(name, namespace, check_inherited);
+2037: 		if (p) {
+2038: 			LD_LOGD("load_library find_library_by_name found p, return it!");
+2039: 			return p;
+2040: 		}
+2041: 		if (strlen(name) > NAME_MAX) {
+2042: 			LD_LOGE("load_library name exceeding the maximum length, return 0!");
+2043: 			return 0;
+2044: 		}
+2045: 		fd = -1;
+2046: 		if (namespace->env_paths) fd = path_open(name, namespace->env_paths, buf, sizeof buf);
+2047: 		for (p = needed_by; fd == -1 && p; p = p->needed_by) {
+2048: 			if (fixup_rpath(p, buf, sizeof buf) < 0) {
+2049: 				LD_LOGD("load_library Inhibit further search,fd = -2.");
+2050: 				fd = -2; /* Inhibit further search. */
+
+FILE $BMS_DEPLOY/benchmark/2026-10-01-n5-native/source-evidence/oh61-dynlink.c SHA256 b65e80b894e110c3f54cb7f84337c03e4ffb298656af52ac8fce70018452ed63
+3508: 	if (!p->relocated || (mode & RTLD_GLOBAL)) {
+3509: 		/* Make new symbols global, at least temporarily, so we can do
+3510: 		 * relocations. If not RTLD_GLOBAL, this is reverted below. */
+3511: 		add_syms(p);
+3512: 		/* Set is_reloc_head_so_dep to true for all direct and indirect dependent sos of p, including p self. */
+3513: 		p->is_reloc_head_so_dep = true;
+3514: 		for (i=0; p->deps[i]; i++) {
+3515: 			p->deps[i]->is_reloc_head_so_dep = true;
+3516: 			add_syms(p->deps[i]);
+3517: 		}
+3518: 	}
+3519: 	struct dso *reloc_head_so = p;
+3520: 	trace_marker_begin(HITRACE_TAG_MUSL, "linking: entry so", p->name);
+3521: 	if (!p->relocated) {
+3522: 		reloc_all(p, extinfo);
+3523: 	}
+3524: 	trace_marker_end(HITRACE_TAG_MUSL);
+3525: 	reloc_head_so->is_reloc_head_so_dep = false;
+3526: 	for (size_t i=0; reloc_head_so->deps[i]; i++) {
+3527: 		reloc_head_so->deps[i]->is_reloc_head_so_dep = false;
+3528: 	}
+3529: 
+3530: 	/* If RTLD_GLOBAL was not specified, undo any new additions
+3531: 	 * to the global symbol table. This is a nop if the library was
+3532: 	 * previously loaded and already global. */
+3533: 	if (!(mode & RTLD_GLOBAL))
+3534: 		revert_syms(orig_syms_tail);
+3535: 
+
+FILE $BMS_DEPLOY/benchmark/2026-10-01-n5-native/source-evidence/oh61-dynlink.c SHA256 b65e80b894e110c3f54cb7f84337c03e4ffb298656af52ac8fce70018452ed63
+3698: 		pthread_rwlock_unlock(&lock);
+3699: 		return ENOMEM;
+3700: 	}
+3701: 	ns_set_name(ns, dlns->name);
+3702: 	ns_set_flag(ns, flags);
+3703: 	ns_add_dso(ns, get_default_ns()->ns_dsos->dsos[0]); /* add main app to this namespace*/
+3704: 	nslist_add_ns(ns); /* add ns to list*/
+3705: 	ns_set_lib_paths(ns, lib_path);
+3706: 
+3707: 	if ((flags & CREATE_INHERIT_DEFAULT) != 0) {
+3708: 		ns_add_inherit(ns, get_default_ns(), NULL);
+3709: 	}
+3710: 
+3711: 	if ((flags & CREATE_INHERIT_CURRENT) != 0) {
+3712: 		struct dso *caller;
+3713: 		caller_addr = __builtin_return_address(0);
+3714: 		caller = (struct dso *)addr2dso((size_t)caller_addr);
+3715: 		if (caller && caller->namespace) {
+3716: 			ns_add_inherit(ns, caller->namespace, NULL);
+3717: 		}
+3718: 	}
+
+FILE $BMS_DEPLOY/benchmark/2026-09-30-n4-native/src/native_abi.c SHA256 6cf69a57a5318058aea1d2ce69f3b3a2355aa11231d5261a85435508443c3335
+10: #include <sys/select.h>
+11: /* Copied functions: Westlake 532633da webview_bionic_shim.c. */
+12: int __register_atfork(void (*prepare)(void), void (*parent)(void),
+13:                       void (*child)(void), void *dso)
+14: {
+15:     (void)dso;
+16:     fprintf(stderr, "[WESTLAKE-WEBVIEW-BIONIC] __register_atfork\n");
+17:     return pthread_atfork(prepare, parent, child);
+
+FILE $BMS_DEPLOY/benchmark/2026-09-30-n4-native/build-abi.sh SHA256 5d66488b73ae431899c0f21d0439fabe349aa6857e0cf9b513f57c70a35ee019
+1: #!/usr/bin/env bash
+2: set -euo pipefail
+3: HERE=$(cd "$(dirname "$0")" && pwd)
+4: REPO=$(cd "$HERE/../.." && pwd)
+5: python3 "$REPO/scripts/lab/check_frozen.py" --source-root "$REPO"
+6: ROOT=$REPO/bms/src/.work/b68-generation
+7: FROZEN=$ROOT/.work/product-tls-generation/frozen
+8: TC=$FROZEN/toolchain
+9: SYS=$FROZEN/sysroot
+10: POOL=$ROOT/platform-pool/system/lib64
+11: OUT=${FLUTTER_BUILD_OUT:-$REPO/bms/src/.work/n4-native/abi}
+12: SRC=$REPO/benchmark/2026-09-30-n3-native/flutter
+13: TARGET=aarch64-linux-ohos
+14: export LD_LIBRARY_PATH=$TC/runtime
+15: CC=$TC/bin/clang-15
+16: CXX=$TC/bin/clang++
+17: COMMON=(--target=$TARGET --sysroot=$SYS -B$TC/bin -isystem $SYS/include/$TARGET -fPIC -O2 -g -ffunction-sections -fdata-sections -D__OHOS__ -D_GNU_SOURCE -I$SRC/include)
+18: LINK=(--target=$TARGET --sysroot=$SYS -B$TC/bin -B$SYS/lib/$TARGET -fuse-ld=lld -shared -Wl,-z,defs,-z,now,-z,relro,--no-undefined,--fatal-warnings,--gc-sections,--build-id=sha1,--hash-style=both -L$SYS/lib/$TARGET -L$OUT)
+19: mkdir -p "$OUT"
+20: "$CC" "${COMMON[@]}" -std=c11 -c "$HERE/src/native_abi.c" -o "$OUT/native_abi.o"
+21: "$CC" "${COMMON[@]}" -std=c11 -fno-builtin -c "$HERE/src/bionic_stdio_compat.c" -o "$OUT/stdio.o"
+22: "$CC" "${LINK[@]}" -Wl,-z,global,-soname,libwestlake_native_abi.so -Wl,--version-script=$HERE/src/native_abi.map "$OUT/native_abi.o" "$OUT/stdio.o" -lc -lpthread -o "$OUT/libwestlake_native_abi.so"
+23: sha256sum "$OUT/libwestlake_native_abi.so"
+
+FILE $MAIN/benchmark/2026-10-03-u14-native-abi-gecko/README.md SHA256 054587e99e0522c6f13954f75d2129740f69d403911fb78543b73e8a92a95efd
+1: # U14 native_abi for Gecko: d2053066 reproduced on hw248 with its own clang (all diffs path-only), then +10 LIBC exports; FINAL = 7605812c (android_dlopen_ext = deployed libbionic_compat 015aa3a6 behaviour)
+2: 
+3: ## FINAL (outer 04:11): `7605812cc5249534950bb0533baa3199b380daf6e763af12ed216c2c70649515`, for cx-bms / U14
+4: 
+5: **Release.** `$WORKSPACES/westlake-inputs/generations/u14-native-abi-gecko-v2/`
+6: - `payload/android/lib64/westlake_native/libwestlake_native_abi.so` = `7605812cc5249534950bb0533baa3199b380daf6e763af12ed216c2c70649515`.
+7:   Deploy target: `/system/android/lib64/westlake_native/libwestlake_native_abi.so` (replaces d2053066).
+8:   `westlake_flutter/libwestlake_native_abi.so` stays d2053066.
+9: - `logs/`: teed hw248 build logs, faithful repro ×2 (554bf6bc) + final ×2. `SHA256SUMS` covers payload + logs.
+10: 
+11: **Outer decisions on the two open items.**
+12: - **A (emutls): accepted** as the direct consequence of the verbatim `__pthread_cleanup_*` under the recipe's flags.
+13: - **B (`android_dlopen_ext`): use the deployed libbionic_compat 015aa3a6 behaviour.**
+14:   - `src/android_dlopen_ext.c` + `src/android_dlext_abi.h` are copied unchanged (`7337a393`, `58c45663`) from
+15:     `benchmark/2026-10-01-u10-native-shims/overlay/`, the source of 015aa3a6 (its README:48).
+16:   - Behaviour: forward to `__loader_android_dlopen_ext` only when that weak backend exists; `extinfo == NULL` or
+17:     `extinfo->flags == 0` → plain `dlopen(filename, flags)`; otherwise `errno = ENOTSUP`, return NULL and log
+18:     `[U10-DLEXT] backend absent; refusing extension flags=0x%lx file=%s`.
+19:   - The AOSP forward block was removed from `src/gecko_abi.c` (`09aef138`); map unchanged (`14bb2fbb`).
+20: 
+21: **Build.** hw248, frozen clang feef13a3, `build_hw248.sh` with `gecko_abi.c android_dlopen_ext.c`. ×2 byte-identical,
+22: 0 compiler warnings (`evidence/hw248-gecko2-{a,b}.log`).
+23: 
+24: **Gates.**
+25: | gate | result |

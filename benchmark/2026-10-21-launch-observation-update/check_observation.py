@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Check G17's one-row append and rendered evidence; no device or cited-code execution."""
+"""Check G17's one-row append and rendered evidence; no device or cited-code execution.
+
+G25: the 59-row prefix (58 originals + the G17 row) is checked strictly; later rows may follow and are
+checked by their own card (benchmark/2026-10-21-g24-api-observation). G17's historical results are unchanged."""
 import argparse
 import copy
 import csv
@@ -26,9 +29,9 @@ def check(data, source_root, rendered=True):
     original_pin = next(p for p in pins if p['path'].endswith('/observations.json'))
     old.require(old.sha(HERE / 'original-58.json') == original_pin['sha256'], 'original58 snapshot drift')
     old.require(len(baseline['rows']) == 58 and data['rows'][:58] == baseline['rows'], 'original58 objects changed')
-    old.require(len(data['rows']) == 59, 'G17 requires exactly59 rows')
+    old.require(len(data['rows']) >= 59, 'G17 requires the 59-row prefix')
     old.require(data['rows'][58] == old.read(HERE / 'added-row.json'), 'new observation changed')
-    old.require(len({r['id'] for r in data['rows']}) == 59, 'duplicate observation ID')
+    old.require(len({r['id'] for r in data['rows']}) == len(data['rows']), 'duplicate observation ID')
     before_pin = next(p for p in pins if p['path'].endswith('/README.md'))
     old.require(old.sha(HERE / 'README.before.md') == before_pin['sha256'], 'README preimage drift')
     old.require((API / 'README.md').read_bytes().startswith((HERE / 'README.before.md').read_bytes()), 'prior README lines changed')
@@ -52,16 +55,17 @@ def check(data, source_root, rendered=True):
     if rendered:
         with (API / 'observations.csv').open(encoding='utf-8-sig', newline='') as f:
             table = list(csv.DictReader(f))
-        old.require(len(table) == 59, 'CSV row count')
+        old.require(len(table) == len(data['rows']), 'CSV row count')
         for expected, actual in zip(data['rows'], table):
             for key, value in expected.items():
                 text = json.dumps(value, ensure_ascii=False) if isinstance(value, list) else str(value)
                 old.require(actual[key] == text, f'CSV mismatch: {expected["id"]}/{key}')
         html = (API / 'index.html').read_text()
-        old.require(html.count('<article>') == 59, 'HTML row count')
+        old.require(html.count('<article>') == len(data['rows']), 'HTML row count')
         old.require(re.findall(r'<code>(OBS-[^<]+)</code>', html) == [r['id'] for r in data['rows']], 'HTML row order')
         result = old.read(API / 'results.json')
-        old.require(result['rows'] == 59 and result['references_verified'] == count, 'renderer result count')
+        later = sum(len(r[g]) for r in data['rows'][59:] for g in ('source', 'build', 'evidence'))
+        old.require(result['rows'] == len(data['rows']) and result['references_verified'] == count + later, 'renderer result count')
         old.require(result['input_sha256'] == old.sha(API / 'observations.json'), 'renderer input drift')
         old.require(result['remote_publication_verified'] is False, 'render is not remote publication')
     return count
@@ -79,12 +83,14 @@ def main():
     changed['rows'][57]['status'] = 'changed'
     extra = copy.deepcopy(data)
     extra['rows'].append(dict(data['rows'][58], id='OBS-FUTURE'))
+    row59 = copy.deepcopy(data)
+    row59['rows'][58]['status'] = 'changed'
     item = data['rows'][58]['evidence'][0]
     cases = [
         ('original58 changed', lambda: check(changed, source_root, False), 'original58 objects changed'),
         ('missing reference', lambda: old.check_ref(source_root, dict(item, path='benchmark/2026-10-21-launch-observation-update/intentionally-missing.json')), 'missing/nonregular'),
         ('reference SHA drift', lambda: old.check_ref(source_root, dict(item, sha256='0' * 64)), 'SHA drift'),
-        ('G17 rejects60', lambda: check(extra, source_root, False), 'exactly59'),
+        ('G17 row59 changed', lambda: check(row59, source_root, False), 'new observation changed'),
     ]
     for name, call, expected in cases:
         try:
@@ -95,8 +101,9 @@ def main():
         else:
             raise ValueError(f'negative case accepted: {name}')
     old.require(old.check(extra, source_root) == 1339, 'G15 blocks later append')
+    old.require(check(extra, source_root, False) == count, 'G17 allows a later append')
     print(json.dumps({'status': 'PASS', 'original_rows_unchanged': 58,
-        'added_rows': 1, 'rows': 59, 'exact_references': count,
+        'added_rows': 1, 'rows': len(data['rows']), 'g17_prefix_rows': 59, 'exact_references': count,
         'html_csv_consistent': True, 'historical315_unchanged': True,
         'g15_prefix_check_pass': True, 'g15_allows_future_append': True,
         'g15_historical_result_unchanged': True, 'negative_cases': refusals,
