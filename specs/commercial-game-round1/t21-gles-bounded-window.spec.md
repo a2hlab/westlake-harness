@@ -1,7 +1,7 @@
 spec: task
 name: "G21 bounded paired-loader observation on 5ea"
 inherits: project
-depends: [t20-gles-transaction-package]
+depends: [t20-gles-transaction-package, t22-u7-start-binding]
 satisfies: [REQ-COMMERCIAL-GAME]
 ---
 ## 意图
