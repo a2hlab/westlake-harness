@@ -609,6 +609,7 @@ kind of work from where the corpus started
 | **[T42 denied host launch and recovery](benchmark/2026-10-22-toutiao-host-observer-device/README.md)** | Temporary observer HAP installed, AA requests denied despite shell rc0, b189 restored; 201 raw records verified. Callback unknown and task not accepted. |
 | **[T43 lock-screen observation correction](benchmark/2026-10-22-toutiao-host-launcher-observation/README.md)** | Six alleged desktop pages were identical lock-screen layouts; global icon absence withdrawn. 385 raw hashes and 124+36 recovery manifests checked, deviations and provenance gaps retained. |
 | **[T44 verified desktop host callbacks](benchmark/2026-10-22-toutiao-verified-desktop-observation/README.md)** | Current icon found on page8; two ordinary clicks yield fresh onCreate/seq1 then onNewWant/seq2. 1062 raw records and full host recovery verified; both screenshots remain blank, no feed/fix claim. |
+| **[T45 existing bridge event correlation](benchmark/2026-10-22-toutiao-existing-bridge-evidence/README.md)** | 197 raw records and 25 existing events checked; retained feed image inspected. Blank screenshot and child exit/restart have different timestamps; owner refusal subtype remains unknown, no fix claim. |
 
 ---
 
