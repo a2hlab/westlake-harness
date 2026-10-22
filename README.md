@@ -612,6 +612,7 @@ kind of work from where the corpus started
 | **[T45 existing bridge event correlation](benchmark/2026-10-22-toutiao-existing-bridge-evidence/README.md)** | 197 raw records and 25 existing events checked; retained feed image inspected. Blank screenshot and child exit/restart have different timestamps; owner refusal subtype remains unknown, no fix claim. |
 | **[Owned lifecycle entry gap](benchmark/2026-10-22-toutiao-lifecycle-entry-gap/README.md)** | Six deployed script bindings resolve to tracked exact-byte sources; per-boot entry is not reentrant after guardian exit. Static gap only, no service implementation or white-screen fix. |
 | **[T46 guardian refusal diagnostics](benchmark/2026-10-22-toutiao-owned-guardian-diagnostics/README.md)** | Independent 11-case/22-execution replay retains identity decisions and stores refusal details exclusively. Offline candidate only; no device deployment or reopen acceptance. |
+| **[T47 reproducible diagnostic package](benchmark/2026-10-22-toutiao-diagnostic-package/README.md)** | Public nine-file historical input snapshot rebuilds six disabled diagnostic controls and six exact rollback files; independently checked. No deployment or white-screen fix. |
 
 ---
 
