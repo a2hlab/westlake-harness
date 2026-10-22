@@ -1,0 +1,218 @@
+--- rollback/watchdog.sh
++++ candidate/watchdog.sh
+@@ -13,6 +13,7 @@
+ RB_PROC=$PROC; RB_RUNTIME=$RUNTIME
+ RB_OWNER_UID=${TT_OWNER_UID:-$(stat -c %u /data/app/el2/100/base/org.westlake.imehost 2>/dev/null)}
+ . "$HERE/route-b-owner.sh"
++RB_AUDIT_PERSIST=1
+ BOOT=unknown; seq=0; child=none; child_birth=none; parent=none; parent_birth=none
+ keep_lock=0; owner_verified=0
+ io_fail() {
+@@ -27,6 +28,22 @@
+ }
+ control_file() {
+  [ ! -L "$1" ] && { [ ! -e "$1" ] || [ -f "$1" ]; } || io_fail "control_path_not_regular $1"
++}
++persist_guardian_refusal() {
++ # Keep the historical first filename; allow at most 16 additional records.
++ diagnostic_slot=0
++ while :; do
++  diagnostic_file="$F/guardian-refusal-$seq.jsonl"
++  [ "$diagnostic_slot" = 0 ] || diagnostic_file="$F/guardian-refusal-$seq.$diagnostic_slot.jsonl"
++  control_file "$diagnostic_file"
++  [ -e "$diagnostic_file" ] || break
++  [ "$diagnostic_slot" -lt 16 ] || io_fail diagnostic_slots_exhausted
++  diagnostic_slot=$((diagnostic_slot+1))
++ done
++ diagnostic_expected=$(rb_guard_json "$@" 2>&1 >/dev/null) || io_fail diagnostic_encode_failed
++ [ -n "$diagnostic_expected" ] || io_fail diagnostic_empty
++ (set -C; printf '%s\n' "$diagnostic_expected" > "$diagnostic_file") || io_fail diagnostic_write_failed
++ verify_exact "$diagnostic_file" "$diagnostic_expected"
+ }
+ write_exact() {
+  control_file "$1"
+@@ -81,9 +98,51 @@
+  private_namespace "$p" || return 1
+  [ "$(rb_birth "$p")" = "$expected" ]
+ }
++classify_child_exit() (
++ # Read-only, conservative classification. 3 means confirmed exit; 1 unknown/live.
++ exit_pid=$1; exit_expected=$2
++ case "$exit_pid:$exit_expected" in *[!0-9:]*|:*|*:) exit 1;; esac
++ [ -d "$RB_PROC" ] && [ -r "$RB_PROC" ] && [ -x "$RB_PROC" ] || exit 1
++ # Positive visibility witness from the same proc root; unknown stays refused.
++ case "$parent:$parent_birth" in *[!0-9:]*|:*|*:) exit 1;; esac
++ exit_parent_birth=$(rb_birth "$parent") || exit 1
++ [ "$exit_parent_birth" = "$parent_birth" ] || exit 1
++ [ ! -L "$RB_PROC/$exit_pid" ] || exit 1
++ if [ ! -d "$RB_PROC/$exit_pid" ]; then
++  [ ! -e "$RB_PROC/$exit_pid" ] || exit 1
++  exit_listing=$(LC_ALL=C ls -1 "$RB_PROC") || exit 1
++  for exit_entry in $exit_listing; do [ "$exit_entry" != "$exit_pid" ] || exit 1; done
++  printf '%s\n' gone
++  exit 3
++ fi
++ [ -r "$RB_PROC/$exit_pid/stat" ] || exit 1
++ exit_row=$(cat "$RB_PROC/$exit_pid/stat") || exit 1
++ case "$exit_row" in "$exit_pid ("*") "*) :;; *) exit 1;; esac
++ exit_rest=${exit_row##*) }
++ set -f
++ set -- $exit_rest
++ # Linux stat has 50 fields after pid/comm. Reject truncated or malformed data.
++ [ "$#" -ge 50 ] || exit 1
++ exit_state=$1; shift
++ case "$exit_state" in R|S|D|Z|T|t|X|x|K|W|P|I) :;; *) exit 1;; esac
++ exit_index=1; exit_birth=
++ for exit_field in "$@"; do
++  exit_digits=${exit_field#-}
++  case "$exit_digits" in ''|*[!0-9]*) exit 1;; esac
++  [ "$exit_index" != 19 ] || exit_birth=$exit_field
++  exit_index=$((exit_index+1))
++ done
++ [ "$exit_state" = Z ] && [ "$exit_birth" = "$exit_expected" ] || exit 1
++ printf '%s\n' zombie
++ exit 3
++)
+ child_owned() {
+  p=$1; expected=$2; RB_AUDIT_PID=$p; RB_AUDIT_BIRTH=$expected; RB_AUDIT_PHASE=strict
+- first_birth=$(rb_birth "$p") || { rb_deny birth '<read-error-or-exited>' "$expected"; return 1; }
++ first_birth=$(rb_birth "$p") || {
++  child_exit_rc=0; child_exit_kind=$(classify_child_exit "$p" "$expected") || child_exit_rc=$?
++  [ "$child_exit_rc" != 3 ] || { event "classified=$child_exit_kind phase=first_birth"; return 3; }
++  rb_deny birth '<read-error-or-exited>' "$expected"; return 1
++ }
+  [ "$first_birth" = "$expected" ] || { rb_deny birth "$first_birth" "$expected"; return 1; }
+  rb_owned "$p" || return 1
+  mine=$(readlink "$PROC/$p/ns/mnt" 2>/dev/null) || { rb_deny namespace '<read-error>' private; return 1; }
+@@ -92,7 +151,11 @@
+  row=$(cat "$PROC/$p/stat") || { rb_deny ppid '<read-error>' "$parent"; return 1; }
+  rest=${row##*) }; set -- $rest
+  [ "${2:-none}" = "$parent" ] || { rb_deny ppid "${2:-none}" "$parent"; return 1; }
+- last_birth=$(rb_birth "$p") || { rb_deny birth_after '<read-error-or-exited>' "$expected"; return 1; }
++ last_birth=$(rb_birth "$p") || {
++  child_exit_rc=0; child_exit_kind=$(classify_child_exit "$p" "$expected") || child_exit_rc=$?
++  [ "$child_exit_rc" != 3 ] || { event "classified=$child_exit_kind phase=last_birth"; return 3; }
++  rb_deny birth_after '<read-error-or-exited>' "$expected"; return 1
++ }
+  [ "$last_birth" = "$expected" ] || { rb_deny birth_after "$last_birth" "$expected"; return 1; }
+ }
+ capture_init() {
+@@ -132,7 +195,12 @@
+  verify_exact "$F/lock/owner" "$$ $self_birth $BOOT"
+  [ "$(cat "$PROC/sys/kernel/random/boot_id")" = "$BOOT" ] || io_fail capture_boot_changed
+  [ ! -e "$F/stop" ] && [ ! -L "$F/stop" ] || { capture_rc=126; capture_reason=stop_during_capture; return 1; }
+- child_owned "$child" "$child_birth" || { capture_rc=126; capture_reason=child_identity_during_capture; return 1; }
++ capture_owned_rc=0; child_owned "$child" "$child_birth" || capture_owned_rc=$?
++ if [ "$capture_owned_rc" != 0 ]; then
++  capture_rc=126; capture_reason=child_identity_during_capture
++  [ "$capture_owned_rc" != 3 ] || capture_reason=child_exited_during_capture
++  return 1
++ fi
+ }
+ capture_remove_file() {
+  # Only this poll's fresh path inside our verified exclusive directory.
+@@ -272,7 +340,9 @@
+     state OWNER_REFUSED "child_readiness_rc=$readiness_rc report=$report app_parent_retained"; return 2
+    fi
+   fi
+-  child_owned "$child" "$child_birth" || { state OWNER_REFUSED child_identity; return 2; }
++  child_check_rc=0; child_owned "$child" "$child_birth" || child_check_rc=$?
++  [ "$child_check_rc" != 3 ] || { state START_FAILED child_exited_before_supervision; return 3; }
++  [ "$child_check_rc" = 0 ] || { state OWNER_REFUSED child_identity; return 2; }
+   attempt=$((attempt+1))
+   seq=$(cat "$F/sequence") || io_fail sequence_read_failed
+   case "$seq" in ''|*[!0-9]*) io_fail sequence_invalid;; esac
+@@ -286,15 +356,19 @@
+    # Only actual disappearance/zombie means exit. PID reuse is never cleanup.
+    live_birth=$(rb_birth "$child") || live_birth=none
+    if [ "$live_birth" = none ]; then
+-    if [ -d "$PROC/$child" ]; then
+-     # An unreadable/disappearing stat alone is not proof of process exit.
+-     row=$(cat "$PROC/$child/stat" 2>/dev/null) || { state OWNER_REFUSED identity_unreadable_no_relaunch; return 2; }
+-     rest=${row##*) }; set -- $rest
+-     [ "${1:-none}" = Z ] || { state OWNER_REFUSED identity_unreadable_no_relaunch; return 2; }
+-    fi
++    monitor_exit_rc=0; monitor_exit_kind=$(classify_child_exit "$child" "$child_birth") || monitor_exit_rc=$?
++    [ "$monitor_exit_rc" = 3 ] || { state OWNER_REFUSED identity_unreadable_no_relaunch; return 2; }
++    event "classified=$monitor_exit_kind phase=monitor_birth"
+     event process_exit; break
+    fi
+-   [ "$live_birth" = "$child_birth" ] && child_owned "$child" "$child_birth" || { state OWNER_REFUSED child_identity_changed_no_signal; return 2; }
++   if [ "$live_birth" != "$child_birth" ]; then
++    RB_AUDIT_PID=$child; RB_AUDIT_BIRTH=$child_birth; RB_AUDIT_PHASE=monitor
++    rb_deny birth "$live_birth" "$child_birth"
++    state OWNER_REFUSED child_birth_changed_no_signal; return 2
++   fi
++   child_check_rc=0; child_owned "$child" "$child_birth" || child_check_rc=$?
++   [ "$child_check_rc" != 3 ] || { event process_exit; break; }
++   [ "$child_check_rc" = 0 ] || { state OWNER_REFUSED child_owner_check_failed_no_signal; return 2; }
+    polls=$((polls+1))
+    if [ "$ready" = 0 ]; then
+     label=unknown; capture_rc=0; classifier_rc=0
+@@ -302,7 +376,10 @@
+     if capture_frame; then
+      label=$(timeout 2 "$F/screen-gate" "$F/current.jpeg" 2>"$F/classifier.log") || classifier_rc=$?
+      [ "$classifier_rc" = 0 ] || label=unknown
+-     capture_context || label=unknown
++     capture_context || {
++      label=unknown
++      [ "$capture_reason" != child_exited_during_capture ] || label=snapshot_error
++     }
+     else label=snapshot_error; fi
+     case "$label" in
+      privacy) feed_count=0; state WAITING_FOR_USER_CONSENT privacy_no_touch;;
+--- rollback/route-b-owner.sh
++++ candidate/route-b-owner.sh
+@@ -58,6 +58,7 @@
+ rb_deny(){
+  # Discovery-only subshell sets this flag. Reject identically without encoding.
+  [ "${RB_AUDIT_QUIET:-0}" = 1 ] && return 1
++ [ "${RB_AUDIT_PERSIST:-0}" != 1 ] || persist_guardian_refusal "$@"
+  rb_guard_json "$1" "$2" "$3" || return 5; return 1
+ }
+ rb_owned(){
+--- rollback/entry.sh
++++ candidate/entry.sh
+@@ -20,8 +20,8 @@
+  sleep 1
+ done
+ [ ! -e "$AUTH_SOCKET" ] || fail EXISTING_SOCKET_NO_TAKEOVER
+-[ "$(sha256sum "$HERE/watchdog.sh" | cut -d' ' -f1)" = 2b635ef1ea9e00546e1306b0fe6872a415a8c7d5653e19f9fb42fca04386db4a ] || fail WATCHDOG_CHANGED
+-[ "$(sha256sum "$HERE/route-b-owner.sh" | cut -d' ' -f1)" = 6bce7c3c8f84ad1047313c5dd76bcb084637d9095b9163dc710c88aaee12fe4c ] || fail HELPER_CHANGED
++[ "$(sha256sum "$HERE/watchdog.sh" | cut -d' ' -f1)" = d45a8d36794d3927c0c03f19d71fa632a0b9cec18944d9d9f92a3406b49f64f0 ] || fail WATCHDOG_CHANGED
++[ "$(sha256sum "$HERE/route-b-owner.sh" | cut -d' ' -f1)" = fc63dae9a24c4a41d1e8db92612cc256734c650e94451513b97f05226f82fe58 ] || fail HELPER_CHANGED
+ unset TT_PARENT_PID TT_PARENT_BIRTH TT_CHILD_PID TT_CHILD_BIRTH TT_OPERATOR_ROOT TT_INTEGRATION_AUTH TT_INTEGRATION_HERE
+ export TT_PROC=/proc TT_MAX_ATTEMPTS=3 TT_MAX_POLLS=0
+ export TT_RECOVERY_EXECUTE=1 TT_EXPECT_BOOT="$AUTH_BOOT" TT_OWNER_UID="$AUTH_UID"
+--- rollback/members.tsv
++++ candidate/members.tsv
+@@ -1,7 +1,7 @@
+-2b635ef1ea9e00546e1306b0fe6872a415a8c7d5653e19f9fb42fca04386db4a watchdog.sh 550
+-6bce7c3c8f84ad1047313c5dd76bcb084637d9095b9163dc710c88aaee12fe4c route-b-owner.sh 550
++d45a8d36794d3927c0c03f19d71fa632a0b9cec18944d9d9f92a3406b49f64f0 watchdog.sh 550
++fc63dae9a24c4a41d1e8db92612cc256734c650e94451513b97f05226f82fe58 route-b-owner.sh 550
+ 638f47a6e40e4fdc39904c85d3b323f29285ae82af828db17a43631cb691b545 config-common.sh 550
+-81dd055764b0737f497d1dd9fb8358dd42521360bc6e359c9428c9b2ac8b21a1 entry.sh 550
++e2e85c08cca869dc00f79b4ff52e8c8976c56924bcb731a94871921cf632aa31 entry.sh 550
+ d065f354392096819c93c808b89205355d62b333ff115fbadb8b9db38cbaa507 launch-common.sh 550
+ 22ca89574f022322d2de8b6f6415d8bf10a557cea90e4e567145918d1c7a49f3 real-start-parent.sh 550
+ 46337ba8364d871c19fb077e29a4087f37921bf609c70e9f3c1f98e1fff124a3 real-spawn.sh 550
+--- rollback/startup.env
++++ candidate/startup.env
+@@ -1,9 +1,9 @@
+ # Durable immutable startup configuration. NOT a placement authorization.
+ STARTUP_APPROVED_BY='outer(codex)'
+-STARTUP_ENABLED='1'
++STARTUP_ENABLED='0'
+ STARTUP_SERIAL='5cd1e3dd00000000000000000923012c'
+ STARTUP_OLD_STOP_SHA='NONE'
+-STARTUP_MEMBERS_SHA='328f0af2e95f6d0e33112628706544262c1f80aa1b623a4b987d7f8f129169f8'
++STARTUP_MEMBERS_SHA='e83f8d3b24532806bff2fce02f5e4890cd553713d15804981ac2d50cceb2e7e9'
+ STARTUP_JIT_SHA='b42a28e7a29a53c162a43ac25eaf52c24906f1afdd179c9414882772ccac34c8'
+ STARTUP_NAMESPACE_SHA='60b89e1102225280e7a92831d07ebe0fa274323f1225cd7014c8813a8411f04c'
+ STARTUP_START_PARENT_SHA='fc0444a42b9b9ab9a70605944ad5b2ccad53e24c6b2a20ad730920f17dce898f'
+--- rollback/startup.expected.sha256
++++ candidate/startup.expected.sha256
+@@ -1 +1 @@
+-44993dbc61116a4e67936ddc09af2ca7e19c9b2454599e16da7a2b907681b34a
++fac76e85403373a753a6a37cee02e4b96dae0a357f78ad6854497047faf6d600

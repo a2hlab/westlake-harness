@@ -1,0 +1,160 @@
+--- baseline/watchdog.sh
++++ candidate/watchdog.sh
+@@ -30,13 +30,20 @@
+  [ ! -L "$1" ] && { [ ! -e "$1" ] || [ -f "$1" ]; } || io_fail "control_path_not_regular $1"
+ }
+ persist_guardian_refusal() {
+- # One exclusive record per sequence; never overwrite a previous refusal.
+- diagnostic_file="$F/guardian-refusal-$seq.jsonl"
+- control_file "$diagnostic_file"
+- [ ! -e "$diagnostic_file" ] || io_fail diagnostic_already_exists
+- (set -C; rb_guard_json "$@" 2> "$diagnostic_file") || io_fail diagnostic_write_failed
+- control_file "$diagnostic_file"
+- [ -s "$diagnostic_file" ] || io_fail diagnostic_empty
++ # Keep the historical first filename; allow at most 16 additional records.
++ diagnostic_slot=0
++ while :; do
++  diagnostic_file="$F/guardian-refusal-$seq.jsonl"
++  [ "$diagnostic_slot" = 0 ] || diagnostic_file="$F/guardian-refusal-$seq.$diagnostic_slot.jsonl"
++  control_file "$diagnostic_file"
++  [ -e "$diagnostic_file" ] || break
++  [ "$diagnostic_slot" -lt 16 ] || io_fail diagnostic_slots_exhausted
++  diagnostic_slot=$((diagnostic_slot+1))
++ done
++ diagnostic_expected=$(rb_guard_json "$@" 2>&1 >/dev/null) || io_fail diagnostic_encode_failed
++ [ -n "$diagnostic_expected" ] || io_fail diagnostic_empty
++ (set -C; printf '%s\n' "$diagnostic_expected" > "$diagnostic_file") || io_fail diagnostic_write_failed
++ verify_exact "$diagnostic_file" "$diagnostic_expected"
+ }
+ write_exact() {
+  control_file "$1"
+@@ -91,9 +98,51 @@
+  private_namespace "$p" || return 1
+  [ "$(rb_birth "$p")" = "$expected" ]
+ }
++classify_child_exit() (
++ # Read-only, conservative classification. 3 means confirmed exit; 1 unknown/live.
++ exit_pid=$1; exit_expected=$2
++ case "$exit_pid:$exit_expected" in *[!0-9:]*|:*|*:) exit 1;; esac
++ [ -d "$RB_PROC" ] && [ -r "$RB_PROC" ] && [ -x "$RB_PROC" ] || exit 1
++ # Positive visibility witness from the same proc root; unknown stays refused.
++ case "$parent:$parent_birth" in *[!0-9:]*|:*|*:) exit 1;; esac
++ exit_parent_birth=$(rb_birth "$parent") || exit 1
++ [ "$exit_parent_birth" = "$parent_birth" ] || exit 1
++ [ ! -L "$RB_PROC/$exit_pid" ] || exit 1
++ if [ ! -d "$RB_PROC/$exit_pid" ]; then
++  [ ! -e "$RB_PROC/$exit_pid" ] || exit 1
++  exit_listing=$(LC_ALL=C ls -1 "$RB_PROC") || exit 1
++  for exit_entry in $exit_listing; do [ "$exit_entry" != "$exit_pid" ] || exit 1; done
++  printf '%s\n' gone
++  exit 3
++ fi
++ [ -r "$RB_PROC/$exit_pid/stat" ] || exit 1
++ exit_row=$(cat "$RB_PROC/$exit_pid/stat") || exit 1
++ case "$exit_row" in "$exit_pid ("*") "*) :;; *) exit 1;; esac
++ exit_rest=${exit_row##*) }
++ set -f
++ set -- $exit_rest
++ # Linux stat has 50 fields after pid/comm. Reject truncated or malformed data.
++ [ "$#" -ge 50 ] || exit 1
++ exit_state=$1; shift
++ case "$exit_state" in R|S|D|Z|T|t|X|x|K|W|P|I) :;; *) exit 1;; esac
++ exit_index=1; exit_birth=
++ for exit_field in "$@"; do
++  exit_digits=${exit_field#-}
++  case "$exit_digits" in ''|*[!0-9]*) exit 1;; esac
++  [ "$exit_index" != 19 ] || exit_birth=$exit_field
++  exit_index=$((exit_index+1))
++ done
++ [ "$exit_state" = Z ] && [ "$exit_birth" = "$exit_expected" ] || exit 1
++ printf '%s\n' zombie
++ exit 3
++)
+ child_owned() {
+  p=$1; expected=$2; RB_AUDIT_PID=$p; RB_AUDIT_BIRTH=$expected; RB_AUDIT_PHASE=strict
+- first_birth=$(rb_birth "$p") || { rb_deny birth '<read-error-or-exited>' "$expected"; return 1; }
++ first_birth=$(rb_birth "$p") || {
++  child_exit_rc=0; child_exit_kind=$(classify_child_exit "$p" "$expected") || child_exit_rc=$?
++  [ "$child_exit_rc" != 3 ] || { event "classified=$child_exit_kind phase=first_birth"; return 3; }
++  rb_deny birth '<read-error-or-exited>' "$expected"; return 1
++ }
+  [ "$first_birth" = "$expected" ] || { rb_deny birth "$first_birth" "$expected"; return 1; }
+  rb_owned "$p" || return 1
+  mine=$(readlink "$PROC/$p/ns/mnt" 2>/dev/null) || { rb_deny namespace '<read-error>' private; return 1; }
+@@ -102,7 +151,11 @@
+  row=$(cat "$PROC/$p/stat") || { rb_deny ppid '<read-error>' "$parent"; return 1; }
+  rest=${row##*) }; set -- $rest
+  [ "${2:-none}" = "$parent" ] || { rb_deny ppid "${2:-none}" "$parent"; return 1; }
+- last_birth=$(rb_birth "$p") || { rb_deny birth_after '<read-error-or-exited>' "$expected"; return 1; }
++ last_birth=$(rb_birth "$p") || {
++  child_exit_rc=0; child_exit_kind=$(classify_child_exit "$p" "$expected") || child_exit_rc=$?
++  [ "$child_exit_rc" != 3 ] || { event "classified=$child_exit_kind phase=last_birth"; return 3; }
++  rb_deny birth_after '<read-error-or-exited>' "$expected"; return 1
++ }
+  [ "$last_birth" = "$expected" ] || { rb_deny birth_after "$last_birth" "$expected"; return 1; }
+ }
+ capture_init() {
+@@ -142,7 +195,12 @@
+  verify_exact "$F/lock/owner" "$$ $self_birth $BOOT"
+  [ "$(cat "$PROC/sys/kernel/random/boot_id")" = "$BOOT" ] || io_fail capture_boot_changed
+  [ ! -e "$F/stop" ] && [ ! -L "$F/stop" ] || { capture_rc=126; capture_reason=stop_during_capture; return 1; }
+- child_owned "$child" "$child_birth" || { capture_rc=126; capture_reason=child_identity_during_capture; return 1; }
++ capture_owned_rc=0; child_owned "$child" "$child_birth" || capture_owned_rc=$?
++ if [ "$capture_owned_rc" != 0 ]; then
++  capture_rc=126; capture_reason=child_identity_during_capture
++  [ "$capture_owned_rc" != 3 ] || capture_reason=child_exited_during_capture
++  return 1
++ fi
+ }
+ capture_remove_file() {
+  # Only this poll's fresh path inside our verified exclusive directory.
+@@ -282,7 +340,9 @@
+     state OWNER_REFUSED "child_readiness_rc=$readiness_rc report=$report app_parent_retained"; return 2
+    fi
+   fi
+-  child_owned "$child" "$child_birth" || { state OWNER_REFUSED child_identity; return 2; }
++  child_check_rc=0; child_owned "$child" "$child_birth" || child_check_rc=$?
++  [ "$child_check_rc" != 3 ] || { state START_FAILED child_exited_before_supervision; return 3; }
++  [ "$child_check_rc" = 0 ] || { state OWNER_REFUSED child_identity; return 2; }
+   attempt=$((attempt+1))
+   seq=$(cat "$F/sequence") || io_fail sequence_read_failed
+   case "$seq" in ''|*[!0-9]*) io_fail sequence_invalid;; esac
+@@ -296,12 +356,9 @@
+    # Only actual disappearance/zombie means exit. PID reuse is never cleanup.
+    live_birth=$(rb_birth "$child") || live_birth=none
+    if [ "$live_birth" = none ]; then
+-    if [ -d "$PROC/$child" ]; then
+-     # An unreadable/disappearing stat alone is not proof of process exit.
+-     row=$(cat "$PROC/$child/stat" 2>/dev/null) || { state OWNER_REFUSED identity_unreadable_no_relaunch; return 2; }
+-     rest=${row##*) }; set -- $rest
+-     [ "${1:-none}" = Z ] || { state OWNER_REFUSED identity_unreadable_no_relaunch; return 2; }
+-    fi
++    monitor_exit_rc=0; monitor_exit_kind=$(classify_child_exit "$child" "$child_birth") || monitor_exit_rc=$?
++    [ "$monitor_exit_rc" = 3 ] || { state OWNER_REFUSED identity_unreadable_no_relaunch; return 2; }
++    event "classified=$monitor_exit_kind phase=monitor_birth"
+     event process_exit; break
+    fi
+    if [ "$live_birth" != "$child_birth" ]; then
+@@ -309,7 +366,9 @@
+     rb_deny birth "$live_birth" "$child_birth"
+     state OWNER_REFUSED child_birth_changed_no_signal; return 2
+    fi
+-   child_owned "$child" "$child_birth" || { state OWNER_REFUSED child_owner_check_failed_no_signal; return 2; }
++   child_check_rc=0; child_owned "$child" "$child_birth" || child_check_rc=$?
++   [ "$child_check_rc" != 3 ] || { event process_exit; break; }
++   [ "$child_check_rc" = 0 ] || { state OWNER_REFUSED child_owner_check_failed_no_signal; return 2; }
+    polls=$((polls+1))
+    if [ "$ready" = 0 ]; then
+     label=unknown; capture_rc=0; classifier_rc=0
+@@ -317,7 +376,10 @@
+     if capture_frame; then
+      label=$(timeout 2 "$F/screen-gate" "$F/current.jpeg" 2>"$F/classifier.log") || classifier_rc=$?
+      [ "$classifier_rc" = 0 ] || label=unknown
+-     capture_context || label=unknown
++     capture_context || {
++      label=unknown
++      [ "$capture_reason" != child_exited_during_capture ] || label=snapshot_error
++     }
+     else label=snapshot_error; fi
+     case "$label" in
+      privacy) feed_count=0; state WAITING_FOR_USER_CONSENT privacy_no_touch;;
