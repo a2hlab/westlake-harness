@@ -12,6 +12,7 @@ T49以原码复现了monitor两次读取间退出的终局拒绝，以及同seq�
 - 分类确认退出返回独立状态3；monitor沿原process_exit→RECOVERING路径；capture记录child_exited_during_capture并让下次monitor确认；首次attach或spawn的校验退出返回START_FAILED，不假称已接管或继续launch。其余调用者逐处审计，不能把3当成功。
 - 首次诊断继续使用guardian-refusal-$seq.jsonl，已存在普通文件时保留字节并使用有限独占编号槽追加记录，最多16个附加槽。旧文件/槽若是symlink或非普通文件则IO_FAILED；真实写入/读回失败、槽耗尽仍IO_FAILED且保留锁。不采用设计稿中的吞掉I/O失败建议。状态/事件持久化门禁不变。
 - 复用T49实际main与身份函数回放；不替换被验证分类函数或状态分支。仅进程文件读取与真实设备动作边界用合成夹具。禁止发真实signal、启动真实进程或访问设备。保留每次argv/start/end/stdout/stderr/rc与source SHA，全新持久输出，checker显式检查在python -O下有效。
+- 复审补充：分类与rb_birth使用同一RB_PROC根，确认消失前同时核对已记录parent的birth作为可见性见证；见证未知则拒绝。同birth僵尸的state/birth必须来自同一次完整stat读。确认退出不得调用rb_deny或消耗诊断槽。首次校验退出不得增加attempt/sequence或写instance。覆盖上一已提交seq已有记录时的首次校验拒绝，以及dangling symlink/目录槽拒绝；编号名属于最后已提交seq，记录自带phase/pid/birth。
 ## 边界
 ### 允许修改
 - benchmark/2026-10-22-toutiao-owned-exit-fix/**
@@ -23,10 +24,10 @@ T49以原码复现了monitor两次读取间退出的终局拒绝，以及同seq�
   测试: toutiao_owned_exit_fix
   假设精确原版和新候选及合成进程文件
   当实跑正常对照、首次已消失、first_birth前消失、last_birth前消失及同birth僵尸
-  那么新候选正常路径不变且确认退出进入原RECOVERING路径，原版对照仍显示T49原结果，尝试预算与stop行为不变
+  那么新候选正常路径不变且确认退出进入原RECOVERING路径且诊断文件集不变，原版对照仍显示T49原结果，尝试预算与stop行为不变
 场景: 未知或身份变化不能放行
   测试: toutiao_owned_exit_fix
-  假设目录存在但stat不可读或畸形、父目录不可访问、不同birth僵尸、活PID birth变化或ppid不匹配
+  假设目录存在但stat不可读或畸形、父目录不可访问或parent birth见证失败、不同birth僵尸、活PID birth变化或ppid不匹配
   当执行实际分类与child_owned路径
   那么维持非零拒绝且没有signal或再次launch，不能把未知或复用当退出
 场景: 诊断重名与真实写失败分离
@@ -38,7 +39,7 @@ T49以原码复现了monitor两次读取间退出的终局拒绝，以及同seq�
   测试: toutiao_owned_exit_fix
   假设首次接管与capture分别遇到直接birth读取后确认退出
   当运行实际调用路径
-  那么首次校验为START_FAILED且不继续接管，capture为退出诊断而后monitor重新确认，不增加重试次数或改变父进程
+  那么首次校验为START_FAILED且attempt与sequence与instance不变，不继续接管，capture为退出诊断而后monitor重新确认，不增加重试次数或改变父进程
 场景: 错源旧输出与缺证据被实际入口拒绝
   测试: toutiao_owned_exit_fix
   假设源SHA漂移或输出已存在或实际trace缺少分类证据
