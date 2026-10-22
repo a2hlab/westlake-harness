@@ -1,0 +1,53 @@
+# Contract Review: T39 host launch callback observation candidate
+
+## Intent
+
+为快速关闭后重开漏采焦点的问题补充实际宿主启动回调的可保留证据。只交源码可追溯的离线观察候选，后续才能判断启动请求来源；不将观察器或模拟测试当作白屏修复或设备验收。
+
+## Decisions
+
+- t1输出精确预测与待修文件清单，t2只派发已绑定的最小修复；无可归属首致命点则t1交短窗观察方案，先补证不猜修复。
+- t3成功记录至少两个完整播放周期，每周期不少于20秒动态播放、3秒暂停及10秒恢复，并记录退出和重新图标进入结果。
+- API表新增本次版本映射，保留历史315条证据等级；冻结仍要求两个不同app过墙，头条单应用成功不自动冻结。
+- 复用 benchmark/2026-10-20-toutiao-launcher-page/sources/baseline/EntryAbility.js（SHA 9dc302d9aa72eb1be8635d7bc4bc4306da76f0e45d2414d67bd96d024e2a24c6）的精确 git blob；该包已用原 Linux 编译器复现原 HAP 两个 ABC，T32/T33 历史候选仅改 Index。原件只读，新目录生成候选和可复现补丁，不修改冻结源；不得误用泛用 source-build-host 的黑背景 922a13 版本替换实际浅色基线，当前设备同源仍需另行 fresh 验证。
+- 候选只在 onCreate(want, launchParam) 与 onNewWant(want, launchParam) 记录启动回调。原窗口、前后台与页面行为保留；不启动应用、不发信号、不写 guardian 状态、不授予重入资格。
+- 启动记录与 window-state.json 分离，避免后续 foreground/stage-event 覆盖；每次进程实例和递增序号区分回调，时间戳不充当唯一身份或启动授权。原子替换失败不得把未写成功的记录声称成功。
+- 只保留有界白名单字段：回调名、实例标识、序号、时间、数值 launchReason、已知 launchReasonMessage 分类、home action/entity 分类。未知或缺失字段标 unknown，不记录 URI、任意 Want.parameters、caller 个人信息。LaunchReason 与 onNewWant 均不证明人工点击，记录 manual_origin=unverified、eligible_for_reentry=false。
+- 以真正候选 EntryAbility.js 在 Node vm 中加载，mock requireNapi/UIAbility/fs/hilog/window；测试调用生产回调而非另写同构模型。原始 argv/stdout/stderr/rc 持久留存，Rust 测试选择器转调该离线检查。
+- 不请求设备或网络权限、不用 REA、不调用设备、不构建签名 HAP、不编写或重跑 T38 部署/编排及已拒步骤。此卡只在现有允许的本地文件权限内执行。
+
+## Boundaries
+
+**Allowed:**
+- benchmark/2026-10-22-toutiao-host-launch-observation/**
+- tools/spec-checks/tests/toutiao_host_launch_observation.rs
+
+**Forbidden:**
+- 不修改 sources/、T36/T37 原件、T38、冻结项、历史签认与其他 agent 文件，不 push，不修改权限配置。
+
+## Verification Summary
+
+| Total | Passed | Failed | Skipped | Uncertain | Pass Rate |
+| --- | --- | --- | --- | --- | --- |
+| 5 | 5 | 0 | 0 | 0 | 100.0% |
+
+- ✅ 两次启动回调与前台事件保持独立
+  - test: `toutiao_host_launch_observation`
+- ✅ 缺失及非人工启动原因不授权
+  - test: `toutiao_host_launch_observation`
+- ✅ 敏感及畸形输入不外泄
+  - test: `toutiao_host_launch_observation`
+- ✅ 写入失败与重复时间戳
+  - test: `toutiao_host_launch_observation`
+- ✅ 源码来源与重生成一致
+  - test: `toutiao_host_launch_observation`
+
+## Coverage Matrix
+
+| Rule | Scenario | Test | Found | Verdict | Provenance |
+|------|----------|------|-------|---------|------------|
+| — | 两次启动回调与前台事件保持独立 | toutiao_host_launch_observation | found | pass | computational |
+| — | 缺失及非人工启动原因不授权 | toutiao_host_launch_observation | found | pass | computational |
+| — | 敏感及畸形输入不外泄 | toutiao_host_launch_observation | found | pass | computational |
+| — | 写入失败与重复时间戳 | toutiao_host_launch_observation | found | pass | computational |
+| — | 源码来源与重生成一致 | toutiao_host_launch_observation | found | pass | computational |
