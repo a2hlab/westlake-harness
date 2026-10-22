@@ -15,6 +15,7 @@ fn toutiao_host_observer_package() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let out = Command::new("python3").arg("-B")
         .arg(root.join("benchmark/2026-10-22-toutiao-host-observer-package/check_package.py"))
+        .arg("--require-raw")
         .output().expect("run T41 package checker");
     assert!(out.status.success(), "{}\n{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
 }

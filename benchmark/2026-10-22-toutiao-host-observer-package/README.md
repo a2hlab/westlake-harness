@@ -36,7 +36,7 @@ from master `5f80adf44`, sha256 `282d0703…`) **plus an independent layout re-d
 | identity / permission / credential | unchanged — reused public dev cert + profile; no new identity/permission |
 | device | none; not deployed |
 
-**Whole-HAP SHA is not a pinned criterion.** The signature block carries a timestamp, so each sign produces a
+**Whole-HAP SHA is pinned for each delivered artifact, but is not a cross-signing reproducibility criterion.** The signature block carries a timestamp, so each sign produces a
 different whole-HAP digest (`public-01 d5c8f34e…`, `public-02 b65a8cf3…`, `release-01 6f5e6a65…`,
 **delivered `release-02 02f56d18…`**). The pinned, reproducible facts are **member-level** (EntryAbility, the seven resources, the `.pages.info` exception) plus
 the byte-identical cert/profile.
@@ -75,7 +75,7 @@ rc and timing are streamed to the **private** dir; the card holds only redacted 
 ## Verify
 
 ```
-python3 check_package.py            # default --build-dir = persistent release-01
+python3 check_package.py --require-raw  # default --build-dir = persistent release-02
 cargo test --test toutiao_host_observer_package   # from tools/spec-checks
 ```
 
@@ -87,6 +87,12 @@ the exception but whose ABC page layout does **not** reproduce it (`DERIVE_AFTER
 plus the driver refusing a reused output dir and missing args. These are real-code refusals, not assertion
 helpers. No signing, device or REA runs in the checker.
 
+Full acceptance also checks all 7 artifact hashes/sizes and all 20 original command records;
+missing or altered raw evidence is rejected. The Rust contract selector requires this complete mode.
+A fresh clone without the external artifacts may run the Python checker without `--require-raw`
+for a `receipt-only` structural result, but `complete_acceptance=false` is not contract acceptance.
+See [outer verification and reproduction notes](outer-review/README.md).
+
 ## Layout
 
 | path | what |
@@ -95,7 +101,7 @@ helpers. No signing, device or REA runs in the checker.
 | `check_package.py` | production checker: real `verify_candidate` positives + mutated-payload negatives |
 | `t41-metadata-exception.json` | the single exact `.pages.info` exception (copy of master `5f80adf44`, sha256 `282d0703…`) |
 | `outer-policy/README.md`, `outer-policy/pages-info-derivation.json` | outer-loop independent ABC-page-bitmap derivation (copied from master `5f80adf44`, SHA-verified) |
-| `receipt/receipt.json` | real `release-01` run receipt: member before/after SHAs, exception record, stage rc, `device_calls=0` |
+| `receipt/receipt.json` | real `release-02` run receipt: member before/after SHAs, exception record, stage rc, `device_calls=0` |
 | `receipt/raw-public/*.redacted.json` | public argv per stage — passwords `<redacted-secret>`, personal paths aliased (`<java>`/`<signer>`/`<signing-dist>`/`$HOME/…`) |
 | `SHA256SUMS` | SHA index of the committed card files |
 

@@ -30,6 +30,10 @@ def bitmap_from_pages(pagemap):
     return bytes(bits)
 
 STAGES = ('verify-base', 'verify-profile', 'sign-candidate', 'verify-candidate')
+ARTIFACTS = {'base.hap', 'candidate-unsigned.hap', 'candidate-signed.hap',
+             'original.cer', 'candidate.cer', 'original.p7b', 'candidate.p7b'}
+RAW_NAMES = {f'{stage}.{suffix}' for stage in STAGES
+             for suffix in ('argv.json', 'stdout', 'stderr', 'rc', 'time.json')}
 
 def resolve_alias(alias):
     """Map a receipt alias back to its real path. Only $HOME/~ aliases are resolvable here; role
@@ -44,12 +48,15 @@ def verify_evidence(receipt, build_dir, resolver):
     parseable time record. Any missing/mismatched evidence raises pkg.Stop (nonzero exit). Not self-assert:
     it re-hashes the real artifacts and raw originals."""
     import hashlib
+    pkg.need(set(receipt['artifacts']) == ARTIFACTS, 'ARTIFACT_SET', 'require all seven artifacts')
+    pins = receipt['private_raw_pins']
+    pkg.need(len(pins) == len(RAW_NAMES) and {Path(a).name for a in pins} == RAW_NAMES,
+             'RAW_SET', 'require four stages times five original records')
     for name, meta in receipt['artifacts'].items():
         f = build_dir / name
         pkg.need(f.is_file(), 'ARTIFACT_MISSING', name)
         b = f.read_bytes()
         pkg.need(hashlib.sha256(b).hexdigest() == meta['sha256'] and len(b) == meta['bytes'], 'ARTIFACT_SHA', name)
-    pins = receipt['private_raw_pins']
     for alias, h in pins.items():
         f = resolver(alias)
         pkg.need(f is not None and f.is_file(), 'RAW_MISSING', alias)
@@ -141,6 +148,16 @@ def main():
         victim.write_bytes(victim.read_bytes() + b'TAMPER')
         negatives.append({'case': 'hash-changed real raw log', **refuses('RAW_SHA',
             lambda: verify_evidence(receipt, bd, lambda al: sand / Path(al).name))})
+        omitted = copy.deepcopy(receipt)
+        missing_alias = next(a for a in omitted['private_raw_pins'] if a.endswith('verify-base.stdout'))
+        del omitted['private_raw_pins'][missing_alias]
+        (sand / Path(missing_alias).name).unlink()
+        negatives.append({'case': 'raw log and its index entry both omitted', **refuses('RAW_SET',
+            lambda: verify_evidence(omitted, bd, lambda al: sand / Path(al).name))})
+        omitted_artifact = copy.deepcopy(receipt)
+        del omitted_artifact['artifacts']['base.hap']
+        negatives.append({'case': 'required artifact declaration omitted', **refuses('ARTIFACT_SET',
+            lambda: verify_evidence(omitted_artifact, bd, resolve_alias))})
     # driver-level refusals that need no signing tools (reused out dir; missing args)
     existing = Path(tempfile.mkdtemp())
     drv = [
