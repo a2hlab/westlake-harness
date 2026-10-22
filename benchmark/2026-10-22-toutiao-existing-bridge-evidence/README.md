@@ -55,3 +55,6 @@ Private raw (argv/start/end/stdout/stderr/rc per command, bridge capture copies)
 197 private manifest entries and 32 six-part command records were verified. A second reviewer independently checked 25 events and 33 source copies. The retained image SHA `0228c34d…` was visually inspected by the outer agent and shows the Toutiao feed at its historical capture time; it is neither a new capture nor close/reopen acceptance. T45 has no implemented Rust selector or passing lifecycle receipt: this is evidence archival, not contract completion or a fix.
 
 The deployed owner helper writes rejection details to stderr; no persistent sink was proven. A birth mismatch short-circuits before that helper, so a detailed record may never have been emitted. No inference about third-party exit cause is made.
+
+### T45-A bounded follow-up
+At 15:35:48 on the same boot, `/proc/3978/stat` returned a missing-file body despite shell rc0. Collection stopped before cmdline/FD2, with no substitute PID. Four admission commands took 0.254 seconds; FD2 remains unknown. See `t45-a-guardian-absence.json`.
