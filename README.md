@@ -607,6 +607,7 @@ kind of work from where the corpus started
 | **[T32 one-click Toutiao host page](benchmark/2026-10-20-t32-host-page-accepted/README.md)** | **Exact same-signature page update retained on 5cd; one desktop tap to real feed, video visual progress, preserved runtime, reproducible source and verified recovery archive.** |
 | **[T41 passive host observer package](benchmark/2026-10-22-toutiao-host-observer-package/README.md)** | **Pinned bytecode, real same-identity signing, exact executable-page metadata derivation and original-evidence checks; no device or white-screen acceptance.** |
 | **[T42 denied host launch and recovery](benchmark/2026-10-22-toutiao-host-observer-device/README.md)** | Temporary observer HAP installed, AA requests denied despite shell rc0, b189 restored; 201 raw records verified. Callback unknown and task not accepted. |
+| **[T43 lock-screen observation correction](benchmark/2026-10-22-toutiao-host-launcher-observation/README.md)** | Six alleged desktop pages were identical lock-screen layouts; global icon absence withdrawn. 385 raw hashes and 124+36 recovery manifests checked, deviations and provenance gaps retained. |
 
 ---
 
