@@ -610,6 +610,8 @@ kind of work from where the corpus started
 | **[T43 lock-screen observation correction](benchmark/2026-10-22-toutiao-host-launcher-observation/README.md)** | Six alleged desktop pages were identical lock-screen layouts; global icon absence withdrawn. 385 raw hashes and 124+36 recovery manifests checked, deviations and provenance gaps retained. |
 | **[T44 verified desktop host callbacks](benchmark/2026-10-22-toutiao-verified-desktop-observation/README.md)** | Current icon found on page8; two ordinary clicks yield fresh onCreate/seq1 then onNewWant/seq2. 1062 raw records and full host recovery verified; both screenshots remain blank, no feed/fix claim. |
 | **[T45 existing bridge event correlation](benchmark/2026-10-22-toutiao-existing-bridge-evidence/README.md)** | 197 raw records and 25 existing events checked; retained feed image inspected. Blank screenshot and child exit/restart have different timestamps; owner refusal subtype remains unknown, no fix claim. |
+| **[Owned lifecycle entry gap](benchmark/2026-10-22-toutiao-lifecycle-entry-gap/README.md)** | Six deployed script bindings resolve to tracked exact-byte sources; per-boot entry is not reentrant after guardian exit. Static gap only, no service implementation or white-screen fix. |
+| **[T46 guardian refusal diagnostics](benchmark/2026-10-22-toutiao-owned-guardian-diagnostics/README.md)** | Independent 11-case/22-execution replay retains identity decisions and stores refusal details exclusively. Offline candidate only; no device deployment or reopen acceptance. |
 
 ---
 
