@@ -7,7 +7,7 @@ satisfies: [REQ-TTVIDEO]
 ## 意图
 为快速关闭后重开漏采焦点的问题补充实际宿主启动回调的可保留证据。只交源码可追溯的离线观察候选，后续才能判断启动请求来源；不将观察器或模拟测试当作白屏修复或设备验收。
 ## 已定决策
-- 复用 sources/api-implementations/source-build-host/westlake-java/apps/imehost/EntryAbility.js 的精确 git blob 与 SHA，原件只读；新目录生成候选和可复现补丁，不修改冻结源。
+- 复用 benchmark/2026-10-20-toutiao-launcher-page/sources/baseline/EntryAbility.js（SHA 9dc302d9aa72eb1be8635d7bc4bc4306da76f0e45d2414d67bd96d024e2a24c6）的精确 git blob；该包已用原 Linux 编译器复现原 HAP 两个 ABC，T32/T33 历史候选仅改 Index。原件只读，新目录生成候选和可复现补丁，不修改冻结源；不得误用泛用 source-build-host 的黑背景 922a13 版本替换实际浅色基线，当前设备同源仍需另行 fresh 验证。
 - 候选只在 onCreate(want, launchParam) 与 onNewWant(want, launchParam) 记录启动回调。原窗口、前后台与页面行为保留；不启动应用、不发信号、不写 guardian 状态、不授予重入资格。
 - 启动记录与 window-state.json 分离，避免后续 foreground/stage-event 覆盖；每次进程实例和递增序号区分回调，时间戳不充当唯一身份或启动授权。原子替换失败不得把未写成功的记录声称成功。
 - 只保留有界白名单字段：回调名、实例标识、序号、时间、数值 launchReason、已知 launchReasonMessage 分类、home action/entity 分类。未知或缺失字段标 unknown，不记录 URI、任意 Want.parameters、caller 个人信息。LaunchReason 与 onNewWant 均不证明人工点击，记录 manual_origin=unverified、eligible_for_reentry=false。
