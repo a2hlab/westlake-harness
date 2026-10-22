@@ -1,0 +1,227 @@
+{
+ "card": "diagnostic-maintenance-plan",
+ "board": "5cd1e3dd00000000000000000923012c",
+ "root": "/data/westlake-demo/toutiao/recovery-attempts/restore-v1-5cd-20261012",
+ "unchanged_inputs": {
+  "init_cfg": "19d0201b59a6edac821feffa5f51ca8e9a08d6ba87d5bc9fd15b4e4d00775152",
+  "boot-entry.sh": "7fbfdf05844718e9d3b7139b526716fe1180bf56c77ff2b8763a224dc912eb29",
+  "config-common.sh": "638f47a6e40e4fdc39904c85d3b323f29285ae82af828db17a43631cb691b545"
+ },
+ "candidate_sha256": {
+  "watchdog.sh": "bcae2c697ae5ee6e31c836cd38d322d5120a87ffa74f1d35d2c88acca7be818e",
+  "route-b-owner.sh": "fc63dae9a24c4a41d1e8db92612cc256734c650e94451513b97f05226f82fe58",
+  "entry.sh": "1f16bc6b10a306abd1afab88cfcd26801910388da5b057bc1e6084f219da30c8",
+  "members.tsv": "04aa24cf06bef10bcaf765f6e26cfb55922af3ddeb95ee3f624af95838579fae"
+ },
+ "rollback_sha256": {
+  "watchdog.sh": "2b635ef1ea9e00546e1306b0fe6872a415a8c7d5653e19f9fb42fca04386db4a",
+  "route-b-owner.sh": "6bce7c3c8f84ad1047313c5dd76bcb084637d9095b9163dc710c88aaee12fe4c",
+  "entry.sh": "81dd055764b0737f497d1dd9fb8358dd42521360bc6e359c9428c9b2ac8b21a1",
+  "members.tsv": "328f0af2e95f6d0e33112628706544262c1f80aa1b623a4b987d7f8f129169f8",
+  "startup.env": "44993dbc61116a4e67936ddc09af2ca7e19c9b2454599e16da7a2b907681b34a",
+  "startup.expected.sha256": "05c12ce34fea0a7a3746b4fe7c40b0cb676968ded8b1c21218fafca54a98b037"
+ },
+ "stop_markers_that_block_boot": [
+  "ROOT/stop",
+  "ROOT/boots/*/stop",
+  "/data/local/tmp/operator45/selfheal48/stop"
+ ],
+ "stop_policy": "any present -> stop, keep lock, report; never clear",
+ "observation_targets": [
+  "ROOT/boots/<new boot>/guardian-refusal-<seq>.jsonl",
+  ".../state",
+  ".../events.log",
+  "copied member stat/SHA"
+ ],
+ "evidence_scope": [
+  "runtime fp 124",
+  "boot image 36",
+  "host HAP sha + bm dump identity",
+  "host datadir/filesDir stat",
+  "init cfg sha/mode",
+  "13 members + 9 controls stat/SHA",
+  "boots/ names + stop checks",
+  "param sys.westlake.demo.u13.ready",
+  "power Timeout/OverrideTimeout",
+  "ps sample",
+  "new boot state files"
+ ],
+ "reuse": [
+  "rec.py (T44/T45/T46-P)",
+  "T47 check.logged",
+  "scripts/lab/board_note.sh",
+  "hdc file send/recv + sha256sum",
+  "T44 power/desktop and fp/bi manifest argv"
+ ],
+ "forbidden": [
+  "T38 donor/reentry",
+  "rejected debug paths",
+  "guardian manual restart",
+  "third-party kill",
+  "owner gate relaxation",
+  "clearing stop",
+  "new generic executor"
+ ],
+ "pending": [
+  "outer window signature",
+  "fresh admission + parent directory identity read at window preflight"
+ ],
+ "not_claimed": [
+  "rollout-ready",
+  "white-screen fix"
+ ],
+ "version": 3,
+ "isolation": {
+  "verdict": "accepted",
+  "basis": [
+   "boot-entry.sh:6 sources config-common before :12 mkdir and exec entry",
+   "config-common.sh:12 STARTUP_NOT_APPROVED unless ENABLED=1, after :6-10 expected/env check"
+  ],
+  "proof_per_maint_boot": [
+   "new boot_id != pre-reboot boot_id",
+   "boots/ name list after reboot == that phase pre-list (no new entry; R3 pre-list already contains R2 dir)",
+   "no boots/<new boot_id> directory",
+   "ps sample: no process running this ROOT entry.sh/watchdog.sh of the current boot (other normal services incl. other appspawn-x may exist)"
+  ],
+  "not_provable": [
+   "REFUSE stderr sink unknown; isolation is argued from full verified source (boot-entry.sh:6 before :12), disabled env/expected hashes, new boot and absent boot dir, not from an observed refusal line"
+  ]
+ },
+ "sequence": [
+  "M1 env maint-forward + expected",
+  "R1",
+  "C1 watchdog/route-b-owner/entry/members candidate",
+  "C2 env candidate-enabled then expected last",
+  "R2",
+  "observe",
+  "M2 env maint-reverse + expected",
+  "R3",
+  "B1 rollback four files",
+  "B2 env baseline then expected last",
+  "R4",
+  "verify"
+ ],
+ "max_reboots": 4,
+ "timing": {
+  "window_s": 1800,
+  "restore_start_by_s": 1200,
+  "boot_wait_s": 180,
+  "boot_wait_basis": "RUNBOOK normal reboot + new boot_id + hdc target present + desktop check; 180 s per boot; no separate reboot trial"
+ },
+ "observe": {
+  "desktop_check": true,
+  "normal_toutiao_click": 1,
+  "refusal_wait_s": 120,
+  "none_means": "not observed"
+ },
+ "file_rules": [
+  "fresh stage/backup/.new, refuse existing or symlink",
+  "preserve mode/uid/gid and label u:object_r:data_file:s0, read back",
+  "record new inode, old inode not restored",
+  "lost receipt -> read-only phase check, no resend",
+  "stop present -> stop, keep lock, never clear"
+ ],
+ "ready_source": {
+  "cfg": "/system/etc/init/00_westlake_u13_recover-v3.cfg",
+  "cfg_sha256": "897f9ca073c0396c47c681860a601aaa14ba812c63b083711d7e386785e1a762",
+  "script": "/data/westlake-demo/u13/boat-v2-20261013-r4/recover-v3-boat.sh",
+  "script_device_sha256": "291451a1a3b821a5527e3c8619d932664d047e25116e9c653d185d2ea5ee878f",
+  "repo_copy": "benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final-v2-candidate-r2/r4-reference/recover-v3-boat.sh",
+  "lines": "224-229"
+ },
+ "env_sets": {
+  "maint-forward": {
+   "startup.env_sha256": "d1452d77c0bf654ca6164a3a66082cbee8467238fa430232efb484db9af72476",
+   "expected_file_sha256": "d764a774a40c1e1e3a110358f037e142d79522905a6e4d563bd293ffbda9d2bf",
+   "expected_content": "d1452d77c0bf654ca6164a3a66082cbee8467238fa430232efb484db9af72476"
+  },
+  "candidate-enabled": {
+   "startup.env_sha256": "465f5fbe33c6777dadd9f8563e5450b7319f87d18fc69820cabdbad01fbbe0c2",
+   "expected_file_sha256": "49424def57d8f8b9dd96861cdebfc3b86b30d935bf86c5af3974ce30dc947a3e",
+   "expected_content": "465f5fbe33c6777dadd9f8563e5450b7319f87d18fc69820cabdbad01fbbe0c2"
+  },
+  "maint-reverse": {
+   "startup.env_sha256": "8e60a99dd81ddc25e3084902d0d95eb8ea2866a9aa1c30dce7b3f5b9f966b8f0",
+   "expected_file_sha256": "b43d886b70bd07a040c4fc3403231f1a7d2a07092ccdd642472212576919553b",
+   "expected_content": "8e60a99dd81ddc25e3084902d0d95eb8ea2866a9aa1c30dce7b3f5b9f966b8f0"
+  },
+  "baseline": {
+   "startup.env_sha256": "44993dbc61116a4e67936ddc09af2ca7e19c9b2454599e16da7a2b907681b34a",
+   "expected_file_sha256": "05c12ce34fea0a7a3746b4fe7c40b0cb676968ded8b1c21218fafca54a98b037",
+   "expected_content": "44993dbc61116a4e67936ddc09af2ca7e19c9b2454599e16da7a2b907681b34a"
+  }
+ },
+ "fresh_readonly": {
+  "raw_manifest_sha256": "4217a0bbb46139c4679dcb19aba286f2f555effb13a3e9f66c78b50996d003e0",
+  "stops": "all ABSENT",
+  "boots_count": "36 at this read (informational only; checks use per-phase pre-list)",
+  "labels": "data_file (ROOT, boots, six files); system_etc_file (cfgs)"
+ },
+ "device_commands": {
+  "readonly": 6,
+  "writes": 0,
+  "source": "raw/*.argv in $HOME/.local/share/westlake/t48p-maint-readonly-20261022 (targets, held, bootid, lsZ, sha, stops)"
+ },
+ "restore_check_R4": [
+  "normal desktop",
+  "one normal Toutiao icon click from fresh layout",
+  "new boots/<R4 boot> exists with baseline member copies",
+  "events.log shows the original guardian actually started",
+  "dir/events absent -> restore NOT complete"
+ ],
+ "names": {
+  "device_stage": "/data/local/tmp/diag-maint-t48-20261022-1748",
+  "device_backup": "/data/westlake-demo/toutiao/recovery-attempts/diag-maint-t48-20261022-1748/backup",
+  "new_suffix": "ROOT/.<name>.new",
+  "parent_identity_bind": "at preflight read stat (dev/ino/mode/uid/gid) + ls -Zd of /data/local/tmp and /data/westlake-demo/toutiao/recovery-attempts; recheck before each write; mismatch -> stop"
+ },
+ "restore_branches": [
+  {
+   "verified_phase": "before M1 write / M1 partial",
+   "state": "baseline members, env baseline or maint-forward, expected either",
+   "restore": "write baseline env 44993dbc then expected 05c12ce3; no reboot needed if R1 not started, else R4-style verify"
+  },
+  {
+   "verified_phase": "after M1 / R1 done, before C1",
+   "state": "baseline members + maint-forward env",
+   "restore": "baseline env + expected (do NOT use maint-reverse, its members sha 04aa would mismatch baseline members) -> normal reboot -> verify"
+  },
+  {
+   "verified_phase": "C1 partial or done, before C2",
+   "state": "mixed/candidate bodies, disabled env (maint-forward)",
+   "restore": "B1 rollback four files -> baseline env+expected last -> reboot -> verify (env already disabled, isolation holds)"
+  },
+  {
+   "verified_phase": "C2 partial",
+   "state": "four bodies + members = candidate; env = candidate-enabled but expected still maint-forward or write incomplete",
+   "restore": "treat as NOT disabled: write maint-reverse env + expected, read back env/expected match -> R3 -> verify R3 new boot + maintenance isolation -> B1 -> B2 -> R4 -> verify"
+  },
+  {
+   "verified_phase": "C2 done / R2 or later",
+   "state": "candidate enabled",
+   "restore": "M2 maint-reverse env+expected, read back match -> R3 -> verify R3 new boot + isolation -> B1 -> B2 -> R4 -> verify"
+  },
+  {
+   "verified_phase": "M2 partial or M2 written",
+   "state": "env/expected per readback",
+   "restore": "complete maint-reverse env+expected and read back match; M2 files present do NOT mean R3 done -> R3 -> verify isolation -> B1 -> B2 -> R4"
+  },
+  {
+   "verified_phase": "B1/B2 partial",
+   "state": "per file SHA",
+   "restore": "only if R3 completion (new boot_id after M2 + isolation readback) is on record: continue B1 then B2 -> R4; if R3 completion not on record -> do not continue B1, go back to the M2 branch"
+  },
+  {
+   "verified_phase": "unknown (lost receipt)",
+   "state": "read-only SHA of six files + boot_id + boots list",
+   "restore": "decide branch from readback only; never guess or blind-resend"
+  }
+ ],
+ "spec": "specs/toutiao-video-playback/t48-normal-boot-diagnostic-window.spec.md (aa86e07f2)",
+ "reusable_recorder": "$HOME/.local/share/westlake/t48p-maint-readonly-20261022/tools/rec.py",
+ "restore_rules": [
+  "never resume B1 from \"first file SHA != target\" alone",
+  "B1 requires a recorded R3 completion: new boot after M2 and maintenance isolation readback",
+  "unknown -> read-only readback, no guess, no blind resend"
+ ]
+}
