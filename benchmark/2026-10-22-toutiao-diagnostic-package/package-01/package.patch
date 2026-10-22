@@ -1,0 +1,95 @@
+--- rollback/watchdog.sh
++++ candidate/watchdog.sh
+@@ -13,6 +13,7 @@
+ RB_PROC=$PROC; RB_RUNTIME=$RUNTIME
+ RB_OWNER_UID=${TT_OWNER_UID:-$(stat -c %u /data/app/el2/100/base/org.westlake.imehost 2>/dev/null)}
+ . "$HERE/route-b-owner.sh"
++RB_AUDIT_PERSIST=1
+ BOOT=unknown; seq=0; child=none; child_birth=none; parent=none; parent_birth=none
+ keep_lock=0; owner_verified=0
+ io_fail() {
+@@ -27,6 +28,15 @@
+ }
+ control_file() {
+  [ ! -L "$1" ] && { [ ! -e "$1" ] || [ -f "$1" ]; } || io_fail "control_path_not_regular $1"
++}
++persist_guardian_refusal() {
++ # One exclusive record per sequence; never overwrite a previous refusal.
++ diagnostic_file="$F/guardian-refusal-$seq.jsonl"
++ control_file "$diagnostic_file"
++ [ ! -e "$diagnostic_file" ] || io_fail diagnostic_already_exists
++ (set -C; rb_guard_json "$@" 2> "$diagnostic_file") || io_fail diagnostic_write_failed
++ control_file "$diagnostic_file"
++ [ -s "$diagnostic_file" ] || io_fail diagnostic_empty
+ }
+ write_exact() {
+  control_file "$1"
+@@ -294,7 +304,12 @@
+     fi
+     event process_exit; break
+    fi
+-   [ "$live_birth" = "$child_birth" ] && child_owned "$child" "$child_birth" || { state OWNER_REFUSED child_identity_changed_no_signal; return 2; }
++   if [ "$live_birth" != "$child_birth" ]; then
++    RB_AUDIT_PID=$child; RB_AUDIT_BIRTH=$child_birth; RB_AUDIT_PHASE=monitor
++    rb_deny birth "$live_birth" "$child_birth"
++    state OWNER_REFUSED child_birth_changed_no_signal; return 2
++   fi
++   child_owned "$child" "$child_birth" || { state OWNER_REFUSED child_owner_check_failed_no_signal; return 2; }
+    polls=$((polls+1))
+    if [ "$ready" = 0 ]; then
+     label=unknown; capture_rc=0; classifier_rc=0
+--- rollback/route-b-owner.sh
++++ candidate/route-b-owner.sh
+@@ -58,6 +58,7 @@
+ rb_deny(){
+  # Discovery-only subshell sets this flag. Reject identically without encoding.
+  [ "${RB_AUDIT_QUIET:-0}" = 1 ] && return 1
++ [ "${RB_AUDIT_PERSIST:-0}" != 1 ] || persist_guardian_refusal "$@"
+  rb_guard_json "$1" "$2" "$3" || return 5; return 1
+ }
+ rb_owned(){
+--- rollback/entry.sh
++++ candidate/entry.sh
+@@ -20,8 +20,8 @@
+  sleep 1
+ done
+ [ ! -e "$AUTH_SOCKET" ] || fail EXISTING_SOCKET_NO_TAKEOVER
+-[ "$(sha256sum "$HERE/watchdog.sh" | cut -d' ' -f1)" = 2b635ef1ea9e00546e1306b0fe6872a415a8c7d5653e19f9fb42fca04386db4a ] || fail WATCHDOG_CHANGED
+-[ "$(sha256sum "$HERE/route-b-owner.sh" | cut -d' ' -f1)" = 6bce7c3c8f84ad1047313c5dd76bcb084637d9095b9163dc710c88aaee12fe4c ] || fail HELPER_CHANGED
++[ "$(sha256sum "$HERE/watchdog.sh" | cut -d' ' -f1)" = bcae2c697ae5ee6e31c836cd38d322d5120a87ffa74f1d35d2c88acca7be818e ] || fail WATCHDOG_CHANGED
++[ "$(sha256sum "$HERE/route-b-owner.sh" | cut -d' ' -f1)" = fc63dae9a24c4a41d1e8db92612cc256734c650e94451513b97f05226f82fe58 ] || fail HELPER_CHANGED
+ unset TT_PARENT_PID TT_PARENT_BIRTH TT_CHILD_PID TT_CHILD_BIRTH TT_OPERATOR_ROOT TT_INTEGRATION_AUTH TT_INTEGRATION_HERE
+ export TT_PROC=/proc TT_MAX_ATTEMPTS=3 TT_MAX_POLLS=0
+ export TT_RECOVERY_EXECUTE=1 TT_EXPECT_BOOT="$AUTH_BOOT" TT_OWNER_UID="$AUTH_UID"
+--- rollback/members.tsv
++++ candidate/members.tsv
+@@ -1,7 +1,7 @@
+-2b635ef1ea9e00546e1306b0fe6872a415a8c7d5653e19f9fb42fca04386db4a watchdog.sh 550
+-6bce7c3c8f84ad1047313c5dd76bcb084637d9095b9163dc710c88aaee12fe4c route-b-owner.sh 550
++bcae2c697ae5ee6e31c836cd38d322d5120a87ffa74f1d35d2c88acca7be818e watchdog.sh 550
++fc63dae9a24c4a41d1e8db92612cc256734c650e94451513b97f05226f82fe58 route-b-owner.sh 550
+ 638f47a6e40e4fdc39904c85d3b323f29285ae82af828db17a43631cb691b545 config-common.sh 550
+-81dd055764b0737f497d1dd9fb8358dd42521360bc6e359c9428c9b2ac8b21a1 entry.sh 550
++1f16bc6b10a306abd1afab88cfcd26801910388da5b057bc1e6084f219da30c8 entry.sh 550
+ d065f354392096819c93c808b89205355d62b333ff115fbadb8b9db38cbaa507 launch-common.sh 550
+ 22ca89574f022322d2de8b6f6415d8bf10a557cea90e4e567145918d1c7a49f3 real-start-parent.sh 550
+ 46337ba8364d871c19fb077e29a4087f37921bf609c70e9f3c1f98e1fff124a3 real-spawn.sh 550
+--- rollback/startup.env
++++ candidate/startup.env
+@@ -1,9 +1,9 @@
+ # Durable immutable startup configuration. NOT a placement authorization.
+ STARTUP_APPROVED_BY='outer(codex)'
+-STARTUP_ENABLED='1'
++STARTUP_ENABLED='0'
+ STARTUP_SERIAL='5cd1e3dd00000000000000000923012c'
+ STARTUP_OLD_STOP_SHA='NONE'
+-STARTUP_MEMBERS_SHA='328f0af2e95f6d0e33112628706544262c1f80aa1b623a4b987d7f8f129169f8'
++STARTUP_MEMBERS_SHA='04aa24cf06bef10bcaf765f6e26cfb55922af3ddeb95ee3f624af95838579fae'
+ STARTUP_JIT_SHA='b42a28e7a29a53c162a43ac25eaf52c24906f1afdd179c9414882772ccac34c8'
+ STARTUP_NAMESPACE_SHA='60b89e1102225280e7a92831d07ebe0fa274323f1225cd7014c8813a8411f04c'
+ STARTUP_START_PARENT_SHA='fc0444a42b9b9ab9a70605944ad5b2ccad53e24c6b2a20ad730920f17dce898f'
+--- rollback/startup.expected.sha256
++++ candidate/startup.expected.sha256
+@@ -1 +1 @@
+-44993dbc61116a4e67936ddc09af2ca7e19c9b2454599e16da7a2b907681b34a
++8e60a99dd81ddc25e3084902d0d95eb8ea2866a9aa1c30dce7b3f5b9f966b8f0

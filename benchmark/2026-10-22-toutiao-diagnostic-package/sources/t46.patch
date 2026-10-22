@@ -1,0 +1,50 @@
+--- a/watchdog.sh
++++ b/watchdog.sh
+@@ -13,6 +13,7 @@
+ RB_PROC=$PROC; RB_RUNTIME=$RUNTIME
+ RB_OWNER_UID=${TT_OWNER_UID:-$(stat -c %u /data/app/el2/100/base/org.westlake.imehost 2>/dev/null)}
+ . "$HERE/route-b-owner.sh"
++RB_AUDIT_PERSIST=1
+ BOOT=unknown; seq=0; child=none; child_birth=none; parent=none; parent_birth=none
+ keep_lock=0; owner_verified=0
+ io_fail() {
+@@ -27,6 +28,15 @@
+ }
+ control_file() {
+  [ ! -L "$1" ] && { [ ! -e "$1" ] || [ -f "$1" ]; } || io_fail "control_path_not_regular $1"
++}
++persist_guardian_refusal() {
++ # One exclusive record per sequence; never overwrite a previous refusal.
++ diagnostic_file="$F/guardian-refusal-$seq.jsonl"
++ control_file "$diagnostic_file"
++ [ ! -e "$diagnostic_file" ] || io_fail diagnostic_already_exists
++ (set -C; rb_guard_json "$@" 2> "$diagnostic_file") || io_fail diagnostic_write_failed
++ control_file "$diagnostic_file"
++ [ -s "$diagnostic_file" ] || io_fail diagnostic_empty
+ }
+ write_exact() {
+  control_file "$1"
+@@ -294,7 +304,12 @@
+     fi
+     event process_exit; break
+    fi
+-   [ "$live_birth" = "$child_birth" ] && child_owned "$child" "$child_birth" || { state OWNER_REFUSED child_identity_changed_no_signal; return 2; }
++   if [ "$live_birth" != "$child_birth" ]; then
++    RB_AUDIT_PID=$child; RB_AUDIT_BIRTH=$child_birth; RB_AUDIT_PHASE=monitor
++    rb_deny birth "$live_birth" "$child_birth"
++    state OWNER_REFUSED child_birth_changed_no_signal; return 2
++   fi
++   child_owned "$child" "$child_birth" || { state OWNER_REFUSED child_owner_check_failed_no_signal; return 2; }
+    polls=$((polls+1))
+    if [ "$ready" = 0 ]; then
+     label=unknown; capture_rc=0; classifier_rc=0
+--- a/route-b-owner.sh
++++ b/route-b-owner.sh
+@@ -58,6 +58,7 @@
+ rb_deny(){
+  # Discovery-only subshell sets this flag. Reject identically without encoding.
+  [ "${RB_AUDIT_QUIET:-0}" = 1 ] && return 1
++ [ "${RB_AUDIT_PERSIST:-0}" != 1 ] || persist_guardian_refusal "$@"
+  rb_guard_json "$1" "$2" "$3" || return 5; return 1
+ }
+ rb_owned(){
