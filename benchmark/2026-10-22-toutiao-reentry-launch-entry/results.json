@@ -1,0 +1,66 @@
+{
+  "token": "T37-REENTRY-LAUNCH-ENTRY-SOURCE-AUDIT",
+  "status": "HOST_ENTRY_LOCATED; DEPLOYED_EntryAbility_SOURCE_PROVEN_9dc302d9_NO_onNewWant; onNewWant_CANDIDATE_NEEDS_REAL_Want_launchParam; CURRENT_DEVICE_STATE_NEEDS_FRESH_CHECK",
+  "scope": "read-only audit of locally-stored source for a reliable desktop-icon -> host launch entry (one-click event / sequence / window-created event) the reentry state machine could consume; no REA, device, source edit, deploy or orchestration",
+  "static_not_runtime": "this is a static source gap audit, not an on-device root cause of the T37 miss",
+  "observation_primitive": {
+    "only_source": "hidumper -s WindowManagerService -a '-a' (29 call sites across the reentry family)",
+    "nature": "1-second integer-sleep poll of a focus/window SNAPSHOT, not an event stream",
+    "parsed_fields": "WindowName DisplayId Pid WinId Type Mode Flag ZOrd Orientation + 'Focus window: N' footer",
+    "impl": "benchmark/2026-10-19-toutiao-icon-reentry/src/reentry-seams.sh:15 rc_validate_wms, :94 rc_parse_focus, :111 rc_classify_focus"
+  },
+  "state_machine": {
+    "file": "benchmark/2026-10-19-toutiao-icon-reentry/src/reentry-common.sh",
+    "trigger": "a spawn fires only on a verified desktop(SceneBoard)->host(imehost0) FOCUS transition (UNARMED->DESKTOP_SEEN->HOST_CONSUMED), lines 31-36, 43-98",
+    "gap": "because the input is a polled snapshot, a desktop focus between two 1s samples is missed, leaving UNARMED; a later host focus is then consumed silently with no spawn. Acknowledged at OUTER-ADAPTER-READY.json:66 ('extremely fast Home-to-icon transitions can be missed')."
+  },
+  "must_preserve": "identity gate, window-ownership gate, single-instance (HOST_CONSUMED/one-spawn) gate, no-event->no-autostart (UNARMED quiet). No code change proposed.",
+  "device_rea_edit_deploy_calls": 0,
+  "activity_adapter_layer_is": "ANDROID CHILD BRIDGE, not the imehost0 host. bms/src/adapter/framework/activity translates OH AMS ScheduleAbilityTransaction (isNewWant + wantJson) into the bridged ANDROID app child Activity.onResume/onCreate (AbilitySchedulerBridge.java:81-120 onScheduleAbilityTransaction; ability_scheduler_adapter.cpp:403-502). isNewWant/wantJson here belong to the launched Android child AFTER spawn, inside the child runtime \u2014 not a pre-spawn host tap signal and not consumed by the reentry guardian.",
+  "real_host_entry": {
+    "host": "org.westlake.imehost EntryAbility (JS stage-mode UIAbility)",
+    "desktop_icon": "module.json skill action.system.home / entity.system.home",
+    "launchType": "not set -> OH default singleton",
+    "source_overrides": "onCreate / onWindowStageCreate(windowStageEvent) / onForeground / onBackground / onWindowStageDestroy / onDestroy; each only record()s a hilog WL_IME_HOST line and TRUNC-overwrites files/window-state.json with {event,time,details}",
+    "onNewWant_in_source": false,
+    "want_read_in_source": false,
+    "source_fact": "the located host EntryAbility reads no Want and implements no onNewWant; this is the accepted source fact"
+  },
+  "distinguish_human_tap_from_no_event": "From the located host SOURCE: not possible. The source reads no Want and no LaunchParam; onForeground/windowStageEvent carry no cause. A source-level reliable \"genuine user tap vs recovery/notification/autostart\" discriminator does not exist today. onNewWant + LaunchParam.launchReason/launchReasonMessage is the CANDIDATE mechanism, but requires real on-device Want/launchParam evidence and is unimplemented here.",
+  "actionable": "Deployed host entry source is proven = org.westlake.imehost EntryAbility.js 9dc302d9 (ABC bb1eccd3 in HAP df385638; T32-accepted). It has no per-tap Want/launchParam signal; onForeground fires on taps and non-taps alike. A reliable per-launch-cause signal would require implementing onNewWant + reading LaunchParam, with real captured Want evidence \u2014 a code + measurement task, out of scope. The generic 922a13a5 template is NOT the deployed source and must not be used as a substitute.",
+  "correction_history": "Earlier passes wrote \"host not located / host layer unaudited\", then over-claimed onNewWant as a reliable per-tap human signal, then wrote \"deployed host source equivalence unproven (DIGEST #91 :973)\". All withdrawn. DIGEST #91 predates the T32/T33 closure; the exact source->ABC->deployed-member binding is now proven (below).",
+  "source_files": [
+    {
+      "path": "sources/api-implementations/source-build-host/westlake-java/apps/imehost/EntryAbility.js",
+      "sha256": "922a13a5d8e0aa6a2b986035dc111c2a575a7b0d2bb56b497a38939eb62f7566",
+      "git_blob": "90b430ed357ff62b9c75d5b74e83cfe401293968"
+    },
+    {
+      "path": "benchmark/2026-10-20-toutiao-launcher-page/sources/baseline/EntryAbility.js",
+      "sha256": "9dc302d9aa72eb1be8635d7bc4bc4306da76f0e45d2414d67bd96d024e2a24c6",
+      "git_blob": "3ed2f34b81925554d5254dba6bfe9511cbf53cff"
+    }
+  ],
+  "onForeground_reason": {
+    "source_fact": "onForeground() takes no argument and records {}; carries no launch reason",
+    "platform_semantics": "OH invokes it on every foreground transition (cold create, user re-tap, recovery, auto-startup); source cannot label which, so it is not a human-tap discriminator"
+  },
+  "onNewWant_candidate": {
+    "what_it_is": "onNewWant(want, launchParam) is a NEW-START-REQUEST callback to an already-created ability; not by itself proof of a physical user tap",
+    "status": "not implemented in the deployed/baseline source 9dc302d9 (proven)",
+    "would_need": "implementing it AND reading AbilityConstant.LaunchParam.launchReason (APP_RECOVERY/AUTO_STARTUP) + launchReasonMessage (API18+)/DESKTOP_SHORTCUT-style ReasonMessage (API20+), with real captured Want/launchParam on this API; a desktop SHORTCUT reason != every desktop-icon launch; want.parameters is not a ready reliable human marker without that evidence"
+  },
+  "two_sources_not_interchangeable": {
+    "deployed_baseline": "sources/baseline/EntryAbility.js sha256 9dc302d9aa72eb1be8635d7bc4bc4306da76f0e45d2414d67bd96d024e2a24c6 git_blob 3ed2f34b81925554d5254dba6bfe9511cbf53cff \u2014 THIS is the deployed host EntryAbility source",
+    "generic_variant": "sources/api-implementations/source-build-host/westlake-java/apps/imehost/EntryAbility.js sha256 922a13a5d8e0aa6a2b986035dc111c2a575a7b0d2bb56b497a38939eb62f7566 git_blob 90b430ed357ff62b9c75d5b74e83cfe401293968 \u2014 a GENERIC template with a different window background; NOT the deployed source and NOT interchangeable with 9dc302d9"
+  },
+  "source_to_abc_proof": {
+    "deployed_hap": "df3856387ba6971202b33e4475fde4e0fb1bf7fb33da0f4250429fe6535b014a (53303 B), identical to the historical 5cd installed+signed HAP (closure.json history_matches_intake=true)",
+    "deployed_EntryAbility_abc_member": "ets/entryability/EntryAbility.abc = bb1eccd3338dde573393b24d81e26e67450d5461ba51f73e578d9e42a78cbde9 (inputs.lock.json)",
+    "reproduced_from": "exact Linux compiler d20db2d40cef\u2026 compiled sources/baseline/EntryAbility.js (9dc302d9) and reproduced baseline/EntryAbility.abc = bb1eccd3 BYTE-FOR-BYTE (compile-linux-01.json; closure.json baseline_abc_exact=true)",
+    "candidate_delta": "the signed candidate b18978b8\u2026 changes only ets/pages/Index.abc; EntryAbility is NOT changed (production-01.json before=after=bb1eccd3)",
+    "conclusion": "the deployed host EntryAbility source is PROVEN to be 9dc302d9 via an exact source->ABC->deployed-member byte match; T32 (benchmark/2026-10-20-t32-host-page-accepted) accepted this same-signature HAP on 5cd (one desktop tap -> Toutiao feed)."
+  },
+  "onNewWant_resolved_for_deployed": "Because the deployed EntryAbility.abc is byte-reproduced from 9dc302d9, and 9dc302d9 implements NO onNewWant and reads NO Want, the DEPLOYED host EntryAbility also has no onNewWant / no Want read. This is now proven at source->ABC level, not \u5f85\u5b9e\u6d4b.",
+  "still_fresh_check": "What needs a fresh on-device check is the CURRENT device runtime STATE (live WID/parent, whether this exact HAP is the currently-installed one on the target board right now), not the EntryAbility source identity or onNewWant presence (both proven). closure.json records visual_activation NOT_EXECUTED / device_calls 0 for this offline package; T32 is the accepted on-device run."
+}
