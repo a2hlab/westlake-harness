@@ -8,11 +8,12 @@ satisfies: [REQ-TTVIDEO]
 T49以原码复现了monitor两次读取间退出的终局拒绝，以及同seq诊断重名导致IO_FAILED。本任务只修本项目watchdog这两个离线可复现行为，保留身份校验、真实I/O失败和原始证据；不把合成结果当实板白屏根因。
 ## 已定决策
 - 以T47 watchdog bcae2c69与owner fc63dae9为精确输入，在新目录发布新watchdog；owner保持字节不变，历史源/冻结表不改。
-- 最小范围只覆盖child_owned直接first_birth与last_birth读取失败：通过新的只读退出分类函数区分目录确实消失、同birth的Z、仍存活或未知。格式错误、PID复用、权限/读取未知不能成为恢复依据；先读父proc目录确认可读可遍历，不能把不可访问路径当消失。readable malformed stat也拒绝。已有值不匹配分支一律维持原拒绝。rb_owned内部失败保持原行为并明确未覆盖。
+- 最小范围覆盖monitor首次birth读取失败及child_owned直接first_birth与last_birth读取失败：通过新的只读退出分类函数区分目录确实消失、同birth的Z、仍存活或未知。格式错误、PID复用、权限/读取未知不能成为恢复依据；先读父proc目录确认可读可遍历，不能把不可访问路径当消失。readable malformed stat也拒绝。已有值不匹配分支一律维持原拒绝。rb_owned内部失败保持原行为并明确未覆盖。
 - 分类确认退出返回独立状态3；monitor沿原process_exit→RECOVERING路径；capture记录child_exited_during_capture并让下次monitor确认；首次attach或spawn的校验退出返回START_FAILED，不假称已接管或继续launch。其余调用者逐处审计，不能把3当成功。
 - 首次诊断继续使用guardian-refusal-$seq.jsonl，已存在普通文件时保留字节并使用有限独占编号槽追加记录，最多16个附加槽。旧文件/槽若是symlink或非普通文件则IO_FAILED；真实写入/读回失败、槽耗尽仍IO_FAILED且保留锁。不采用设计稿中的吞掉I/O失败建议。状态/事件持久化门禁不变。
 - 复用T49实际main与身份函数回放；不替换被验证分类函数或状态分支。仅进程文件读取与真实设备动作边界用合成夹具。禁止发真实signal、启动真实进程或访问设备。保留每次argv/start/end/stdout/stderr/rc与source SHA，全新持久输出，checker显式检查在python -O下有效。
 - 复审补充：分类与rb_birth使用同一RB_PROC根，确认消失前同时核对已记录parent的birth作为可见性见证；见证未知则拒绝。同birth僵尸的state/birth必须来自同一次完整stat读。确认退出不得调用rb_deny或消耗诊断槽。首次校验退出不得增加attempt/sequence或写instance。覆盖上一已提交seq已有记录时的首次校验拒绝，以及dangling symlink/目录槽拒绝；编号名属于最后已提交seq，记录自带phase/pid/birth。
+- 候选复审补充：monitor首次birth读取失败也必须调用同一退出分类器，避免不同birth僵尸绕过新校验；缺目录确认后再读取父proc列表，仍需正见证。分类子shell使用明确exit状态或提供目标shell证明。分类结果gone/zombie及发生阶段须留可检查证据，诊断slot0与原版同一拒绝的字节一致。
 ## 边界
 ### 允许修改
 - benchmark/2026-10-22-toutiao-owned-exit-fix/**
