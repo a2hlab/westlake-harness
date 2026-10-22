@@ -1,0 +1,21 @@
+--- old/sources/candidate/EntryAbility.js
++++ new/sources/candidate/EntryAbility.js
+@@ -18,6 +18,9 @@
+ function launchMessageClass(message) {
+     // Pinned SDK AbilityConstant, API20. Classification is not authentication.
+     return message === 'ReasonMessage_DesktopShortcut' ? 'desktop_shortcut' : 'unknown';
++}
++function launchHomeAction(action) {
++    return action === 'ohos.want.action.home' || action === 'action.system.home' ? 'home' : 'unknown';
+ }
+ function launchHomeEntity(entities) {
+     try {
+@@ -51,7 +54,7 @@
+             time: Number.isSafeInteger(now) && now >= 0 ? now : 'unknown',
+             launchReason: Number.isInteger(reason) && reason >= 0 && reason <= 2147483647 ? reason : 'unknown',
+             launchReasonMessage: launchMessageClass(launchField(launchParam, 'launchReasonMessage')),
+-            home_action: launchField(want, 'action') === 'ohos.want.action.home' ? 'home' : 'unknown',
++            home_action: launchHomeAction(launchField(want, 'action')),
+             home_entity: launchHomeEntity(launchField(want, 'entities')),
+             manual_origin: 'unverified',
+             eligible_for_reentry: false

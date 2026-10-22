@@ -1,0 +1,12 @@
+--- old/test_callbacks.cjs
++++ new/test_callbacks.cjs
+@@ -86,6 +86,9 @@
+     assert.deepEqual(a.logs.filter(x=>!String(x[3]).startsWith('launch-observation')), b.logs);
+     assertRecord(a.record());
+ });
++for (const action of ['ohos.want.action.home','action.system.home']) test('home action whitelist '+action,()=>{
++    const e=environment();e.ability.onNewWant({action}, {launchReason:1});assert.equal(e.record().home_action,'home');assertRecord(e.record());
++});
+ test('all bounded numeric reasons and non-manual reasons never authorize reentry',()=>{
+     const e=environment();
+     for(const reason of [0,1,2,3,4,5,6,7,8,9,10,11,12,2147483647]){
