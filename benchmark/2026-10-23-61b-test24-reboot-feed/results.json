@@ -1,0 +1,62 @@
+{
+ "task": "T61",
+ "board": "61b0657200000000000000000324012c",
+ "boot": "f8406e45 (no reboot)",
+ "lock": "phase A window: 11:03:08-11:04:31 (board receipt), released",
+ "fresh_pre": "boot/HAP b18978b8/cfg 7b9f2c0e,897f9ca0 unchanged; TT 7432 alive; power SLEEP 30000/10000; WiFi not connected; lock free",
+ "phase_A": {
+  "tap": "one tap on saved UpstreamLabs_Test_2.4GHz row ([153,815][611,857]); no password, no other SSID",
+  "pre": {
+   "file": "01-ui-wlan0.jpeg",
+   "sha256": "07950a4fce77ed8ba5ea03815aca80393bb4fd9e2b06a50406cf2f73dcb1bb26"
+  },
+  "t+4s": "net-n0.txt: not connected, no IPv4, routes 0",
+  "t+30s": {
+   "net": "net-n30.txt: not connected, no IPv4, routes 0",
+   "screen": {
+    "file": "02-stab-drop30.jpeg",
+    "sha256": "d33edd9584f6eb5ac88215145f87e5111166b1b3e14cb47e0b0d1234172a6684",
+    "read": "Test_2.4GHz row shows 正在连接... with spinner"
+   }
+  },
+  "close": "net-final.txt: not connected; settings layout still 正在连接...",
+  "verdict": "GATE STOPPED at t+30: initial_connection_pending / connection_not_observed (settings 正在连接...); NOT a post-connect drop",
+  "t+90/180": "not taken (stopped at first failing check per card)",
+  "post_close_readonly": {
+   "note": "read-only after window close, no lock/UI/reconnect/SSID change",
+   "t+90s": "net-post90.txt (taken early by mistake): connected, wlan0 192.168.1.169 RUNNING",
+   "t+120s": "net-post120.txt: WifiDevice connected; wlan0 192.168.1.169 RUNNING; HWaddr 62:39:92:c5:24:ff (earlier reads showed 40:45:da:af:d0:ce); route table only wlan0 192.168.1.0/24 link route, NO default gateway route",
+   "interpretation": "delayed connection success (>30 s, <=90 s); stability not observed; absence of default route recorded as fact, internet reachability unknown; a new stability observation is required before any reboot"
+  }
+ },
+ "phase_B": {
+  "lock": "11:08:35-11:12:49, released, held_after rc=1",
+  "reboot": "hdc target boot rc=0; f8406e45 -> 85985a79-28f4-44b7-a8f2-75e11fd673ba (+22 s)",
+  "ready": "boot.completed & u13.ready true (whitespace stripped) at uptime 39",
+  "autonet": "IPv4 192.168.1.169 RUNNING + route within 5 s after ready (no manual network action)",
+  "no_manual": "no bootstrap/aa/guardian start; guardian entry.sh 4026 started by init",
+  "first_tap": "WorkSpace_1 EntryAbility (189,234), one click",
+  "t30": "blank (13-B-tt-t30.jpeg 92496687), child 6871 alive",
+  "t120": "feed visible (13-B-tt-t120.jpeg 303daf6f); state READY (events 166 first_feed_observation, 173 READY). Search-hint text is not evidence of live/fresh data; only WiFi state+address and feed visibility are claimed",
+  "content": "tapped 八仙下凡打卡中国世纪工程; +11s c10 all grey (93ea7977), +20s state read AWAITING_REENTRY (child 6871 process_exit at uptime 215), +25s c17 same grey. Observation ended before 30 s because the child had already exited; no body/return image -> operation FAILED; not reopened, cause not investigated",
+  "return": "not possible (child exited)",
+  "net_at_close": "connected (ok)",
+  "verdict": {
+   "reboot_autonet": "observed",
+   "desktop_first_tap_feed": "observed",
+   "content_open_return": "failed (child exit after content tap)"
+  },
+  "restore": "power_ver 15-B-restore: AWAKE 30000/10000; tmp 0"
+ },
+ "restore": {
+  "power": "raw/03-restore/power_ver.stdout: AWAKE Timeout=30000ms OverrideTimeout=10000ms",
+  "tmp": "0 left"
+ },
+ "note": "board left with Test_2.4GHz connection attempt in progress (system-initiated, no further action by us)",
+ "stability_followup": {
+  "anchor": "first connected sample 11:05:10 (net-post90.txt)",
+  "plus90": "taken at +108 s (late): connected, IPv4, RUNNING, wlan0 route (net-a90.txt)",
+  "plus180": "+180 s: same (net-a180.txt)",
+  "verdict": "stable over observed 180 s"
+ }
+}
