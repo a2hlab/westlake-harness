@@ -1058,3 +1058,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-23 T66: preboot Compatibility remained connected at30/90/180s; awake/unlocked new boot auto-selected Test_2.4GHz, later disconnected(reason34), and TT first-icon30/120s screenshots stayed blank with child exit. Bind SSID+boot to stability claims; temporal adjacency does not prove network loss caused app exit. Full delivery remains unaccepted.
 
 - 2026-10-23 T67: standard WLAN detail has automatic reconnect. On61b, Compatibility kept on and Test_2.4GHz/UpstreamLabs/Guest switched off with exact title/toggle readback; passwords retained. Menu has only Install certificate, not saved-network management. Preference acceptance is not boot/network stability acceptance.
+
+- 2026-10-23 T68: Compatibility auto-bound after normal boot and was connected at30/90s, but existing logs show ~2s disconnect/reconnect between samples; sampled readiness is not continuous stability. Desktop first-click30/120s remained white, child exited to AWAITING_REENTRY, no feed/content acceptance. Compare existing launch paths before repeating boots; temporal WiFi adjacency is not causation.
