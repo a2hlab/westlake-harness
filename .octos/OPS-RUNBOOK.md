@@ -317,3 +317,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-23 T106补采陷阱：zsh默认不拆分变量字符串，serial与PID拼成一个参数导致/proc//stat，传输rc0也不是目标HAP回执。改Python subprocess argv列表，精确serial白名单+fresh纯数字PID本地校验，正常maps绝对路径走该PID/root，stat/dev/inode与birth前后夹持；失败原件不覆盖，后继有界修正独立计时。
 
 - 2026-10-23 用户明确本轮启动验收用agent发重启命令继续，不再等待人工断电；T109已改为hdc普通软件重启重复。原始物理断电记录保留，后续软件重启不能标成实际切供电，不因这个证据边界再次要求用户操作。
+
+- 2026-10-23 T120：check_frozen.py无参数只验登记结构，0 checked不可称内容核验；对登记源码用--git并记实际checked数，包变更路径与冻结项取交集。控制脚本组包同时核SHA和mode，复制后0644不会自动变成members声明0550/0440，安装须逐件chmod并回读，尤其screen-gate。
