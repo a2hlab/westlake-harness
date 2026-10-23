@@ -1,0 +1,128 @@
+{
+  "task": "T97D read-only environment diagnosis",
+  "failure_receipt": {
+    "path": "$WORKSPACES/westlake-harness-t37-peer/benchmark/2026-10-23-runtime-clock-cli/01-search.stdout",
+    "sha256": "b61b6bb2c8d744cc8151bb96130340d97c717fcea8b1c1d7e1246d9d0ebc3c1d",
+    "stage": "ownership_preparation",
+    "compiler_rc": 1,
+    "observations": [
+      "SwiftShims output under $HOME/.cache/clang/ModuleCache denied: Operation not permitted",
+      "SDK Swift6.3.2 vs compiler6.3.3 incompatibility explicitly reported"
+    ],
+    "limit": "Two observed blockers; no claim either alone explains all failure output."
+  },
+  "installed_rea_version": "6.7.0",
+  "versions": [
+    {
+      "argv": [
+        "/usr/bin/xcode-select",
+        "-p"
+      ],
+      "rc": 0,
+      "stdout": "/Library/Developer/CommandLineTools",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+        "--version"
+      ],
+      "rc": 0,
+      "stdout": "Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)\nTarget: arm64-apple-macosx26.0",
+      "stderr": "swift-driver version: 1.148.6"
+    },
+    {
+      "argv": [
+        "/Applications/Xcode-26.4.0-Release.Candidate.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+        "--version"
+      ],
+      "rc": 0,
+      "stdout": "Apple Swift version 6.3 (swiftlang-6.3.0.123.5 clang-2100.0.123.102)\nTarget: arm64-apple-macosx26.0",
+      "stderr": "swift-driver version: 1.148.6"
+    }
+  ],
+  "sdk_metadata": [
+    {
+      "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "resolved": "/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk",
+      "interface_sha256": "dbd42cceeec645bf2b0ea08e87762e9581637cacd95cd62f2b6c05b136aca824",
+      "compiler_header_line2": "// swift-compiler-version: Apple Swift version 6.3.2 effective-5.10 (swiftlang-6.3.2.1.2 clang-2100.0.123.2)",
+      "settings_sha256": "e5c7c40b8c5dc1a9f99f8b9fa51870f8fe180421225b8201d0c4c826aad11bdc",
+      "version": "26.5",
+      "canonical_name": "macosx26.5"
+    },
+    {
+      "path": "/Applications/Xcode-26.4.0-Release.Candidate.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "resolved": "/Applications/Xcode-26.4.0-Release.Candidate.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "interface_sha256": "234203d00f7fd717f82942f88e0bd7a717ec97f74a2cf12d46761ca8b0858cbf",
+      "compiler_header_line2": "// swift-compiler-version: Apple Swift version 6.3 effective-5.10 (swiftlang-6.3.0.123.4 clang-2100.0.123.2)",
+      "settings_sha256": "ae791cb74c6490257457058918b460c3cf080f2b5ddf1a747fa58094cedfe82e",
+      "version": "26.4",
+      "canonical_name": "macosx26.4"
+    }
+  ],
+  "selection_code": [
+    {
+      "path": "/opt/homebrew/lib/node_modules/rea-agents/dist/process/ProcessOwnershipObservation.js",
+      "sha256": "12a6434adfaa42e865a883966d7296c52ae80ecf5dd2f5f45379cc148cfe35a5",
+      "first_line": 157,
+      "last_line": 175,
+      "excerpt": "/** Create the operating-system process inspector for an explicit host context. */\nexport const createSystemProcessOwnershipHost = (platform = process.platform, hostEnvironment = process.env, options = {}) => {\n    const darwinModuleCachePath = options.darwinModuleCachePath ??\n        hostEnvironment.REA_DARWIN_MODULE_CACHE_PATH;\n    const swiftcPath = hostEnvironment.REA_DARWIN_SWIFTC_PATH;\n    const darwinCompiler = options.darwinCompiler ??\n        (swiftcPath === undefined || swiftcPath === \"\"\n            ? undefined\n            : {\n                kind: \"swiftc\",\n                executable: swiftcPath,\n                sdkRoot: hostEnvironment.SDKROOT ?? \"\",\n            });\n    const darwinTokens = platform === \"darwin\"\n        ? createDarwinProcessRunTokenReader({\n            ...(darwinCompiler === undefined ? {} : { compiler: darwinCompiler }),\n            ...(darwinModuleCachePath === undefined\n                ? {}\n                : { moduleCachePath: darwinModuleCachePath }),"
+    },
+    {
+      "path": "/opt/homebrew/lib/node_modules/rea-agents/dist/process/DarwinProcessRunTokenReader.js",
+      "sha256": "35aa8d783aa8719e0460ecd96ec45447ea3a1eccfb0c69a64884f3f6c827f678",
+      "first_line": 240,
+      "last_line": 245,
+      "excerpt": "    const compiler = options.compiler ?? {\n        kind: \"xcrun\",\n        executable: \"/usr/bin/xcrun\",\n    };\n    const compilerTimeoutMs = resolveSwiftcCompileTimeoutMs(options);\n    const moduleCachePath = options.moduleCachePath ?? \"\";"
+    },
+    {
+      "path": "/opt/homebrew/lib/node_modules/rea-agents/dist/process/DarwinProcessRunTokenReader.js",
+      "sha256": "35aa8d783aa8719e0460ecd96ec45447ea3a1eccfb0c69a64884f3f6c827f678",
+      "first_line": 294,
+      "last_line": 327,
+      "excerpt": "            if (compiler.kind === \"swiftc\" &&\n                (!isAbsolute(compiler.executable) || !isAbsolute(compiler.sdkRoot))) {\n                throw new DarwinProcessOwnershipInspectionError(\"Direct Darwin helper compilation requires absolute REA_DARWIN_SWIFTC_PATH and SDKROOT paths selecting a compatible installed Swift compiler and macOS SDK.\");\n            }\n            operationRoot = {\n                path: await mkdtemp(join(tmpdir(), \"rea-process-token-\")),\n            };\n            root = operationRoot;\n            process.once(\"exit\", cleanupAtExit);\n            exitCleanupInstalled = true;\n            if (signal.aborted || closed)\n                throw abortReason(signal);\n            const output = join(operationRoot.path, \"reader\");\n            // swiftc keeps intermediate objects under TMPDIR, so keep them inside\n            // the root that cleanup removes.\n            const compilerTemporary = join(operationRoot.path, \"tmp\");\n            await mkdir(compilerTemporary);\n            const compilerEnvironment = {\n                ...process.env,\n                TMPDIR: compilerTemporary,\n            };\n            const compilerArguments = compiler.kind === \"xcrun\" ? [\"swiftc\"] : [\"-sdk\", compiler.sdkRoot];\n            if (compiler.kind === \"swiftc\")\n                compilerEnvironment.SDKROOT = compiler.sdkRoot;\n            if (moduleCachePath === \"\") {\n                // Use Swift's reusable default cache for REA's internal helper compilation.\n                delete compilerEnvironment.CLANG_MODULE_CACHE_PATH;\n            }\n            else {\n                await mkdir(moduleCachePath, { recursive: true });\n                compilerArguments.push(\"-module-cache-path\", moduleCachePath);\n                compilerEnvironment.CLANG_MODULE_CACHE_PATH = moduleCachePath;\n            }\n            compilerArguments.push(...sourceFiles, \"-o\", output);"
+    }
+  ],
+  "selection_summary": "Default compiler is /usr/bin/xcrun swiftc; default moduleCachePath empty uses reusable Swift default cache and deletes CLANG_MODULE_CACHE_PATH in child environment. Existing explicit compiler selection uses REA_DARWIN_SWIFTC_PATH plus absolute SDKROOT; explicit cache selection uses REA_DARWIN_MODULE_CACHE_PATH. These code paths were read only, not configured or exercised.",
+  "existing_paths": [
+    {
+      "path": "/opt/homebrew/opt/ghidra/libexec/support/analyzeHeadless",
+      "exists": true,
+      "resolved": "/opt/homebrew/Cellar/ghidra/12.1.4/libexec/support/analyzeHeadless",
+      "executed": false
+    },
+    {
+      "path": "/opt/homebrew/opt/ghidra/libexec/Ghidra/application.properties",
+      "exists": true,
+      "resolved": "/opt/homebrew/Cellar/ghidra/12.1.4/libexec/Ghidra/application.properties",
+      "executed": false
+    },
+    {
+      "path": "/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home/bin/java",
+      "exists": true,
+      "resolved": "/opt/homebrew/Cellar/openjdk@21/21.0.12.1/libexec/openjdk.jdk/Contents/Home/bin/java",
+      "executed": false
+    },
+    {
+      "path": "/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home/bin/java",
+      "exists": true,
+      "resolved": "/opt/homebrew/Cellar/openjdk/26.0.1/libexec/openjdk.jdk/Contents/Home/bin/java",
+      "executed": false
+    }
+  ],
+  "candidate": "Existing Xcode26.4 bundle compiler reports Swift6.3 and its SDK interface reports Swift6.3. It is an untested compatibility candidate, not a confirmed fix or execution authorization. Cache permission blocker remains separately unresolved.",
+  "unknown": [
+    "Actual Java chosen by the failed REA request is not proven by PATH aliases or these existing paths.",
+    "No compile test performed; no alternate toolchain compatibility certified."
+  ],
+  "actions": {
+    "compilations": 0,
+    "rea_retries": 0,
+    "doctor": 0,
+    "cache_creations": 0,
+    "environment_or_permission_changes": 0,
+    "downloads": 0,
+    "device": 0
+  }
+}
