@@ -1052,3 +1052,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-23 T62: final handoff reboot db7ebf7b had no automatic network in24 samples/121s after ready, despite T61B previous-boot success. Current screen is lockscreen, not earlier feed; reliable boot/use delivery remains unaccepted. Preserve per-boot outcomes instead of promoting one successful run into a reproducibility guarantee.
 
 - 2026-10-23 T63/T64: six same-boot WiFi ASSOC-REJECT status16 events identify a connection-stage failure, not a password/AP root cause. Actual loaded driver is sprd_wlan_combo; do not apply brcmfmac status16 analogies. MAC changes and HAL/restart timing are correlations only; bounded missing source is not global absence. See wifi-readonly/outer-review.json.
+
+- 2026-10-23 T65: Compatibility auto-connected before the prescribed network tap; the switch locally disconnected it52ms after tap end. Do not count that as spontaneous loss; fresh connected-state evidence overrides a stale switch plan. T66 preserves a connected network and tests ordinary wake/unlock before app use.

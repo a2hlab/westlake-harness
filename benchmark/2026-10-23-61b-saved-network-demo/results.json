@@ -1,0 +1,68 @@
+{
+ "task": "T65",
+ "board": "61b0657200000000000000000324012c",
+ "boot": "db7ebf7b (no reboot)",
+ "lock": "11:35:15-11:38:44 (board_note lock.start/unlock.end), released, held_after rc=1",
+ "pre": {
+  "time": "11:34",
+  "net": "not connected, no IPv4",
+  "power": "SLEEP 30000/10000",
+  "hap": "b18978b8",
+  "cfg": "7b9f2c0e",
+  "lock": "free",
+  "screen": "lockscreen focus"
+ },
+ "timeline": [
+  "11:35:15 lock; ~11:35:16 power-shell wakeup (screen on)",
+  "11:35:18.068 system auto ASSOCIATING Test_2.4GHz -> ASSOCIATED -> 11:35:29.903 local deauth reason3",
+  "11:35:31-11:35:46 system auto: Test_2.4GHz REJECT 16, Compatibility REJECT 16, Test_2.4GHz REJECT 16",
+  "11:35:48.548 system auto ASSOCIATING Compatibility -> 11:35:49.361 4WAY_HANDSHAKE -> 11:35:49.389 CTRL-EVENT-CONNECTED (before our tap)",
+  "11:36:11.489 read (drift.stdout): connected, IPv4, RUNNING, 1 route; MAC = randomized prefix",
+  "11:36:11.667-11:36:12.020 our single tap on saved UpstreamLabs row (tap.start/end)",
+  "11:36:12.072 Compatibility CTRL-EVENT-DISCONNECTED reason=3 locally_generated=1 (52 ms after tap end: tap-induced switch)",
+  "11:36:12.428 ASSOCIATING UpstreamLabs -> 11:36:22.447 local deauth reason3 after 10 s (no REJECT)",
+  "11:36:24-11:38:19 system retry loop: UpstreamLabs 7 more times each ended by 10 s local deauth; Test_2.4GHz REJECT 16; Compatibility ASSOCIATED twice (11:37:05, 11:37:18) then 10 s local deauth, then REJECT 16",
+  "settings UpstreamLabs row: 正在连接... until ~+90 s, then 已保存,加密 (+95..+119 s)"
+ ],
+ "classification": {
+  "before_tap": "system auto-connected Compatibility at 11:35:49 (not our action)",
+  "tap": "tap-induced switch: Compatibility disconnected locally 52 ms after tap",
+  "UpstreamLabs": "initial_connection_pending -> never ASSOCIATED/CONNECTED in 120 s (stop condition: 120 s not connected)",
+  "post_connect_drop_of_target": "not applicable (target never connected)",
+  "confound": "The Compatibility disconnect at 11:36:12.072 was caused by our tap on UpstreamLabs (switch, 52 ms after tap end); it is NOT a natural drop and must not be counted as Compatibility instability. Compatibility had been connected 11:35:49.389-11:36:12.072 (~22.7 s, cut by the switch)."
+ },
+ "mac": {
+  "pre_vs_drift": "different",
+  "during_120s_polls": "alternated between two values (18 polls on pre value, 7 on other)",
+  "public": "full MACs private only"
+ },
+ "stop": "card stop condition reached; no reboot, no TT, no retry, no other SSID tapped",
+ "restore": {
+  "power_cmds": [
+   "power-shell timeout -r",
+   "power-shell timeout -o 10000"
+  ],
+  "power_readback": "raw/03-restore/power_ver.stdout: AWAKE Timeout=30000ms OverrideTimeout=10000ms",
+  "tmp": "0",
+  "net_final": "not connected"
+ },
+ "screenshots": {
+  "01-wlan-before-tap.jpeg": "df8bdbc9d4f8251b03a20f78f326e8b00c79bd338c1dc00620920e71967ee856",
+  "02-wlan-after-120s.jpeg": "61f4a787f8a68471fcede78b111ff6e58c87c185592d8d4fc01820afb312efef",
+  "count_public": 2,
+  "count_private_raw": 3
+ },
+ "hilog": {
+  "mode": "hilog -x -e '<=127 chars' once",
+  "lines": 701,
+  "coverage": "11:15:28..11:38:21",
+  "sha256": "0672d9f9f5e006937bd87df949bc78b6fe8c03fb268a0182302f61e4208bcf3f",
+  "public": "assoc-timeline.txt (OH-masked SSID, BSSID replaced)"
+ },
+ "not_claimed": [
+  "root cause",
+  "status 16 meaning",
+  "feed/content (not reached)",
+  "lifecycle PASS"
+ ]
+}
