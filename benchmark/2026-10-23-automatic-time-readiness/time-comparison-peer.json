@@ -1,0 +1,78 @@
+{
+  "schema": "automatic-time-readiness-peer-comparison/v1",
+  "reviewer": "dual_track_sentry",
+  "created_at": "2026-10-23T06:46:28.194256+00:00",
+  "scope": "Read-only comparison of already collected ordinary device date/UI evidence; no device commands, source analysis, fault records or rejected-task continuation.",
+  "evidence": [
+    {
+      "task": "T61B",
+      "observed_application_outcome": "feed observed",
+      "raw_path": "$HOME/.local/share/westlake/61b-test24-reboot-feed-20261023/raw/11-B-boot/w1.stdout",
+      "sha256": "ac08c95a53eccbcc85ee02119be8d877be3913b168eaf1a838792520fa8017ab",
+      "date_lines": [
+        "Fri Oct 23 11:09:19 CST 2026"
+      ]
+    },
+    {
+      "task": "T61B",
+      "observed_application_outcome": "feed observed",
+      "raw_path": "$HOME/.local/share/westlake/61b-test24-reboot-feed-20261023/raw/13-B-tt/n120.stdout",
+      "sha256": "17db146942307fdd263416c0a3b36b78aed150b308291397580f0a5e18835514",
+      "date_lines": [
+        "Fri Oct 23 11:12:00 CST 2026"
+      ]
+    },
+    {
+      "task": "T68",
+      "observed_application_outcome": "first-launch white screen",
+      "raw_path": "$HOME/.local/share/westlake/61b-single-network-boot-demo-20261023/raw/05-tt/n120.stdout",
+      "sha256": "d777c4be1de36b8367782e1d8c0cff3327fc80cea4750df41e0d262115dbce2e",
+      "date_lines": [
+        "Fri Oct 23 12:16:26 CST 2026"
+      ]
+    },
+    {
+      "task": "T72",
+      "observed_application_outcome": "one reentry feed observed",
+      "raw_path": "$HOME/.local/share/westlake/ordinary-desktop-recovery-check-20261023/raw/00-pre/n.stdout",
+      "sha256": "f69472b03caff36c5acdffc5b33a7fdcca71b2f48e88bff9a107dbb2efd07129",
+      "date_lines": [
+        "Fri Oct 23 13:08:45 CST 2026"
+      ]
+    },
+    {
+      "task": "T72",
+      "observed_application_outcome": "feed file timestamp",
+      "raw_path": "$HOME/.local/share/westlake/ordinary-desktop-recovery-check-20261023/raw/04-feed2/stat.stdout",
+      "sha256": "eca7bef06f32c772ea288fe7e87015658b4318232d1c3f51c42e378d0df2cd10",
+      "date_lines": [
+        "STAT 213976 644 0:0 2026-10-23 13:10:21.512997497 +0800"
+      ]
+    },
+    {
+      "task": "T75C",
+      "observed_application_outcome": "first-launch white screen",
+      "raw_path": "$HOME/.local/share/westlake/physical-power-first-launch-20261023/raw/C3/w1.stdout",
+      "sha256": "092ca89e0e717ed51bbe0f279b4f7feb2d9f914ec5027022ecc0326af60e2cfb",
+      "date_lines": [
+        "Thu Jan  1 08:03:34 CST 1970"
+      ]
+    }
+  ],
+  "findings": [
+    "T61B and T72 successful feed observations have surrounding ordinary device dates in 2026; T72 feed file mtime is also 2026.",
+    "T68 failed first launch also has ordinary device dates in 2026. Correct-looking date is therefore not sufficient for feed success.",
+    "T75 C3/w1 reports Jan 1 1970, a distinct observed system-readiness difference after the user-confirmed power cycle. This audit has not measured real-time clock behavior, synchronization configuration, certificate validation, or their effects.",
+    "No crash ownership or causal explanation follows from this comparison; it does not establish that correcting the date fixes the white screen.",
+    "System date strings from different boots cannot directly measure cross-run elapsed latency. Use host-side start/end receipts or monotonic uptime within the same boot, preserving exact supply-on time uncertainty.",
+    "T72 approximately 63.02 seconds combines host click timing and device image mtime with no independently measured clock offset; retain that precision limitation."
+  ],
+  "application_scope_limits": {
+    "T61B": "Feed observation only; content operation later failed.",
+    "T72": "One same-boot icon recovery, not physical power first launch or stable use.",
+    "T75C": "User-confirmed physical operation plus changed boot supports the power-cycle observation; accurate physical off/on instants/duration unknown. First ordinary UITest click remained white through120 seconds.",
+    "T76": "Separate normal Settings time-readiness observation only; no extra Toutiao tap authorized by this comparison."
+  },
+  "causal_status": "UNKNOWN_NOT_ESTABLISHED",
+  "writes": "Only this report file; no other files modified by this comparison."
+}
