@@ -309,3 +309,4 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-23 WLAN list can reorder or omit saved profiles as scans change. Validate numeric x/y before UITest and exact detail title afterward; operate per profile with before/after toggle evidence, do not wait for simultaneous scan visibility. Connected detail can contain a credential QR: never decode/publish it; keep raw private and hash a separate redacted derivative.
 
 - 2026-10-23 REA client policy: after user-authorized mcp_servers.rea.tools.<tool>.approval_mode changes, initialize a fresh client and verify actual open/inspect/close receipts. Old sessions may retain policy; codex mcp get omits tool overrides, so its rc0 is not effective-policy proof. Keep config backup private; publish sanitized evidence only.
+- 2026-10-23 user dispatch override: 分析统一由Codex主责、octoscode按实际工具能力补充；CC不再承担源码、REA、根因或方案分析。此偏好覆盖旧的CC分析分工；更换角色不等于允许换模型/工具重试已被安全审查停止的动作，T91仍保持停止。
