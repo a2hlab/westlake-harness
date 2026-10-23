@@ -1,0 +1,88 @@
+{
+  "task": "T63",
+  "board": "61b0657200000000000000000324012c",
+  "mode": "read-only, no lock, no UI, no reboot, no connect",
+  "now": {
+    "time": "11:24:40",
+    "boot": "db7ebf7b-9be8-4d8f-b068-cbab7aecfacc (T62 boot, uptime 574)",
+    "lock": "free",
+    "power": "SLEEP 30000/10000",
+    "os": "OpenHarmony 6.1.0.31",
+    "wifi": "activated / not connected; wlan0 UP no IPv4 not RUNNING, RX/TX 0 packets; route table empty; HWaddr <private-MAC>"
+  },
+  "log_capture": {
+    "mode": "hilog -x -e '<regex>' (single mode from hilog -h); device-side grep -v drops psk/passw/key lines",
+    "attempt1": "regex 140 chars rejected by hilog: \"Regular expression too long, max length is 127 [CODE: -44]\" (raw/01-log/wifilog.*) - same entry shortened, not a permission refusal",
+    "attempt2": {
+      "regex_len": 72,
+      "rc": 0,
+      "lines": 1023,
+      "coverage": "10-23 11:15:17.331 .. 11:18:57.075",
+      "same_boot": "yes (db7ebf7b booted ~11:15; T62 autonet window 11:15:47-11:17:48)",
+      "sha256": "e43e5dffe0b89015a83543b4663ad86def7c4c51ccb18b54a6c6c3ce41159626",
+      "private": "$HOME/.local/share/westlake/61b-wifi-readonly-20261023/raw/01-log/wifilog2.stdout"
+    },
+    "buffer_limit": "hilog ring buffer; earlier/later lines not covered"
+  },
+  "layers": {
+    "scan/selection": "observed: system selected saved SSIDs in turn (masked Ups..GHz = Test_2.4GHz, Ups..ity = Compatibility, Ups..abs = UpstreamLabs) - 7 ASSOCIATING attempts 11:15:24-11:18:22",
+    "association/802.11-auth": "FAILED: 6x CTRL-EVENT-ASSOC-REJECT status_code=16 (bssid e6:9d:..:85 and ea:9d:..:85 alternating, ~4 s after ASSOCIATING); 11:18:22 UpstreamLabs attempt ended by locally_generated DEAUTH reason 3 after 10 s in ASSOCIATING (bssid e0:9d:..:86)",
+    "wpa_4way_auth(credentials)": "not reached: no CTRL-EVENT-CONNECTED, no 4-Way/WRONG_KEY/TEMP-DISABLED lines -> credential failure not indicated",
+    "dhcp": "not reached for wlan0 (DHCP lines in capture are sipa_eth*/eth0 modem/eth interfaces)",
+    "route/internet": "unknown (never connected)"
+  },
+  "interpretation": "Autonet failure in T62 boot is at 802.11 association stage (status 16) for all saved SSIDs tried, before WPA handshake and DHCP. Cause (AP side, RF, MAC/BSSID behavior) unknown.",
+  "correlation_only": "connected sessions in T61 showed randomized HWaddr <private-MAC>; this failing boot shows <private-MAC>. MAC used per attempt not in this capture -> causal link unknown",
+  "next_step": "In the next authorized ordinary connect window, record wlan0 HWaddr together with the wpa_supplicant ASSOCIATING/ASSOC-REJECT/CONNECTED lines (same single hilog mode, 127-char regex) to test whether status_code=16 coincides with the factory MAC <private-MAC> and success with a randomized MAC; no config change.",
+  "public_excerpt": {
+    "file": "assoc-excerpt.txt",
+    "sha256": "dc95ab0921e5f258007afa63b520ad69f9a9fca3a02d0b920caa91a55a15648c",
+    "note": "SSIDs/BSSIDs already masked by OH log; no credential lines"
+  },
+  "not_claimed": [
+    "root cause",
+    "router/AP fault",
+    "credential error",
+    "fix"
+  ],
+  "reject_to_ssid": {
+    "method": "nearest preceding StaStateMachine \"DealWpaStateChange ASSOCIATING:ssid\" line (OH-masked SSID)",
+    "rows": [
+      "11:15:24.412 ASSOCIATING Test_2.4GHz -> 11:15:28.401 ASSOC-REJECT status_code=16",
+      "11:15:44.927 ASSOCIATING Compatibility -> 11:15:48.843 ASSOC-REJECT status_code=16",
+      "11:17:58.937 ASSOCIATING Test_2.4GHz -> 11:18:02.963 ASSOC-REJECT status_code=16",
+      "11:18:04.754 ASSOCIATING Compatibility -> 11:18:08.723 ASSOC-REJECT status_code=16",
+      "11:18:10.482 ASSOCIATING Test_2.4GHz -> 11:18:14.434 ASSOC-REJECT status_code=16",
+      "11:18:16.208 ASSOCIATING Compatibility -> 11:18:20.149 ASSOC-REJECT status_code=16",
+      "11:18:22.001 ASSOCIATING UpstreamLabs -> 11:18:32.021 wpa \"Request to deauthenticate\" -> 11:18:32.024 CTRL-EVENT-DISCONNECTED reason=3 locally_generated=1 (10.02 s after ASSOCIATING; initiator not present in captured lines)"
+    ],
+    "bssid_pairing": "each SSID consistently paired with one BSSID (private raw only)"
+  },
+  "restart_trigger": {
+    "boot_11_15_21_24": "wifi_manager_service (pid 2018) startup: WifiControllerMachine InitWifiStates 11:15:21.674, wpa_interface_service load 11:15:22.334, StaStateMachine InitStaStates 11:15:22.702, \"StartWifiStaService failed!\" 11:15:22.809 (meaning unknown), wpa p2p TERMINATING 11:15:24.313",
+    "per_attempt_cycle": "after each reject: StaStateMachine StopDhcp (+~0.01 s), WifiStaHalInterface \"call WifiStaHalInterface::0!\" from pid 2018 (+~0.02 s / +1.6 s), then ~1.6-1.7 s later wpa_supplicant re-reads config (Request to deauthenticate reason=3 + p2p-dev-wlan0 TERMINATING + Initializing/Reading configuration file) and starts next ASSOCIATING ~6 s cadence. Initiator of the wpa re-init = wifi framework pid 2018 via HAL call (call id 0, API name not logged) - by timing only, source not bound",
+    "second_burst_start": "11:17:57.177 ScanStateMachine StopPnoScan failed + 11:17:57.180 HAL call, 1 s after our T62 read-only \"power-shell wakeup\" at 11:17:56 (screen-on) -> correlation only",
+    "after_11_18_32": "no further ASSOCIATING in capture to 11:18:57; screen returned to sleep after T62 power restore 11:18:09 (correlation only)"
+  },
+  "current_autotry": {
+    "read": "11:27:29 (raw/02-now2/net.stdout): activated / not connected, no IPv4, route empty, HWaddr <private-MAC>; wifi_manager_service 2018 and wpa_host 2267 running",
+    "still_trying": "unknown (no second hilog capture by card; last captured attempt 11:18:22)"
+  },
+  "status16_note": "status_code value recorded only; mapping to password error or AP-side reject NOT asserted (source not bound)",
+  "minimal_next_trial": {
+    "not_executed": true,
+    "action": "under a new lock: wake screen, Settings > WLAN, tap the saved UpstreamLabs row once (strongest signal; its only boot attempt ended by 10 s local deauth, not by status 16), while recording wlan0 HWaddr and one bounded hilog -x -e (<=127 chars: supplicant|ASSOC|CTRL-EVENT|StaState|WifiSta) to see association result and MAC used; no config change, no other SSID"
+  },
+  "bssid_all_zero_check": {
+    "events": "6 ASSOC-REJECT + 1 DISCONNECTED",
+    "visible_octets_all_zero": false,
+    "note": "OH log masks 3 middle octets; visible first/last octets are non-zero in all 7 events, so BSSID is not all-zero (boolean only; MAC not published)"
+  },
+  "driver_identity": {
+    "readlink /sys/class/net/wlan0/device/driver": "rc=1, empty (wlan0 is /sys/devices/virtual/net/wlan0: no device/driver link)",
+    "lsmod": "sprd_wlan_combo (819200, used 0) depends on unisoc_wcn_bsp (also used by sprdbt_tty, unisoc_gnss_common_ctl_all); no brcmfmac/bcm/cfg80211/mac80211 module listed",
+    "module_version": "/sys/module/sprd_wlan_combo/version absent -> unknown",
+    "implication": "Unisoc/Spreadtrum WCN combo driver, not brcmfmac; the brcmfmac \"report 16 with all-zero BSSID\" pattern does not apply directly (BSSID non-zero). Meaning of status 16 from sprd_wlan_combo: unknown (source not bound)",
+    "status": "SOURCE_CANDIDATE only; no patch, no deploy"
+  }
+}
