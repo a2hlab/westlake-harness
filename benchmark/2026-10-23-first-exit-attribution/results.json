@@ -1,0 +1,79 @@
+{
+ "task": "T71 passive first-launch exit attribution",
+ "spec": "specs/toutiao-video-playback/t71-passive-first-exit-attribution.spec.md",
+ "spec_sha256_prefix": "3adcc87c",
+ "lint_rc": 0,
+ "lint_quality": "100%",
+ "board": "61b0657200000000000000000324012c",
+ "held_rc": 1,
+ "lock_taken": false,
+ "device_writes": 0,
+ "current_boot": "33f35797 (same as target)",
+ "window": "13:02:46-13:06",
+ "path_source": "scripts/lab/sc17_run.sh:64-66 (path only; script not executed)",
+ "candidates_listed": 1,
+ "faultlog_dir_entries": 60,
+ "record": {
+  "path": "/data/log/faultlog/temp/cppcrash-8088-1792728897556",
+  "sha256": "e656461fbc3d4249a7e374b78e6e21ed002f31836099a4905d33917919e2e0a6",
+  "size": 345610,
+  "category": "cppcrash (native)",
+  "read_scope": "lines before 'Registers:' only (37 lines); no registers, memory, fault stack or maps read"
+ },
+ "binding": {
+  "pid": 8088,
+  "process_name": "com.ss.android.article.news",
+  "uid": 20011206,
+  "timestamp": "2026-10-23 12:14:57.556",
+  "process_life_time_s": 15,
+  "match": "T68 child 8088 (child_birth uptime ~218 s on boot 33f35797, tap 12:14:24); timestamp matches child stderr mtime 12:14:57.76 (T70) and guardian process_exit window; boot bound by time inside boot 33f35797 (record has no boot_id field)"
+ },
+ "reason": "Signal:SIGSEGV(SEGV_MAPERR)@0x0",
+ "fault_thread": {
+  "tid": 8474,
+  "name": "ChromiumNet0"
+ },
+ "stack_summary": {
+  "#00": "/system/lib/ld-musl-aarch64.so.1 __libc_malloc_impl+1332, pc 0xd6e20, build-id a9d018197b852b7e2f585142e5dbffb2",
+  "#01-#02": "app-bundled libc++_shared.so (under the runtime asx lib dir)",
+  "#03-#24": "libsscronet.so (Toutiao-bundled Cronet; no local source, no build-id in frame)",
+  "#25-#26": "musl thread start"
+ },
+ "local_match": {
+  "musl build-id a9d01819": "present in prior repo crash evidence (e.g. benchmark/2026-10-03-u16-libre-anw/evidence/crash-backtraces.txt)",
+  "signature": "frame #00 musl pc 0xd6e20 is the heap-integrity trap class already recorded in .octos/KNOWLEDGE-DIGEST.md items A.9 and A.18-A.20 (line refs 22, 38-43)",
+  "digest_sha256": "223140c956543c16b6666efc4770e6da0762f81d23789f656ebc8f0814061df9",
+  "match_strength": "signature-level (same musl build-id + pc); not a proof of the writer"
+ },
+ "attribution": "crash surfaced inside musl malloc on Toutiao's own network thread (libsscronet); per the existing DIGEST classification this signature is the known heap-integrity class where the faulting thread is a victim, not necessarily the culprit. Owner of the corruption: unknown",
+ "not_claimed": [
+  "root cause",
+  "bridge vs app ownership of the corruption",
+  "fix",
+  "first-launch acceptance",
+  "lifecycle PASS"
+ ],
+ "tool_slip": "first head read used awk (absent on device: 'exec awk: No such file'); nothing read; reran with toybox sed",
+ "raw_receipts": {
+  "00/boot.stdout": "1f8fac12a7a591cb9a99a193f9f74802180fd7954b922f59745259a6053f67fd",
+  "00/held.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "01/ls.stdout": "d8581910db48a53531b8a1bf4d7443678b6ff5c6d06b197b475b9495a7752421",
+  "01/head.stdout": "4ed92d4ba99d7b8210160c5b2f129f29481ea60a8c79749771fdd47f0fc1eaa7",
+  "01/head2.stdout": "44139645d5708b258b099467f127e57b3aa606e666d0657157c263b452e390ca"
+ },
+ "status": "blocked",
+ "stop": {
+  "time": "~13:03-13:06",
+  "done_before_stop": [
+   "lock/boot check",
+   "faultlog/temp listing (1 candidate)",
+   "header read up to 'Registers:' of the bound record",
+   "local grep of repo knowledge for the musl build-id/signature"
+  ],
+  "refusal_text": "Your response above was stopped by a safety classifier — this is not a tool or API error. The rest of it was withheld, and tool calls in it that had not finished did not run.",
+  "refusal_reason": "unknown (not provided)",
+  "after_stop": "no further device access, source tracing or retries; only results/README status recorded"
+ },
+ "high_level_attribution_sufficient": false,
+ "high_level_attribution": "record bound to T68 child 8088; crash surfaced in musl malloc on Toutiao's network thread; ownership (bridge vs app) not determinable from collected evidence"
+}
