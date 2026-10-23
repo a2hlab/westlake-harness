@@ -1,0 +1,151 @@
+{
+  "schema": "coldboot-demo-peer-power-audit/v1",
+  "reviewer": "dual_track_sentry (independent read-only peer)",
+  "created_at": "2026-10-23T06:05:02.285777+00:00",
+  "device": "61b0657200000000000000000324012c",
+  "status": "PHYSICAL_POWER_CONTROL_NOT_DOCUMENTED_IN_SEARCHED_SCOPE",
+  "user_acceptance": "Actual removal and restoration of power, then first human desktop-icon tap reaches Toutiao feed without computer bootstrap; approximately 63-second previous reentry is insufficient.",
+  "findings": {
+    "repository_bound_power_actuator": "not_found_in_bounded_search",
+    "actual_pdu_or_relay_hardware_exists": "unknown",
+    "actual_d600_supply_topology": "unknown; USB data/power, separate supply, and any battery/alternate feed were not physically inspected",
+    "historical_physical_power_cycle_acceptance": "not_established_by_reviewed_records",
+    "normal_reboot_available": "documented in T58; does not establish power removal",
+    "reboot_sim": "offline prediction only; not a reboot or power controller",
+    "current_physical_power_cycle": "unverified",
+    "external_action_required": "Yes with currently documented capabilities: an on-site operator must identify actual supply and perform/confirm genuine power removal and restoration, unless a separately evidenced, mapped power controller becomes available.",
+    "no_global_hardware_absence_claim": true
+  },
+  "bounded_search": {
+    "tooling_and_inventory_scope": [
+      "scripts/lab/**.py",
+      "scripts/lab/**.sh",
+      "scripts/lab/**.md",
+      "scripts/lab/**.json",
+      "env.md",
+      ".octos/OPS-RUNBOOK.md"
+    ],
+    "terms": [
+      "PDU",
+      "继电器",
+      "uhubctl",
+      "切断供电",
+      "物理电源",
+      "power.?cycle",
+      "physical power",
+      "拔电",
+      "断电"
+    ],
+    "matches": "Only OPS-RUNBOOK line 18 in tooling/inventory text scan; no actuator mapping.",
+    "scripts_filename_scan": "power|relay|pdu|usb|boot found only scripts/lab/reboot_sim.py, reboot_sim_inputs.py and their tests.",
+    "historical_scope": [
+      "benchmark/2026-10-12-v1-seal-execution",
+      "benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/final61b-v2-seal",
+      "benchmark/2026-10-23-demo-manual-reentry-handoff"
+    ],
+    "limitations": "Targeted source/docs evidence audit, not exhaustive binary/source archive scan or physical lab inventory; no board commands or external machine queries."
+  },
+  "readiness_recommendations": [
+    "Root should arrange the physical action only after final candidate/preflight readiness; do not substitute HDC target boot or USB transport loss.",
+    "Identify the actual supply and alternative feeds before the operator confirms fully unpowered; record physical off/on timestamps and observation. New boot ID/uptime supports reboot occurrence but is not independent proof of power loss.",
+    "Record power-on to usable desktop/network separately from first human tap to actual feed; first failed attempt remains evidence, no retry-based acceptance.",
+    "Use visible feed evidence and human input attribution; automated input alone cannot verify first human tap.",
+    "No Mac bootstrap, deployment, or manual start commands after power restoration in the autonomy acceptance sequence.",
+    "Keep the 5–10-second target distinct from measured capability; root must bind the final accepted latency criterion before claiming a pass."
+  ],
+  "evidence": [
+    {
+      "path": "scripts/lab/reboot_sim.py",
+      "line": 2,
+      "sha256": "32b63cf9d15f6db5a01fdb60c41936b5aeae52658fafb612ee893fcf75f3aa87",
+      "supports": "File-only advisory prediction; never connects to or changes a board."
+    },
+    {
+      "path": "env.md",
+      "line": null,
+      "sha256": "5f5710bf5c642275fb79ca9c68226dc47da2bc254ad271001cf41072dd3b71ad",
+      "supports": "Environment inventory searched; no matched PDU/relay/uhubctl/supply-cut binding."
+    },
+    {
+      "path": ".octos/OPS-RUNBOOK.md",
+      "line": 18,
+      "sha256": "9c0c19f886e3f888ac7458708ad514f4a927520da06dc6a5c152164627f2a032",
+      "supports": "Historical loss of bind overlays across power/reboot; not a power-cut execution receipt or current baseline assertion."
+    },
+    {
+      "path": "specs/demo-baseline/project.spec.md",
+      "line": 24,
+      "sha256": "6ed067f4f66b6ac6a8f08f66649f0f78d977653fb9402421bfb9478df9622c35",
+      "supports": "Physical unplug/restart autonomy is a requirement, not execution evidence."
+    },
+    {
+      "path": "specs/demo-baseline/t5-seal.spec.md",
+      "line": 17,
+      "sha256": "c774c1624cf12845cd422fd3cc20c12ca19bd070ecfe2bf395effaf5e08833db",
+      "supports": "Historical v1 unplug/restart requirement, not power actuation evidence."
+    },
+    {
+      "path": "specs/toutiao-video-playback/t55-61b-demo-current-state.spec.md",
+      "line": 13,
+      "sha256": "ff8a6210b5188973fec4254757aeb15f5376e4c9bb4bcaf5b1ae5d930ef6be2e",
+      "supports": "Physical power cycle unverified unless an actual power interruption occurs."
+    },
+    {
+      "path": "specs/toutiao-video-playback/t58-61b-boot-first-use.spec.md",
+      "line": 11,
+      "sha256": "ad42f8156f94181ea21ab6e1731487def416320a9cfcf6a65afb341e7b92a340",
+      "supports": "Explicitly normal HDC reboot, not physical power-cycle evidence."
+    },
+    {
+      "path": "benchmark/2026-10-12-v1-seal-execution/seal-final-20261013/final-signoff.json",
+      "line": null,
+      "sha256": "5ee1f9076052c57a79443686d18dea147446d241231a6ba8844685390ca286c6",
+      "supports": "Historical seal; no explicit physical supply-cut execution receipt identified in this file."
+    },
+    {
+      "path": "benchmark/2026-10-12-v1-seal-execution/seal-final-20261013/OPERATIONS.zh-CN.md",
+      "line": 24,
+      "sha256": "deadffc1e7a0dd30ab74e8b72ca6b4c48a5cf986d3c5a6c33487a9240add27dc",
+      "supports": "Historical reboot/selfcheck and recovery instructions, not physical supply actuation."
+    },
+    {
+      "path": "benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/final61b-v2-seal/final-signoff.json",
+      "line": null,
+      "sha256": "ad566caef9dbb7d55c1e058f3f68bc43abac0db3f51a1144514400ae22893e9a",
+      "supports": "Historical v2 seal; no explicit physical supply-cut execution receipt identified in this file."
+    },
+    {
+      "path": "benchmark/2026-10-23-demo-manual-reentry-handoff/final-signoff.json",
+      "line": 27,
+      "sha256": "ecdbc67b7b5637efffea1a976d52ccda93d515458aa694939126b0f717207924",
+      "supports": "Explicitly excludes cold boot or physical power-cycle first launch; approximate 63-second same-boot reentry only."
+    },
+    {
+      "path": "specs/toutiao-video-playback/t74-coldboot-readiness.spec.md",
+      "line": 12,
+      "sha256": "918aefeb2fc24c5a25540942fa7a289006a704819c60c014a4f51c2fa69508bb",
+      "supports": "Current cold-power goal; 5–10 seconds is an optimization target, not an observed capability."
+    }
+  ],
+  "prior_scoped_acceptance": {
+    "commit": "ffb49fe4cf81440e2bcd7fb8c1a281cdee78b495",
+    "applies_to": "One same-boot ordinary icon reentry only; not sufficient for current user acceptance.",
+    "cold_power_cycle": false,
+    "first_human_tap_verified": false,
+    "observed_feed_delay_seconds_approx": 63,
+    "timing_clock_offset_independently_verified": false
+  },
+  "execution": {
+    "device_calls": 0,
+    "vm_calls": 0,
+    "remote_calls": 0,
+    "power_operations": 0,
+    "other_files_modified": false,
+    "t71_diagnostics_reopened": false
+  },
+  "t74_observation": {
+    "observed_progress": "Actual local reads of r3 watchdog.sh and reentry-common.sh, beyond working label.",
+    "latest_negative": "At approximately 14:04 Asia/Shanghai, visible safeguard stop followed by continuing once with that noted; immediately reported to root. No sentry input or retry.",
+    "status": "safeguard_stop_observed_pending_outer_disposition"
+  }
+}
