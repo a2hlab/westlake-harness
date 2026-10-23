@@ -14,6 +14,7 @@ satisfies: [REQ-TTVIDEO]
 - 不改HAP、运行时、cfg、guardian、权限、APK、冻结项；不重启，不执行T38、REA、debugger、environ/FD2。脚本记录原始argv/start/end/stdout/stderr/rc和正文状态；ui造成电源超时变化须恢复本轮前像并读回。
 - 20分钟内停止观测，保留10分钟恢复电源/释锁；锁释放后才写长报告。截图只证明实际可见内容，不把宿主/进程READY当头条信息流。自然退出仅记现象，不研究随机崩溃。
 - 本卡是人工读图的现场观察，测试选择器仅占位且未实现；不得宣称lifecycle PASS，不为低风险观察新增镜像测试套件。结论字段逐项写observed/failed/unknown及原件引用。
+- 外环现场addendum（首启结果保留，不改判）：T56当前boot的s120事件已记child6243严格退出与AWAITING_REENTRY，30秒和120秒均白屏。允许使用原第二次点击额度，从正常Home回桌面停留至少3秒，再按新layout确认同一图标后点击一次，观察120秒；这是“自然退出后再点图标”单独观察，不冒称“正常关闭后重开”通过，不重置原窗口预算，不诊断/诱发崩溃。若已经释锁则本卡不自动开新窗。
 ## 边界
 ### 允许修改
 - benchmark/2026-10-23-61b-normal-icon-reentry/**
@@ -40,5 +41,11 @@ satisfies: [REQ-TTVIDEO]
   假设截图、进程身份或电源恢复有缺口
   当汇总结果
   那么标unknown与具体缺项，不宣称封板、断电验证、白屏修复或lifecycle通过
+场景: 已自然退出后的图标观察
+  审核: human
+  测试: existing_61b_normal_ui_receipts
+  假设本轮已记录严格child退出和AWAITING_REENTRY且仍持原锁
+  当用剩余一次额度正常Home停留后从当前图标重新打开
+  那么独立记录自然退出后的新画面与事件，保留首启失败和正常关闭未执行的原判，原恢复截止不变
 ## 排除范围
 实现修复、随机崩溃根因、视频声音复验、断电冷启动、全115应用验收与原神。
