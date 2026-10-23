@@ -1,0 +1,96 @@
+{
+  "status": "CHANGES_REQUIRED_CURRENT_EXECUTOR_SNAPSHOT",
+  "package_stage": "PASS; independent results.json remains valid",
+  "scope": "Offline inspection only; no executor execution, no device calls, no controller implementation text",
+  "pins": {
+    "run.zsh": "700f2539df795d59395b2968729033e778401c24d99a13488361613408081029",
+    "env.sh": "f7c7ea7782880d21cd5e5c2d7255105fc8d1da0eb54a1dc25c0e9b60c6f142d6",
+    "rec.py": "94f30a3f8cf7dd16f7883b5f2b9f11e79cc51cc19f19fbde1ae3af2aa227aa70",
+    "ui.py": "36e999e80cef21eb4593535efa9b30f5d16b80d1030adf90523a4c0ccd332c36",
+    "find.py": "6c775ef59e4538961f0c4f6e4b1ccaa3445e1e025e93693660b7fb4733acdab9"
+  },
+  "env_plan_sha256": "299097fe848b43306edfd00f52f1de8620b38c46bbb78ace019f3067823755df",
+  "schema_reproduction": {
+    "required_by_executor": [
+      "package_sha256",
+      "orig_init_sha256",
+      "new_root",
+      "deploy",
+      "deploy_verify",
+      "rollback",
+      "rollback_verify"
+    ],
+    "missing_from_env_plan": [
+      "package_sha256",
+      "orig_init_sha256",
+      "new_root",
+      "deploy",
+      "deploy_verify",
+      "rollback_verify"
+    ],
+    "note": "A separately generated CC execution plan may resolve this; none supplied in the reviewed executor directory."
+  },
+  "findings": [
+    {
+      "id": "X1",
+      "severity": "blocking",
+      "file": "executor/run.zsh",
+      "lines": [
+        19,
+        20,
+        25,
+        33
+      ],
+      "finding": "Current env plan cannot satisfy executor input schema; concrete CC deploy/verify/rollback command arrays are not supplied in this snapshot.",
+      "required": "Bind the actual final CC execution-plan SHA and package manifest, then review those exact argv arrays."
+    },
+    {
+      "id": "X2",
+      "severity": "blocking",
+      "file": "executor/run.zsh",
+      "lines": [
+        37,
+        39,
+        42,
+        65,
+        81,
+        83,
+        89,
+        90,
+        92
+      ],
+      "finding": "720s boundary only breaks sampling; operator decision wait has no deadline. Feed timeout/location failure restores power and unlocks without init rollback. Deploy/locate/rollback loops do not clamp time to the absolute 900s deadline; rollback boot120s plus ready60s alone consumes the full reserve before restore/unlock overhead.",
+      "required": "Enforce absolute phase deadlines including operator wait; timeout/failure must follow the reviewed rollback path with enough remaining cleanup budget. Keep unrecovered failures explicit."
+    },
+    {
+      "id": "X3",
+      "severity": "blocking_pending_CC_binding",
+      "file": "executor/run.zsh",
+      "lines": [
+        54,
+        57,
+        58,
+        60,
+        62,
+        70
+      ],
+      "finding": "Preflight compares init SHA/network but only records boot/ps; no expected boot, host UID/birth or oldROOT key SHA comparison is shown before deploy. Mount/label/newROOT regularity checks must be in the final concrete plan.",
+      "required": "Bind the newly authorized read-only receipt and reject identity drift under lock before writes; review final plan rather than infer gates from requirement prose."
+    },
+    {
+      "id": "X4",
+      "severity": "correctness",
+      "file": "executor/run.zsh",
+      "lines": [
+        45,
+        47,
+        48
+      ],
+      "related": "executor/find.py:7-11; executor/ui.py:41-43",
+      "finding": "locate selects first ID match via find.py without using target_actionable, launcher ancestry, visibility or uniqueness computed by ui.py. Hidden or duplicate matching nodes can supply click coordinates.",
+      "required": "Consume the existing unique visible actionable target result or require fresh screenshot confirmation before the single tap."
+    }
+  ],
+  "fresh_readonly_receipt": "Not consumed in this snapshot; CC collection is separately authorized, reviewer remains offline",
+  "promotion_bytes_repeated": false
+}

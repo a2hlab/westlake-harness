@@ -1,0 +1,67 @@
+{
+  "verdict": "INITIAL_EXECUTOR_DRAFT_NOT_ACCEPTED_FOR_DEVICE_WRITES",
+  "reviewed_epoch": 1792770186.499695,
+  "source_pins": {
+    "run.zsh": "700f2539df795d59395b2968729033e778401c24d99a13488361613408081029",
+    "ui.py": "36e999e80cef21eb4593535efa9b30f5d16b80d1030adf90523a4c0ccd332c36",
+    "README.md": "1af05edffb02cd6fb894b40f66fc13684f816620609b312d38c55535ee188bc6",
+    "rec.py": "94f30a3f8cf7dd16f7883b5f2b9f11e79cc51cc19f19fbde1ae3af2aa227aa70",
+    "find.py": "6c775ef59e4538961f0c4f6e4b1ccaa3445e1e025e93693660b7fb4733acdab9",
+    "env.sh": "f7c7ea7782880d21cd5e5c2d7255105fc8d1da0eb54a1dc25c0e9b60c6f142d6",
+    "preflight.py": "0625dab48694ce86b82fc3e2eaa8de42a67dbcb9a0c5f19f95204cdd8ecf89d8",
+    "env-plan.json": "299097fe848b43306edfd00f52f1de8620b38c46bbb78ace019f3067823755df"
+  },
+  "line_refs": {
+    "schema": 19,
+    "runplan": 33,
+    "rollback": 65,
+    "locate": 45,
+    "restore": 50,
+    "p5_wait": 83,
+    "feed": 88,
+    "preflight": 54
+  },
+  "blocking_findings": [
+    {
+      "id": "E1",
+      "area": "schema/integrity",
+      "finding": "run.zsh expects package_sha256/orig_init_sha256/new_root/deploy/deploy_verify/rollback/rollback_verify but current env plan provides package_manifest_sha256/root/payload_commands/init_and_rollback_commands. No reviewed schema adapter or frozen binding exists in this snapshot. Gate only compares plan self-reported SHA with environment string; must independently hash exact manifest/package/plan."
+    },
+    {
+      "id": "E2",
+      "area": "deadlines/recovery",
+      "finding": "No EXIT/TERM/INT recovery trap or timed decision fallback. P5 returns to interactive branch and can leave lock/candidate indefinitely. Deploy/locate/newboot/ready lack global deadline checks; rollback120s boot+60sready+commands exceeds180s reserve. Use absolute monotonic window budget with per-step remaining time and automatic rollback when undecided/failed."
+    },
+    {
+      "id": "E3",
+      "area": "acceptance/retention",
+      "finding": "feed_branch keeps candidate and unlocks after second click samples without checked visual outcome; missing/failed second click or images do not trigger rollback. A positive firstfeed cannot authorize retaining a failed return path."
+    },
+    {
+      "id": "E4",
+      "area": "readback/restore",
+      "finding": "runplan only tests transport rc; it does not enforce expected_readback mode/UID/GID/type/body errors. restore records only override and prints power without comparing both timeout values; rollback continues to reboot even if restoration verification failed."
+    },
+    {
+      "id": "E5",
+      "area": "UI target",
+      "finding": "locate uses find.py first matching ID and ignores ui.py target_actionable, launcher/visibility/bounds/uniqueness. Bind click to one actionable visible target from current desktop layout."
+    }
+  ],
+  "additional_note": "Read-only preflight identity_stable can compare None==None if birth reads fail; write admission must require success and non-null boot/PID/birth, not this boolean alone.",
+  "positive_checks": [
+    "Exact serial constant is5cd in env/preflight.",
+    "Recorder preserves argv/streams/start/end/rc.",
+    "Plan installation shell quotes decode correctly; no literal backslash-quote bug.",
+    "Plan oldROOT is preserved and generated recovery.cfg forbidden."
+  ],
+  "pending": [
+    "Final executor still being authored; review exact frozen delta after corrections.",
+    "90s preflight is read-only and does not authorize writes."
+  ],
+  "actions": {
+    "device": 0,
+    "executor_execution": 0,
+    "source_snapshot_only": true
+  }
+}
