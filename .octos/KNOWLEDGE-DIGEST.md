@@ -1076,3 +1076,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-23 REA approval recovery: old client still rejected after config edit; fresh strict-config Codex completed open_binary/inspect_artifact/close_binary on b18978 HAP after three explicit per-tool approve overrides. Tool readiness is proven; cold-power white-screen cause remains unknown.
 
 - 2026-10-23 T78/T79: current61b installed HAP b18978 SHA and eight entry metadata comparisons match the REA sample. Same e9d0a715 boot date now2026-10-23 at07:51:58Z; correction time/cause unknown, no manual change by outer. Inner HDC failed despite rc0; preserve executor distinction. No time_service source binding, runtime fix or new launch result; T75 cold-power FAIL persists.
+
+- 2026-10-23 T80: HAP != Android APK. Of41 current physical-file fingerprints, five strong T34 success-bound native identities allmatch; APK a1112a0c recorded now, but historical APK/ART/orderedBCP hashes notfound in bounded search. Directory equality does not prove active namespace or coldboot success. No supported rollback candidate; do not substitute no-deployment prose for fingerprints.

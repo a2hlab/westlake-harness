@@ -12,6 +12,7 @@ depends: [t78-current-host-package-binding]
 - 两车道分别写 A/ 和 B/，外环交叉核路径与哈希，不互改文件。路径或指纹缺失不能猜；读取失败停止该项，保留原文，不改权限。文件名匹配不能代替实际位置，备份件不能充当前件。
 - 最终表逐项分类 match/different/unknown；确定差异须附成功版本来源与当前真实路径，不自动回滚、不将差异推为根因。没有差异则明确这轮未产生修复候选。原神和全量 APK 暂停。
 - A 交路径不重试 git ref；B 只提交 analysis/t80-runtime-identity 的 B 报告，不推送。证据存持久目录，公开报告不含凭据、账号或个人数据；人工验收，不声明未实现测试通过。
+- 外环交叉检查 addendum：首批 40 项遗漏 A 已绑定的 lib/arm64-v8a/libttmplayer.so，允许 B 只追加该精确文件及前后 boot 的只读回执，总文件上限 41；不扩大搜索或重做首批。
 ## 边界
 ### 允许修改
 - benchmark/2026-10-23-apk-runtime-identity-comparison/A/**
