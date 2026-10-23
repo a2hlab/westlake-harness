@@ -1072,3 +1072,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-23 T76: ordinary Settings shows automatic date/time ON on e9d0a715, but12 samples over167s within180s window stayed1970 with WiFi connected at samples; no toggle or manual time edit. Compare T61B/T72 successful and T68 failed runs with2026 dates before attributing causality. Post-power clock readiness is separate from Toutiao exit ownership; T75 first-launch FAIL persists.
 
 - 2026-10-23 T77: T61B/T68/T72/T75 C original ordinary UITest click argv are identical and allrc0, while rendered outcomes differ; operator identity is not a demonstrated cause. T34 same-live-child warm return, T61B software-reboot first use, T72 brief sameboot reentry and T75 physical-power first use must stay separate. 51 references rehashed; no new REA/device analysis or fix.
+
+- 2026-10-23 REA approval recovery: old client still rejected after config edit; fresh strict-config Codex completed open_binary/inspect_artifact/close_binary on b18978 HAP after three explicit per-tool approve overrides. Tool readiness is proven; cold-power white-screen cause remains unknown.

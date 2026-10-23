@@ -307,3 +307,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-23 Network UI: immediately before a saved-network tap, refresh Settings and interface state. If already connected with IPv4/RUNNING, preserve it and begin stability observation; do not execute a stale switch plan. Record pre-read/tap/disconnect times to distinguish intervention from natural loss.
 
 - 2026-10-23 WLAN list can reorder or omit saved profiles as scans change. Validate numeric x/y before UITest and exact detail title afterward; operate per profile with before/after toggle evidence, do not wait for simultaneous scan visibility. Connected detail can contain a credential QR: never decode/publish it; keep raw private and hash a separate redacted derivative.
+
+- 2026-10-23 REA client policy: after user-authorized mcp_servers.rea.tools.<tool>.approval_mode changes, initialize a fresh client and verify actual open/inspect/close receipts. Old sessions may retain policy; codex mcp get omits tool overrides, so its rc0 is not effective-policy proof. Keep config backup private; publish sanitized evidence only.
