@@ -1066,3 +1066,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-23 T72: one ordinary61b icon click started seq2; received guardian feed-2.jpeg at13:10:21 shows real feed, but child exited and t120 screenshot is blank. Retained state READY after child_retired is stale, not current UI proof. Count3 new screenshots separately from1 received existing capture; no stable demo/content acceptance.
 
 - 2026-10-23 user-scoped demo handoff: user excludes crash prevention from delivery; T72 independently proves ONE ordinary-icon recovery to real feed (~63s) on61b. Preserve original stable-use FAIL and do not claim repeatability/coldboot/current feed; T73 5cd fallback remains FAIL. See demo-manual-reentry-handoff/final-signoff.json.
+
+- 2026-10-23 T75 C: user-confirmed off/on produced newboot e9d0a715; flags ready at39.52s and WiFi auto-connected12s after ordinary unlock, but first ordinary desktop tap stayed white at10/30/60/120s. Cold-power delivery FAIL; device date1970 is separate readiness gap, not proven cause (prior correct-date runs include success and failure). No retry masked first failure; power30000/10000 restored and lock released.
