@@ -1083,3 +1083,4 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-23 T87/T88: 同boot普通桌面重开约27秒新spawn、60秒网络错误页、89秒真实feed，不能合称全程白屏；当刻无IPv4，稍后网络自行恢复，原child6291保留且一次下拉刷新后17条更新/内容变化保持60秒。内容来源未单独绑定请求，当前可用不等于代码已修复/冷启动封板。见current-boot-manual-reopen与demo-network-recovery。
 - 2026-10-23 T89/T90: b18978宿主ABC逐字节匹配T32产物，实际EntryAbility.js源9dc302d9，不能用仅背景色不同的922a13a5代指；T87前台事务6.985ms/onForeground0.480ms，未解释后续26秒spawn等待。请求时间戳候选7754176b离线24例通过但未部署，T91部署预检被安全审查停止；不称修复，不换执行者重试被拦动作。
 - 2026-10-23 T92/T93: 成功child6291的trace只能配出2925完整区间、399项排除，最长317ms不能解释约34秒无marker空档；缺测不等于等待。普通stderr的No such file可能是应用正文，不凭子串判传输失败；先核rc/独立stderr/预期前缀。TOUCH21 now未绑定单位与时钟域，不直接与uptime相减。
+- 2026-10-23 T94/T95: 7份MessageQueue源码无TOUCH21不等于部署件无此标记；本地8ab6742d运行库包含标记。成功日志4MiB已覆盖RS flush/swap提交但不证明首帧；与T86普通末200行共有7类警告，不能把共有class-loader/inline-cache提示单独归因白屏。时间域和首次启动失败原因仍未知。
