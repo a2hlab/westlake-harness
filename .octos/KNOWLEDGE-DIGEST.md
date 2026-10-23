@@ -1078,3 +1078,6 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-23 T78/T79: current61b installed HAP b18978 SHA and eight entry metadata comparisons match the REA sample. Same e9d0a715 boot date now2026-10-23 at07:51:58Z; correction time/cause unknown, no manual change by outer. Inner HDC failed despite rc0; preserve executor distinction. No time_service source binding, runtime fix or new launch result; T75 cold-power FAIL persists.
 
 - 2026-10-23 T80: HAP != Android APK. Of41 current physical-file fingerprints, five strong T34 success-bound native identities allmatch; APK a1112a0c recorded now, but historical APK/ART/orderedBCP hashes notfound in bounded search. Directory equality does not prove active namespace or coldboot success. No supported rollback candidate; do not substitute no-deployment prose for fingerprints.
+
+- 2026-10-23 T85/T86: guardian boot目录没有child stderr不等于未落日志；复用T70的/data/service/el1/public/appspawnx/adapter_child_<pid>.stderr命名可读到7049本轮输出，仍须核boot/mtime/逐行PID，空readiness不证明采样前退出。普通spawn result=0与后续退出分开判；patch.dm/classes2.dex缺失提示不足以认致命依赖。T85 trace止于uptime120.7，未覆盖131起child阶段；先定位图标再启有界录制。
+- 2026-10-23 T87/T88: 同boot普通桌面重开约27秒新spawn、60秒网络错误页、89秒真实feed，不能合称全程白屏；当刻无IPv4，稍后网络自行恢复，原child6291保留且一次下拉刷新后17条更新/内容变化保持60秒。内容来源未单独绑定请求，当前可用不等于代码已修复/冷启动封板。见current-boot-manual-reopen与demo-network-recovery。
