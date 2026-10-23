@@ -1,0 +1,70 @@
+{
+ "task": "T79 clock readiness source map (static)",
+ "spec": "specs/toutiao-video-playback/t79-clock-readiness-source-map.spec.md",
+ "spec_sha256_prefix": "f535b436",
+ "lint_rc": 0,
+ "lint_quality": "100%",
+ "device_access": 0,
+ "builds": 0,
+ "window": "15:49:27-15:54",
+ "outer_correction": "outer read-only at ~07:51:11Z: same boot e9d0a715 now reports 2026-10-23T07:51:11Z; no manual set by outer; recovery cause/time unknown; 1970 no longer a blocker",
+ "version_binding": {
+  "platform": "OpenHarmony 6.1.0.31 as recorded historically in the repo DIGEST",
+  "source": ".octos/KNOWLEDGE-DIGEST.md (multiple mentions)",
+  "digest_sha256": "774af7a417ef3e1755d3914e2b2a849918c92a29f88c333cb66b1139151723d2",
+  "note": "historical record only; the source version of the currently deployed time_service was not verified"
+ },
+ "settings_ui_fact": {
+  "auto_set_toggle_id": "entry_toggle_auto_timezone (自动设置 / 日期、时间和时区), checked=true",
+  "source": "T76 results (benchmark/2026-10-23-automatic-time-readiness)"
+ },
+ "findings": {
+  "time_service_source": "unknown - not found",
+  "auto_time_settings_key": "unknown",
+  "network_available_trigger": "unknown",
+  "ntp_server_source": "unknown",
+  "failure_retry": "unknown"
+ },
+ "search_boundary": {
+  "searched": [
+   "$WORKSPACES (find -maxdepth 8 dir 'time_service', -maxdepth 10 'ntp_update_time*'; stopped early on outer instruction, no hits before stop)",
+   "westlake-harness .octos/KNOWLEDGE-DIGEST.md and OPS-RUNBOOK.md grep ntp/time_service/auto_time (no hits)"
+  ],
+  "not_searched": [
+   "vm-copies deep levels beyond depth 8",
+   "OrbStack a2hlab",
+   "hw248"
+  ],
+  "reason": "outer stopped wide find; no download/build by rule"
+ },
+ "observed_timeline": {
+  "T76_window": "06:47:36Z-06:50:23Z device stayed 1970 with network connected",
+  "outer_read": "07:51:11Z device clock correct, same boot",
+  "clock_correction_observation_interval": "device date changed from 1970 to the correct date at some point between 06:50:23Z and 07:51:11Z host time; the mechanism (NTP or other) is not established from two date readings"
+ },
+ "followup_probes_not_executed": [
+  {
+   "cmd": "hidumper -s TimeService with a dump argument to be discovered via its help output (syntax unverified, not yet known to be executable)",
+   "distinguishes": "whether the time service reports auto-time enabled and a last network-time update/attempt record"
+  },
+  {
+   "cmd": "hilog -x with a short regex for time/NTP service tags right after a power cycle and network connect",
+   "distinguishes": "whether a network-available trigger fired and whether an NTP request failed/retried vs never started"
+  },
+  {
+   "cmd": "periodic 'date -u; cat /proc/uptime' from power-on (read-only)",
+   "distinguishes": "the exact sync moment relative to boot and network-connect, i.e. immediate vs delayed/periodic retry"
+  },
+  {
+   "cmd": "param get for time-related keys, if any are revealed by probe 1 (keys unknown)",
+   "distinguishes": "product-level auto-time/NTP server configuration vs default"
+  }
+ ],
+ "first_fatal_key_moved": "unknown",
+ "not_claimed": [
+  "root cause of 1970",
+  "link to Toutiao white screen",
+  "fix"
+ ],
+ "revision": "2026-10-23 outer accuracy fixes: historical version binding, observation interval wording, $WORKSPACES path, probe syntax unverified"
+}

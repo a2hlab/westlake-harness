@@ -1,0 +1,1 @@
+The original response objects remain in the producer worktree and persistent recovery records. Public home-prefix-normalized response copies are at ../2026-10-23-rea-approval-recovery/persistent-client/. Raw SHA values in results.json refer to the original producer responses, not normalized copies.
