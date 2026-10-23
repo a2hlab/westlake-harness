@@ -1088,3 +1088,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-23 T99/T100/T102: operator实际恢复Full Access后五次REA调用rc0，8ab6742d库TOUCH21 POLL/WAKE为clock_gettime(1)取tv_sec*1000+tv_nsec/1000000整数毫秒；运行时provider/trace时钟域仍未绑定。成功样本3405完整POLL区间最长388ms、并集17830ms，不是CPU/缺陷；单锚跨机映射0.421221秒先后不能当确定亚秒顺序。
 
 - 2026-10-23 T103/T104/T105: 5cd头条图标实在WorkSpace_8，前三页无图标只是扫描覆盖不足；HAP声明/资源均在，不能据此前置失败改manifest。普通单击后+40/+60/+90秒截图feed、共6张；标t20采样实际+26秒首次见child，不是进程出生时间；旧boot单次成功仍非修复/冷断电封板。
+
+- 2026-10-23 T106: 当前61b/5cd的18个实际映射backing-file路径逐件SHA一致（36项maps dev/inode与stat夹持），后继HAP b18978也一致；按完整相对路径区分两份不同libandroid.so，不能按basename合并。9个BCP jar/active顺序仍unknown，文件一致不证明启动条件一致，暂无可据此换包的版本差异。

@@ -1,0 +1,100 @@
+{
+  "task": "T106",
+  "enabled": false,
+  "executor": "CC only after outer review; generator performs no device calls",
+  "limits": {
+    "per_board_seconds": 90,
+    "batch_seconds": 240,
+    "no_retry": true,
+    "deadline_owner": "CC existing host monotonic bounded collector; per-file timeouts do not reset the board deadline"
+  },
+  "phases": [
+    {
+      "phase": "held",
+      "required": "CC existing approved board_note held interface; holder present/unknown stops board. No new lock implementation supplied."
+    },
+    {
+      "phase": "fresh_identity",
+      "argv_templates": [
+        [
+          "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc",
+          "-t",
+          "61b0657200000000000000000324012c",
+          "shell",
+          "cat /proc/sys/kernel/random/boot_id && cat /proc/uptime && ps -A -o PID,PPID,UID,ARGS"
+        ],
+        [
+          "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc",
+          "-t",
+          "5cd1e3dd00000000000000000923012c",
+          "shell",
+          "cat /proc/sys/kernel/random/boot_id && cat /proc/uptime && ps -A -o PID,PPID,UID,ARGS"
+        ]
+      ],
+      "note": "Persist raw argv/start/end/transport rc/output; PID names alone do not prove executable or birth."
+    },
+    {
+      "phase": "process_identity",
+      "shell_template": "cat /proc/<FRESH_PID>/stat && readlink /proc/<FRESH_PID>/exe && od -An -v -tx1 /proc/<FRESH_PID>/cmdline && cat /proc/<FRESH_PID>/maps && cat /proc/<FRESH_PID>/stat",
+      "guard": "Instantiate only numeric freshly observed target PID (parent only if necessary within the same90s). Compare stat PID/birth before/after. Host parses cmdline NUL hex and maps; no board awk/tr, environ, FD or process-memory read."
+    },
+    {
+      "phase": "61b_exact_files",
+      "argv": [
+        "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "for f in /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/toutiao.apk /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/webview-t.apk /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/framework-res.apk /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/libart.so /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/liboh_android_runtime.so /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/liboh_adapter_bridge.so /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/libhwui.so /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/liboh_hwui_shim.so /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/libandroid.so /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/libandroidfw.so /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/fw/adapter-runtime-bcp.jar /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/fw/apache-xml.jar /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/fw/bouncycastle.jar /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/fw/conscrypt.jar /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/fw/core-icu4j.jar /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/fw/core-libart.jar /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/fw/core-oj.jar /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/fw/framework.jar /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/fw/okhttp.jar /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/boot/boot.art /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/boot/boot.oat /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/boot/boot.vdex /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/boot/boot-framework.art /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/boot/boot-framework.oat /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/boot/boot-framework.vdex /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/webview-t-lib/libwebview_bionic_shim.so /data/app/el1/bundle/public/org.westlake.imehost/entry.hap; do if [ -f \"$f\" ] && [ ! -L \"$f\" ]; then stat -c \"STAT %d %i %s %Y %u %g %a %n\" \"$f\" || exit 21; sha256sum \"$f\" || exit 22; else printf \"UNKNOWN_NOT_REGULAR %s\\n\" \"$f\"; exit 23; fi; done"
+      ],
+      "guard": "Only after held/fresh identity; physical disk view, not actual mapped provider proof."
+    },
+    {
+      "phase": "5cd_exact_files",
+      "argv": null,
+      "blocked_on": "Instantiate only after fresh identity/maps. Host selects literal absolute mapped paths whose basenames/relative roles match files.json, rejects deleted/nonabsolute/unresolved paths, and uses /proc/<stablePID>/root<observed_absolute_path> for namespace-correct file stat/SHA. Never infer unobserved sibling paths from61b or from one observed directory."
+    },
+    {
+      "phase": "final_identity",
+      "argv_templates": [
+        [
+          "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc",
+          "-t",
+          "61b0657200000000000000000324012c",
+          "shell",
+          "cat /proc/sys/kernel/random/boot_id && cat /proc/uptime && ps -A -o PID,PPID,UID,ARGS"
+        ],
+        [
+          "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc",
+          "-t",
+          "5cd1e3dd00000000000000000923012c",
+          "shell",
+          "cat /proc/sys/kernel/random/boot_id && cat /proc/uptime && ps -A -o PID,PPID,UID,ARGS"
+        ]
+      ],
+      "guard": "Same boot and stable target identities; changes retain observations but prevent same-instance claims."
+    }
+  ],
+  "no_device_writes": [
+    "no UI/power/network changes",
+    "no permission/config edits",
+    "no process signals/restarts",
+    "no directory traversal",
+    "no stopped objects/source reads"
+  ],
+  "mapping_limit": "For observed mappings compare maps dev/inode with process-root stat device/inode under stable PID/birth; mismatch or unreadable is UNKNOWN. SHA is mapped backing-file bytes, not live-memory bytes. Fixed61b disk hashes without matching maps remain disk-only; active BCP order remains UNKNOWN.",
+  "mapped_file_argv_template": [
+    "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc",
+    "-t",
+    "<WHITELIST_SERIAL>",
+    "shell",
+    "stat -c \"STAT %d %i %s %Y %u %g %a %n\" <HOST_SHELL_QUOTED_PROCESS_ROOT_FILE> && sha256sum <HOST_SHELL_QUOTED_PROCESS_ROOT_FILE> && stat -c \"STAT %d %i %s %Y %u %g %a %n\" <HOST_SHELL_QUOTED_PROCESS_ROOT_FILE>"
+  ],
+  "mapped_file_binding_rules": [
+    "Host must shell-quote literal path from maps, never evaluate it as shell syntax.",
+    "Use only /proc/<fresh stable numericPID>/root plus exact observed absolute path; map dev/inode must match stat before/after.",
+    "Every read rc and both process-stat births must be preserved; malformed/changed/deleted mappings stay UNKNOWN.",
+    "Priority: host HAP exact known path, observed libart/liboh_android_runtime/bridge/hwui/shim, observed APK/BCP/boot members; stop at90s, do not chase all27.",
+    "Do not read launcher run/guardian/reentry scripts, stopped T71/T74/T91 objects, environ, FD contents or memory."
+  ]
+}
