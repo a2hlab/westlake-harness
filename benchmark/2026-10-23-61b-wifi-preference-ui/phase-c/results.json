@@ -1,0 +1,147 @@
+{
+ "task": "T67 phase C: per-network reversible auto-reconnect preference",
+ "spec": "specs/toutiao-video-playback/t67-61b-wifi-preference-ui.spec.md",
+ "spec_sha256": "41c2cbcd2d39ab4c(prefix)",
+ "lint_quality": "100%",
+ "lint_rc": 0,
+ "phase_a_b_preserved": "../results.json and ../phase-b/ unchanged",
+ "board": "61b0657200000000000000000324012c",
+ "boot": "29d88b39",
+ "lock": {
+  "holder": "herdr-t67c",
+  "lock": "2026-10-23T12:04:18+0800",
+  "unlock": "2026-10-23T12:06:43+0800",
+  "held_after_rc": 1,
+  "stop_by": "12:14:18",
+  "close_by": "12:24:18"
+ },
+ "pre": {
+  "held_rc": 1,
+  "power": "SLEEP Timeout=30000ms OverrideTimeout=10000ms",
+  "wifi": "not connected (12:04:08 read, before lock)",
+  "live_operator": "none (screen asleep)"
+ },
+ "method": "each network independently: fresh WLAN list layout (title WLAN) -> exact .title row -> its (i) icon (numeric x/y asserted) -> detail TitleBar must equal SSID -> read Toggle Setting.wifi_config_menu.wifi_auto_reconnect.ap_auto_reconnect_type.result checked -> tap once only if differs (point guarded outside every other clickable row incl. 删除该网络) -> re-dump and read checked -> back arrow, list title WLAN",
+ "items": {
+  "UpstreamLabs_Test_2.4GHz": {
+   "detail_title_ok": true,
+   "original": true,
+   "target": false,
+   "final_readback": false,
+   "changed": true,
+   "toggle_tap": "12:05:00",
+   "list_label_final": "已关闭自动重新连接",
+   "note": "connected-network detail page showed 扫一扫 QR; not decoded, no share tapped; no post screenshot taken; readback from layout"
+  },
+  "UpstreamLabs": {
+   "detail_title_ok": true,
+   "original": true,
+   "target": false,
+   "final_readback": false,
+   "changed": true,
+   "toggle_tap": "12:05:29",
+   "list_label_final": "已关闭自动重新连接"
+  },
+  "UpstreamLabs_Guest": {
+   "detail_title_ok": true,
+   "original": true,
+   "target": false,
+   "final_readback": false,
+   "changed": true,
+   "toggle_tap": "12:05:43",
+   "list_label_final": "row absent from final scan list; final value is the detail-page readback at toggle time"
+  },
+  "UpstreamLabs_Compatibility": {
+   "detail_title_ok": true,
+   "original": true,
+   "target": true,
+   "final_readback": true,
+   "changed": false,
+   "note": "was connected at read time; detail page showed QR, no screenshot taken"
+  }
+ },
+ "rollbacks": 0,
+ "pending": [],
+ "all_four_final_states_verified": true,
+ "t68": "not started; requires outer-loop acceptance",
+ "untouched": [
+  "passwords",
+  "QR/share",
+  "删除该网络",
+  "encryption",
+  "privacy/MAC policy",
+  "proxy",
+  "IP",
+  "router",
+  "connect actions",
+  "reboot",
+  "Toutiao"
+ ],
+ "observed_network_events_not_diagnosed": {
+  "note": "single-mode hilog (private); time correlation only, cause not established",
+  "events": [
+   [
+    "12:04:30.990",
+    "DISCONNECTED reason=3 locally_generated=1 (e6..85, the Test_2.4GHz BSS)",
+    ""
+   ],
+   [
+    "12:04:31.439",
+    "CONNECTED e6..85",
+    ""
+   ],
+   [
+    "12:05:08.721",
+    "DISCONNECTED reason=3 locally_generated=1 (e6..85)",
+    "7.8 s after Test_2.4GHz auto-reconnect toggled off at 12:05:00, while its detail page was still open"
+   ],
+   [
+    "12:05:10.782",
+    "CONNECTED ea..85",
+    "UI then showed UpstreamLabs_Compatibility 已连接 (final list 12:06)"
+   ]
+  ],
+  "net_readback_final": "connected, IPv4+RUNNING (06-final/n)",
+  "no_connect_action_by_us": true
+ },
+ "restore": {
+  "home": "12:06:3x",
+  "power_cmds": [
+   "power-shell timeout -r",
+   "power-shell timeout -o 10000"
+  ],
+  "power_readback": "Current State: AWAKE Reason: 34; ScreenOffTime: Timeout=30000ms OverrideTimeout=10000ms",
+  "device_tmp_left": 0
+ },
+ "redaction": {
+  "02-test24-detail-before-REDACTED.jpeg": {
+   "original_private": "raw/02-test24/pre_shot.jpeg",
+   "original_sha256": "38c32fe1b2ed306fb88e39fb6ac5bf30029c509214e5e48d3a969d6fbca59921",
+   "redacted_sha256": "6e59366e7c4d216184a34b409a061d6bc6ecaab2cab6886152e919fcf51f2b26",
+   "blacked_rows": [
+    "230-905 QR code",
+    "1840-1920 full MAC address"
+   ],
+   "tool": "private tools/redact.swift (CoreGraphics copy; original untouched)"
+  }
+ },
+ "screenshots_captured_private": 8,
+ "screenshots_public": {
+  "01-wlan-list-before.jpeg": "54d4d12e2a11f9ca94d52e8c01a2700467355035be4d859e72963bd2423e88b0",
+  "02-test24-detail-before-REDACTED.jpeg": "6e59366e7c4d216184a34b409a061d6bc6ecaab2cab6886152e919fcf51f2b26",
+  "03-upstreamlabs-before.jpeg": "7b6dfbbd4f5ed6fead23e7c5747e154160769f1769432a69582143c860551a60",
+  "04-upstreamlabs-after.jpeg": "e791abdf8aef1f1f88a8790c1cb0366039776f4d51a45959ff1a73293d676f42",
+  "05-guest-before.jpeg": "ada06be30686fe4953cdf5eaaf57080db174bbf6034bfc8b5ab77a8e55a6324c",
+  "06-guest-after.jpeg": "b52ea456f744f36466eb1f4f84f79b45c53633dcfbb508de203cbafcb2e86c55",
+  "07-wlan-list-final.jpeg": "b1f15f1a017c94b556f0d8389d79b1bc11b6dfbf2c17af702f63db983f005417",
+  "08-home-at-close.jpeg": "679eaccee967385c1788960b12548d3f3642801287e2848d9c99355b6864eb2a"
+ },
+ "not_claimed": [
+  "network fix",
+  "reboot autoconnect acceptance",
+  "T68",
+  "lifecycle PASS (human receipt selector unimplemented)",
+  "cause of reason=3 disconnects or of the Test->Compatibility switch"
+ ],
+ "power_readback_sha256": "02678a87277871783c7dd0b42e56deecc6d61f64f2eae101006bac3297313cbc"
+}

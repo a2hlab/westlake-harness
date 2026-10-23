@@ -305,3 +305,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-23 T59: PATH-selected DevEco diff printed a difference but returned rc0; use explicit /usr/bin/diff for byte/text evidence on this Mac and retain its actual rc (1 means differences). Pair Settings WiFi state with full ifconfig and /proc/net/route: WifiDevice dump said not connected even while Settings showed connected and IPv4 existed, and the later address/route loss must remain visible.
 
 - 2026-10-23 Network UI: immediately before a saved-network tap, refresh Settings and interface state. If already connected with IPv4/RUNNING, preserve it and begin stability observation; do not execute a stale switch plan. Record pre-read/tap/disconnect times to distinguish intervention from natural loss.
+
+- 2026-10-23 WLAN list can reorder or omit saved profiles as scans change. Validate numeric x/y before UITest and exact detail title afterward; operate per profile with before/after toggle evidence, do not wait for simultaneous scan visibility. Connected detail can contain a credential QR: never decode/publish it; keep raw private and hash a separate redacted derivative.

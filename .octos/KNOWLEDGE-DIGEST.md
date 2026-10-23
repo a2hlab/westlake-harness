@@ -1056,3 +1056,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-23 T65: Compatibility auto-connected before the prescribed network tap; the switch locally disconnected it52ms after tap end. Do not count that as spontaneous loss; fresh connected-state evidence overrides a stale switch plan. T66 preserves a connected network and tests ordinary wake/unlock before app use.
 
 - 2026-10-23 T66: preboot Compatibility remained connected at30/90/180s; awake/unlocked new boot auto-selected Test_2.4GHz, later disconnected(reason34), and TT first-icon30/120s screenshots stayed blank with child exit. Bind SSID+boot to stability claims; temporal adjacency does not prove network loss caused app exit. Full delivery remains unaccepted.
+
+- 2026-10-23 T67: standard WLAN detail has automatic reconnect. On61b, Compatibility kept on and Test_2.4GHz/UpstreamLabs/Guest switched off with exact title/toggle readback; passwords retained. Menu has only Install certificate, not saved-network management. Preference acceptance is not boot/network stability acceptance.
