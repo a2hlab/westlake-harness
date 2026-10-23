@@ -1,0 +1,15 @@
+1:# adapter/ — 完整技术栈的源码级 vendor 快照（独立本地仓库，零共享代码）
+2:
+3:2026-07-09 从 `/opt/10.Project/16-WestLake/16.12-HanBing/adapter` 完整 vendor 进来，目标是让
+4:"整个 Unity 运行不依赖当前 adapter 目录以外的内容"。
+5:
+6:**这个目录本身是一个独立的本地 git 仓库**（`git init` 于此，首个 commit `ffa3899`），
+7:和源仓库 `/opt/10.Project` **没有 git 关联**（不是 clone/fork，是一次性 vendor +
+8:独立重新起的历史）。目的：`/opt/10.Project/16-WestLake/16.12-HanBing/adapter`
+9:是一份长期有其它并发 job（如仍在活跑的 565933fa）在改动的共享 working tree，
+10:在这里独立建仓之后，本项目（`/opt/21.Game/02.unity.cardwords`）范围内的后续所有
+11:构建/实验/改动都应该只对这个本地仓库操作，**不应再读写共享树**——唯一允许的例外
+12:是"引入某个尚未 vendor 进来的历史版本"这类一次性只读拉取（例如下面 cut9 的引入），
+13:拉一次之后就要留在本地，不要每次实验都重新去共享树读。构建脚本里的 `ADAPTER_ROOT`
+14:默认值已核查并修正为自动指向脚本自身所在位置（`build/config.sh` 本来就对，
+15:`build/inner/compile_fresh_jars_manifested.sh` 之前硬编码指回共享树，已修正）。

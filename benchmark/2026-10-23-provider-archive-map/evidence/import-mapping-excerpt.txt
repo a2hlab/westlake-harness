@@ -1,0 +1,19 @@
+11:SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+12:PROJECT_ROOT=$(cd "$SCRIPT_DIR/../../.." && pwd -P)
+13:GENERATION_ID=${WESTLAKE_PROVIDER_GENERATION_ID:-provider-inputs-v1}
+14:GENERATION_ROOT=${WESTLAKE_PROVIDER_GENERATION_ROOT:-$PROJECT_ROOT/.work/bionic-musl-provider/$GENERATION_ID}
+15:
+16:case "$GENERATION_ID" in
+17:    *[!A-Za-z0-9._-]*|'')
+18:        echo "ERROR: unsafe generation id: $GENERATION_ID" >&2
+19:        exit 2
+20:        ;;
+21:esac
+22:case "$GENERATION_ROOT" in
+23:    "$PROJECT_ROOT"/.work/bionic-musl-provider/*) ;;
+24:    *) echo "ERROR: generation root must stay below the current project" >&2; exit 2 ;;
+25:esac
+26:if [[ -e "$GENERATION_ROOT" || -L "$GENERATION_ROOT" ]]; then
+27:    echo "ERROR: immutable generation root already exists: $GENERATION_ROOT" >&2
+28:    exit 2
+29:fi
