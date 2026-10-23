@@ -1,0 +1,145 @@
+--- ../westlake-harness/benchmark/2026-10-19-toutiao-icon-reentry/generator/derive-candidate.sh	2026-10-19 18:16:56
++++ benchmark/2026-10-19-toutiao-icon-reentry/generator/derive-candidate.sh	2026-10-23 23:22:59
+@@ -10,6 +10,19 @@
+ # Default: DISABLED (STARTUP_ENABLED=0). Outer arms with --enable --approved-by
+ # 'outer(codex)'. No device calls, no deploy. POSIX sh; no awk, no python.
+ set -u
++# Record argv before parsing; shell-quoted replay preserves spaces and apostrophes.
++quote_arg() {
++ rest=$1
++ printf '%s' "'"
++ while :; do
++  case "$rest" in
++   *"'"*) printf '%s' "${rest%%\'*}" "'\''"; rest=${rest#*\'};;
++   *) printf '%s' "$rest" "'"; break;;
++  esac
++ done
++}
++REPLAY="sh $(quote_arg "$0")"
++for original_arg do REPLAY="$REPLAY $(quote_arg "$original_arg")"; done
+ 
+ usage() {
+ 	cat >&2 <<USAGE
+@@ -20,17 +33,22 @@
+   --serial S           startup serial (default 61b0657200000000000000000324012c)
+   --owner-uid U        host owner uid (default 20011206)
+   --service NAME       init service/param base name (default westlake-icon-manual-20261019)
++  --startup-template FILE  explicit complete board configuration (offline only)
++  --startup-template-sha256 SHA  required pair; exact SHA-256 of FILE
+   --enable             set STARTUP_ENABLED=1 (requires --approved-by 'outer(codex)')
+   --approved-by NAME   set STARTUP_APPROVED_BY (arming requires exactly 'outer(codex)')
+ USAGE
+ 	exit 2
+ }
+ 
++TEMPLATE=; TEMPLATE_SHA=; EXPLICIT=0
+ OUT=; ROOT=/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r1
+ SERIAL=61b0657200000000000000000324012c; OWNER_UID=20011206
+ SERVICE=westlake-icon-manual-20261019; ENABLE=0; APPROVED=
+ while [ "$#" -gt 0 ]; do
+ 	case "$1" in
++	--startup-template) [ "$#" -ge 2 ] || usage; TEMPLATE=$2; EXPLICIT=1; shift 2;;
++	--startup-template-sha256) [ "$#" -ge 2 ] || usage; TEMPLATE_SHA=$2; shift 2;;
+ 	--out) OUT=$2; shift 2;;
+ 	--root) ROOT=$2; shift 2;;
+ 	--serial) SERIAL=$2; shift 2;;
+@@ -43,6 +61,25 @@
+ 	esac
+ done
+ [ -n "$OUT" ] || usage
++if [ -n "$TEMPLATE" ] || [ -n "$TEMPLATE_SHA" ] || [ "$EXPLICIT" = 1 ]; then
++ [ -n "$TEMPLATE" ] && [ -n "$TEMPLATE_SHA" ] || { echo 'refuse: template and SHA must be paired' >&2; exit 2; }
++ [ "$ENABLE" = 0 ] || { echo 'refuse: explicit board package is offline-only; external bindings require independent review' >&2; exit 2; }
++fi
++# Deployment identities are identifiers, not arbitrary sed replacements or JSON text.
++case "$SERIAL" in
++ 61b0657200000000000000000324012c|5cd1e3dd00000000000000000923012c) :;;
++ *) echo 'refuse: unsupported serial' >&2; exit 2;;
++esac
++case "$OWNER_UID" in ''|*[!0-9]*) echo 'refuse: owner UID must be decimal digits' >&2; exit 2;; esac
++case "$SERVICE" in
++ ''|*[!A-Za-z0-9_.-]*|[!A-Za-z_]*) echo 'refuse: invalid service identifier' >&2; exit 2;;
++esac
++case "$ROOT" in
++ *[!A-Za-z0-9_./-]*|*//*|*/../*|*/..|*/./*|*/.|*/)
++  echo 'refuse: unsafe ROOT path' >&2; exit 2;;
++ /data/westlake-demo/toutiao/recovery-attempts/icon-manual-)
++  echo 'refuse: empty ROOT suffix' >&2; exit 2;;
++esac
+ [ ! -e "$OUT" ] || { echo "refuse: --out already exists: $OUT" >&2; exit 2; }
+ case "$ROOT" in
+ 	/data/westlake-demo/toutiao/recovery-attempts/icon-manual-*) :;;
+@@ -65,6 +102,37 @@
+ 	else shasum -a 256 "$1" | cut -d' ' -f1; fi
+ }
+ die() { echo "ERROR: $*" >&2; exit 1; }
++
++# Validate configuration as data, never source it. Default pin is unchanged.
++SENV_SRC="$BREF/startup.env"
++SENV_PIN=551169f521be3d9a20c0eae5821099eeb1b102c1812148fc8d8b06acacb461eb
++if [ "$EXPLICIT" = 1 ]; then SENV_SRC=$TEMPLATE; SENV_PIN=$TEMPLATE_SHA; fi
++[ -f "$SENV_SRC" ] || die "missing startup template"
++case "$SENV_PIN" in *[!0-9a-f]*|'') die "invalid template SHA";; esac
++[ "${#SENV_PIN}" = 64 ] || die "invalid template SHA length"
++[ "$(sha256 "$SENV_SRC")" = "$SENV_PIN" ] || die "BASE PIN MISMATCH startup template"
++if [ "$EXPLICIT" = 1 ]; then
++ keys="APPROVED_BY ENABLED SERIAL OLD_STOP_SHA MEMBERS_SHA JIT_SHA NAMESPACE_SHA START_PARENT_SHA HOST_SPAWN_SHA REQUEST_SHA DECODER_SHA PROBE_SHA TAP_WAIT_POLICY"
++ for key in $keys; do
++  [ "$(grep -c "^STARTUP_${key}=" "$SENV_SRC")" = 1 ] || die "missing/duplicate STARTUP_$key"
++ done
++ while IFS= read -r line || [ -n "$line" ]; do
++  case "$line" in ''|'#'*) continue;; esac
++  printf '%s\n' "$line" | grep -Eq "^STARTUP_[A-Z_]+='[A-Za-z0-9_.:/ ()-]*'$" || die "invalid template data"
++  key=${line%%=*}; case " $keys " in *" ${key#STARTUP_} "*) :;; *) die "unknown template key";; esac
++ done < "$SENV_SRC"
++ for key in MEMBERS_SHA JIT_SHA NAMESPACE_SHA START_PARENT_SHA HOST_SPAWN_SHA REQUEST_SHA DECODER_SHA PROBE_SHA; do
++  value=$(sed -n "s/^STARTUP_${key}='\(.*\)'$/\1/p" "$SENV_SRC")
++  case "$value" in *[!0-9a-f]*|'') die "unknown/invalid $key binding";; esac
++  [ "${#value}" = 64 ] || die "invalid $key binding length"
++ done
++ old_stop=$(sed -n "s/^STARTUP_OLD_STOP_SHA='\(.*\)'$/\1/p" "$SENV_SRC")
++ if [ "$old_stop" != NONE ]; then
++  case "$old_stop" in *[!0-9a-f]*|'') die "unknown/invalid OLD_STOP_SHA";; esac
++  [ "${#old_stop}" = 64 ] || die "invalid OLD_STOP_SHA length"
++ fi
++ [ "$(sed -n "s/^STARTUP_SERIAL='\(.*\)'$/\1/p" "$SENV_SRC")" = "$SERIAL" ] || die "template serial mismatch"
++fi
+ 
+ mkdir -p "$OUT/payload" "$OUT/diffs" || die "cannot create $OUT"
+ LOG="$OUT/build.log"
+@@ -168,9 +236,11 @@
+ log "members.tsv sha=$MEMBERS_SHA ($(grep -c '' "$MEMB") members)"
+ 
+ # ---- startup.env (candidate): base-ref template with enabled/approved/members ----
+-SENV_SRC="$BREF/startup.env"
+-got=$(sha256 "$SENV_SRC"); [ "$got" = 551169f521be3d9a20c0eae5821099eeb1b102c1812148fc8d8b06acacb461eb ] \
++got=$(sha256 "$SENV_SRC"); [ "$got" = "$SENV_PIN" ] \
+ 	|| die "BASE PIN MISMATCH base-ref/startup.env: got $got"
++# Bind the declared parent launcher to the exact packaged file, not a stale board hash.
++parent_pin=$(sed -n "s/^STARTUP_START_PARENT_SHA='\(.*\)'$/\1/p" "$SENV_SRC")
++[ "$parent_pin" = "$(sha256 "$OUT/payload/real-start-parent-bounded.sh")" ] || die "packaged parent SHA mismatch"
+ SENV="$OUT/payload/startup.env"
+ if [ "$ENABLE" = 1 ]; then approved_val=$APPROVED; enabled_val=1
+ else approved_val='DISABLED-PENDING-OUTER'; enabled_val=0; fi
+@@ -221,6 +291,10 @@
+   "root": "$ROOT",
+   "serial": "$SERIAL",
+   "owner_uid": "$OWNER_UID",
++  "owner_uid_scope": "metadata_only",
++  "startup_template_sha256": "$SENV_PIN",
++  "external_bindings": "not_independently_verified",
++  "deployable": false,
+   "service": "$SERVICE",
+   "startup_enabled": $enabled_val,
+   "startup_approved_by": "$approved_val",
+@@ -235,7 +309,7 @@
+ }
+ JSON
+ rm -f "$PLAN"
+-printf 'derive-candidate.sh --out %s --root %s%s\n' "$OUT" "$ROOT" \
+-	"$( [ "$ENABLE" = 1 ] && printf ' --enable --approved-by %s' "'$APPROVED'" || printf '' )" \
+-	> "$OUT/build-command.txt"
++printf '%s\n' "$REPLAY" > "$OUT/build-command.txt"
++pwd -P > "$OUT/build-cwd.txt"
++printf '%s\n' "$SENV_SRC" > "$OUT/startup-template-path.txt"
+ log ""; log "OK candidate written to $OUT (armed=$( [ "$enabled_val" = 1 ] && echo yes || echo no))"

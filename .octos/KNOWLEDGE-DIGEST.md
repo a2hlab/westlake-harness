@@ -1098,3 +1098,7 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-23 T114: T112点击后宿主5074的hilog有foreground及stage-event1/2，不能把无新child误判成图标未触发。window-state.json固定路径缺失只记unknown；源码TRUNC单文件是末事件快照，不能当事件流。跨机时钟未测偏移，不宣称精确点击延迟。
 
 - 2026-10-23 T115: 历史61b手动重入r3控制件8bf74a08/entryad76c656与5cd T52回滚2b635ef1/entry81dd0557不同；T106核心18件相同不覆盖启动管理链。历史版本差异须补当前boot/root/config/hash绑定，不能直接推根因或跨板复制。
+
+- 2026-10-23 T116/T117: 同boot只读核实61b实装r3、5cd实装旧恢复基线，控制文件身份差异成立但非根因证明；旧builder --serial/--owner-uid不替换61b JIT/请求/父启动绑定，跨板构建需显式输入与实际外部依赖SHA，members.tsv首列是摘要而非文件名。
+
+- 2026-10-23 T118/T119: 构建器的serial参数不能证明全部板身份已替换，owner-uid可能只写元数据；显式配置须完整模板+固定SHA，父启动SHA对实际包文件核，JIT/request对当前板实物核。标识符先校验，避免sed的&替换和JSON引号破坏却rc0；完整argv需实际POSIX往返复验。
