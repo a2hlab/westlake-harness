@@ -1084,3 +1084,7 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-23 T89/T90: b18978宿主ABC逐字节匹配T32产物，实际EntryAbility.js源9dc302d9，不能用仅背景色不同的922a13a5代指；T87前台事务6.985ms/onForeground0.480ms，未解释后续26秒spawn等待。请求时间戳候选7754176b离线24例通过但未部署，T91部署预检被安全审查停止；不称修复，不换执行者重试被拦动作。
 - 2026-10-23 T92/T93: 成功child6291的trace只能配出2925完整区间、399项排除，最长317ms不能解释约34秒无marker空档；缺测不等于等待。普通stderr的No such file可能是应用正文，不凭子串判传输失败；先核rc/独立stderr/预期前缀。TOUCH21 now未绑定单位与时钟域，不直接与uptime相减。
 - 2026-10-23 T94/T95: 7份MessageQueue源码无TOUCH21不等于部署件无此标记；本地8ab6742d运行库包含标记。成功日志4MiB已覆盖RS flush/swap提交但不证明首帧；与T86普通末200行共有7类警告，不能把共有class-loader/inline-cache提示单独归因白屏。时间域和首次启动失败原因仍未知。
+
+- 2026-10-23 T99/T100/T102: operator实际恢复Full Access后五次REA调用rc0，8ab6742d库TOUCH21 POLL/WAKE为clock_gettime(1)取tv_sec*1000+tv_nsec/1000000整数毫秒；运行时provider/trace时钟域仍未绑定。成功样本3405完整POLL区间最长388ms、并集17830ms，不是CPU/缺陷；单锚跨机映射0.421221秒先后不能当确定亚秒顺序。
+
+- 2026-10-23 T103/T104/T105: 5cd头条图标实在WorkSpace_8，前三页无图标只是扫描覆盖不足；HAP声明/资源均在，不能据此前置失败改manifest。普通单击后+40/+60/+90秒截图feed、共6张；标t20采样实际+26秒首次见child，不是进程出生时间；旧boot单次成功仍非修复/冷断电封板。

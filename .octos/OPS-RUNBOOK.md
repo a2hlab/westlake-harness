@@ -311,3 +311,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-23 REA client policy: after user-authorized mcp_servers.rea.tools.<tool>.approval_mode changes, initialize a fresh client and verify actual open/inspect/close receipts. Old sessions may retain policy; codex mcp get omits tool overrides, so its rc0 is not effective-policy proof. Keep config backup private; publish sanitized evidence only.
 - 2026-10-23 user dispatch override: 分析统一由Codex主责、octoscode按实际工具能力补充；CC不再承担源码、REA、根因或方案分析。此偏好覆盖旧的CC分析分工；更换角色不等于允许换模型/工具重试已被安全审查停止的动作，T91仍保持停止。
 - 2026-10-23 T96–T98 内环准入：用户授权、全局配置和当前会话权限是不同证据。cx-reentry-peer 实际 `/status` 显示 `Custom (workspace, never)`，先后出现共享Git refs拒写、编译缓存拒写及REA Java探测 `spawn EPERM`；不把 `never` 当Full Access。派工具任务前在真实执行窗核 `/status` 并保存脱敏状态。`/permissions` 仅打开菜单不修改权限，当前第3项为Full Access；权限变更交operator，实际变更后再用新验证卡核工具执行，不重试内容审查已停止动作。工具原件见runtime-clock-rea/runtime-clock-cli/rea-local-environment。
+
+- 2026-10-23 最新用户重新允许CC合理分配，覆盖此前不让CC分析的偏好；本轮CC唯一备用板普通UI执行，Codex负责REA与静态入口复核。历史内容停止不因换执行者重试。T103仅查WorkSpace0..2不能判定无入口；百余APK桌面要按不同页ID遍历到边界/有界页数，目标坐标取当前布局，不能用历史页号坐标直接点击。
