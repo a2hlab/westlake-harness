@@ -1,0 +1,141 @@
+{
+ "task": "T69 compare observed first-launch paths",
+ "spec": "specs/toutiao-video-playback/t69-first-launch-path-comparison.spec.md",
+ "spec_sha256_prefix": "78c21a21",
+ "lint_rc": 0,
+ "lint_quality": "100%",
+ "device_operations": 0,
+ "budget": "12:22-12:27 (within 15 min)",
+ "matrix": {
+  "boot": {
+   "T61B": "85985a79 (new boot after one reboot)",
+   "T66": "db7ebf7b -> new boot (see T66 results NEW_BOOT)",
+   "T68": "33f35797",
+   "T59": "f8406e45 (no reboot; continuation on live child 7432)"
+  },
+  "hap_cfg_fingerprint": {
+   "T61B": "HAP b18978b8, toutiao cfg 7b9f2c0e read on pre-reboot boot f8406e45; recover-v3 cfg not read (unknown)",
+   "T66": "HAP b18978b8, cfg 7b9f2c0e, recover-v3 897f9ca0 read on pre-reboot boot db7ebf7b",
+   "T68": "HAP b18978b8, cfg 7b9f2c0e, recover-v3 897f9ca0 read on pre-reboot boot 29d88b39",
+   "note": "no run hashed these files on the post-reboot boot; deployed watchdog.sh hash on device not read in any run (unknown); repo r3 payload watchdog.sh 8bf74a08"
+  },
+  "native_runtime_fingerprint": {
+   "all": "unknown (not read in these runs)"
+  },
+  "ssid_at_tap": {
+   "T61B": "UpstreamLabs_Test_2.4GHz (autonet)",
+   "T66": "UpstreamLabs_Test_2.4GHz (autonet after reboot)",
+   "T68": "UpstreamLabs_Compatibility (T67 preference)"
+  },
+  "tap": {
+   "T61B": "11:09:59, WorkSpace_1 EntryAbility (189,234), uptime ~78.6",
+   "T66": "11:46:21, same icon/coords, uptime ~76.8",
+   "T68": "12:14:24, same icon/coords, uptime ~200.7"
+  },
+  "pre_tap_ui": {
+   "T61B": "wake, unlock swipe, Home, page swipe; no Settings",
+   "T66": "wake, unlock, Home, page swipe, dumpLayout; no Settings",
+   "T68": "wake, unlock, USB dialog Back, Settings main+WLAN list (read only), Home, page swipe, dumpLayout"
+  },
+  "guardian_launch": {
+   "T61B": "SUPERVISOR_STARTING 79, BOOTSTRAP 101 (child 6871), UI_UNVERIFIED 103..160 every ~6 s, BOOTSTRAP first_feed_observation 166, READY 173",
+   "T66": "SUPERVISOR_STARTING 77, BOOTSTRAP 99 (child 6679), UI_UNVERIFIED 102,108, snapshot_error_rc=126 child_identity_during_capture 114, process_exit 117, AWAITING_REENTRY 117",
+   "T68": "SUPERVISOR_STARTING 201, BOOTSTRAP 219 (child 8088), UI_UNVERIFIED 222,227, snapshot_error_rc=126 child_identity_during_capture 234, process_exit 237, AWAITING_REENTRY 237"
+  },
+  "spawn_timing": {
+   "T61B": "tap->appspawn-x ~2.4 s; appspawn-x->child 18.9 s",
+   "T66": "~1.9 s; 19.2 s",
+   "T68": "~1.2 s; 16.3 s",
+   "basis": "parent_birth/child_birth clock ticks (100 Hz) vs tap uptime"
+  },
+  "child_death": {
+   "T61B": "alive at t120",
+   "T66": "ownership check failed at capture (uptime 114); process_exit first_read_exited recorded at 117; exact exit time and cause unknown",
+   "T68": "ownership check failed at capture (uptime 234); process_exit first_read_exited recorded at 237; exact exit time and cause unknown"
+  },
+  "harness_activity_tap_to_t30": {
+   "all": "identical: only power override + hidumper readback within +0.6 s of tap, then idle until t30 screenshot"
+  },
+  "first_screenshot": {
+   "T61B": "t30 blank (92496687), t120 feed (303daf6f)",
+   "T66": "t30 blank (1e3b750d), t120 blank (7e7b7f1e)",
+   "T68": "t30 white (a56681dd), t120 white (6535d50c)"
+  },
+  "network_events_app_window": {
+   "T61B": "unknown (no supplicant log captured)",
+   "T66": "11:46:58.5 DISCONNECTED reason=34 (adjacent to exit window)",
+   "T68": "2 s same-BSSID blips at 12:13:14, 12:13:52, 12:14:30 (6 s after tap); none in exit window 12:14:50-57; next 12:16:53"
+  },
+  "ip_route_at_t120": {
+   "T61B": "connected, IPv4, /proc/net/route only wlan0 local subnet 0001A8C0, no default",
+   "T66": "not connected",
+   "T68": "connected, IPv4, /proc/net/route only wlan0 local subnet, no default (identical shape to T61B)"
+  },
+  "statusbar_exclamation_icon": {
+   "T61B": "present at t30 and t120 (separate icon, not part of WiFi glyph)",
+   "T68": "present",
+   "verdict": "not a differentiator"
+  }
+ },
+ "launcher_path": {
+  "desktop_icon": "AppIconCommonView_org.westlake.imehost.EntryAbility",
+  "guardian_source": "benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-01/deploy-package-r3-root/payload/watchdog.sh",
+  "guardian_sha256": "8bf74a08b71474e39e90fcdb012eed5e420f7352fa131cef2aa63b9c5bd80ef9",
+  "lines": {
+   "SUPERVISOR_STARTING": 504,
+   "BOOTSTRAP data_preserved_no_rotation": 408,
+   "capture identity check (child_identity_during_capture)": 154,
+   "snapshot_display capture": 174,
+   "feed confirmation READY": 465,
+   "AWAITING_REENTRY": 543
+  },
+  "note": "line 154 fires when child_owned fails at capture time (may include a read error); it does not prove death and does not show the capture had no influence on the exit; on-device copy hash not verified in these runs"
+ },
+ "controllable_difference": null,
+ "verdict": "no controllable difference found: T61B (success) and T66 (failure) match on every controlled field (HAP/cfg, icon, SSID Test_2.4GHz, tap uptime ~77-79 s, spawn timing, guardian sequence to UI_UNVERIFIED, idle harness). Both failures record process_exit ~36-41 s after tap (preceded by an ownership-check failure at capture, which is not proof of death); network events are not consistently coincident (T66 adjacent reason=34, T68 none in window). Missing-default-route and status-bar '!' are identical in the success sample.",
+ "experiment": "none proposed; repeating reboots would not discriminate any identified variable",
+ "search_boundary": [
+  "private raw receipts of T61B/T66/T68 (+T59 boot only)",
+  "repo r3 guardian payload",
+  "no device reads, no third-party crash/anti-VM study, no REA"
+ ],
+ "unknowns": [
+  "T61B supplicant events",
+  "post-reboot on-device fingerprints for all runs",
+  "on-device watchdog.sh hash",
+  "native/runtime fingerprints",
+  "child exit cause",
+  "whether the guardian capture (snapshot_display) influences the exit"
+ ],
+ "counterexample_kept": "T68 had a 2 s disconnect inside the 30-90 s window; continuous network stability is not claimed",
+ "sources": {
+  "61b-test24-reboot-feed-20261023/raw/13-B-tt/s30_g.stdout": "6fd38431d49d9dd60f5775ce42ab2c66d90c1ff38f6dd79744fe966b3421c46f",
+  "61b-test24-reboot-feed-20261023/raw/13-B-tt/s120_g.stdout": "7268497b785e9911c9483aae259983d38bdef1be4b351aae644f9fe181487bf9",
+  "61b-test24-reboot-feed-20261023/raw/13-B-tt/s30_ps.stdout": "45305d0de94f457a5409e065c83dc7418f764cfaba82fc4f373581215bf6aff6",
+  "61b-test24-reboot-feed-20261023/raw/13-B-tt/n120.stdout": "17db146942307fdd263416c0a3b36b78aed150b308291397580f0a5e18835514",
+  "61b-test24-reboot-feed-20261023/raw/13-B-tt/click.start": "b7bea03db427036d744a45cb0c60c2a9bd8b8fa068a4ef29ee792e0abdd1ac52",
+  "61b-test24-reboot-feed-20261023/raw/10-B-pre/id.stdout": "6490b586dbb8581a31fb37978c26bf43956f7425a467ecd3289ae386290b0813",
+  "61b-test24-reboot-feed-20261023/raw/13-B-tt/t120.jpeg": "303daf6fe80f9d875ddb5131756b39b0cec20ea0bfd7775953eabbe6d2538e8b",
+  "61b-awake-boot-demo-20261023/raw/06-tt/s30_g.stdout": "332178eecb8b56bf6e8cb46f854c88db5a418d1da5c50797c91af1b2594f4848",
+  "61b-awake-boot-demo-20261023/raw/06-tt/s120_g.stdout": "7ba1ed0238c2947f46c36189a524f0df2acb26b079b177b585065d5014f8d755",
+  "61b-awake-boot-demo-20261023/raw/06-tt/s30_ps.stdout": "059db5806dbbdb1b6f8021257dca5001113943dfee24d03bbcb614bfd97991ce",
+  "61b-awake-boot-demo-20261023/raw/06-tt/n120.stdout": "af577aae8ff68979500d5f117ff54db0fed3b30d1b23e83216fd06fea9760a75",
+  "61b-awake-boot-demo-20261023/raw/06-tt/click.start": "a505b9705465e761397d53b168306d50c4dfb90ada91d044ece8b917745a0e46",
+  "61b-awake-boot-demo-20261023/raw/00-pre/id.stdout": "df7a707f1a354c29e24df9766ab09cecb12b1e9db2d6323c869f199910c5b7a0",
+  "61b-single-network-boot-demo-20261023/raw/05-tt/s30_g.stdout": "3bf14cbf1a598a9cd7e03c50262b7ce16edf35eaf3dd83cd9368ccb2bb341d69",
+  "61b-single-network-boot-demo-20261023/raw/05-tt/s120_g.stdout": "b71bb139e9fc47a2fd8ae4a0762845172b0f1938eb71578ad2373e45c0ecf442",
+  "61b-single-network-boot-demo-20261023/raw/05-tt/s30_ps.stdout": "ba9e83f8a719371eee60529b26730e0fffaaa3b86921c928c72df5df0b666503",
+  "61b-single-network-boot-demo-20261023/raw/05-tt/n30.stdout": "78aeda4ef0c305d1a877168dac0f46047b4a433c38cf4905c18fb423da785991",
+  "61b-single-network-boot-demo-20261023/raw/05-tt/n120.stdout": "d777c4be1de36b8367782e1d8c0cff3327fc80cea4750df41e0d262115dbce2e",
+  "61b-single-network-boot-demo-20261023/raw/05-tt/click.start": "882eb449e6a22530f3f5442e27df2f04b997ecf09182015d4b2aa9d42e94116e",
+  "61b-single-network-boot-demo-20261023/raw/00-pre/id.stdout": "64e3d33bd8180594fe215f39020a7e6e3045fb2bb0acd1def81f3fe296edfa9b",
+  "61b-single-network-boot-demo-20261023/raw/06-fail/wlog.stdout": "ead5adee4c3c0ceaa9974e8abcfe9ca73c0ff51b1d7d8301cdfd6295f1228385",
+  "61b-single-network-boot-demo-20261023/raw/05-tt/s120.jpeg": "6535d50c1261396f884d4344e4e30ca031b97a87d84abc97884ed5719b17e546"
+ },
+ "not_claimed": [
+  "root cause",
+  "fix",
+  "lifecycle PASS"
+ ],
+ "correction": "2026-10-23 outer: child_identity_during_capture only proves the ownership check failed (may include read error); not death, and not proof that capture has no effect"
+}
