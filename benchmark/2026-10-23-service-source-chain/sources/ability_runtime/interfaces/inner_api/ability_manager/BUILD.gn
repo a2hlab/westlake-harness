@@ -1,0 +1,445 @@
+# Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+config("ability_manager_public_config") {
+  visibility = [ ":*" ]
+  visibility += [
+    "${ability_runtime_test_path}/fuzztest/*",
+    "${ability_runtime_test_path}/moduletest/*",
+    "${ability_runtime_test_path}/unittest/*",
+    "${form_fwk_path}/test/fuzztest/*",
+    "${os_account_path}/tools/test/moduletest/acm/*",
+  ]
+  include_dirs = [
+    "include/",
+    "include/aa_tools",
+    "include/insight_intent",
+    "include/status_bar_delegate",
+    "include/ui_extension",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native",
+    "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime",
+    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/context",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/continuation/kits",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/continuation/distributed",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
+    "${ability_runtime_path}/interfaces/kits/native/appkit/app",
+    "${ability_runtime_path}/interfaces/kits/native/appkit/dfr",
+    "${ability_runtime_path}/interfaces/kits/native/appkit",
+    "${ability_runtime_innerkits_path}/dataobs_manager/include",
+  ]
+
+  defines = []
+
+  if (ability_command_for_test) {
+    defines += [ "ABILITY_COMMAND_FOR_TEST" ]
+  }
+
+  if (ability_runtime_graphics) {
+    defines += [
+      "SUPPORT_GRAPHICS",
+      "SUPPORT_SCREEN",
+    ]
+  }
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+}
+
+ohos_shared_library("ability_manager") {
+  use_exceptions = true
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "${ability_runtime_native_path}/ability/native/data_ability_operation.cpp",
+    "${ability_runtime_native_path}/ability/native/data_ability_operation_builder.cpp",
+    "${ability_runtime_native_path}/ability/native/data_ability_result.cpp",
+    "${ability_runtime_native_path}/ability/native/task_handler.cpp",
+    "${ability_runtime_native_path}/ability/native/task_handler_client.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ability_auto_startup_client.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ability_manager_client.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ability_manager_proxy.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ability_running_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ability_scheduler_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/acquire_share_data_callback_proxy.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/acquire_share_data_callback_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/auto_startup_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/caller_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/dialog_session/dialog_session_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/exit_reason.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/extension_running_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_callback_proxy.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_callback_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_param.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_result.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_info_for_query.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/intent_exemption_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/keep_alive/keep_alive_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/kiosk_status.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/last_exit_detail_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/launch_param.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/lifecycle_state_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/mission/mission_listener_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/open_link/open_link_options.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/prepare_terminate_callback_proxy.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/prepare_terminate_callback_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/remote_mission_listener_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/remote_on_listener_proxy.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/remote_on_listener_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/rule.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/sa_interceptor_proxy.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/sa_interceptor_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/start_params_by_SCB.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/start_specified_ability_params.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/system_ability_token_callback_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ui_extension/preload_ui_extension_execute_callback_proxy.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ui_extension/preload_ui_extension_execute_callback_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ui_extension/ui_extension_ability_connect_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ui_extension/ui_extension_host_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ui_extension/ui_extension_session_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/user_callback_proxy.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/user_callback_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/window_config.cpp",
+    "src/aa_tools/ability_start_with_wait_data.cpp",
+    "src/aa_tools/ability_start_with_wait_observer_proxy.cpp",
+    "src/aa_tools/ability_start_with_wait_observer_stub.cpp",
+    "src/hidden_start_observer_proxy.cpp",
+    "src/hidden_start_observer_stub.cpp",
+    "src/status_bar_delegate/status_bar_delegate_proxy.cpp",
+    "src/status_bar_delegate/status_bar_delegate_stub.cpp",
+    "src/window_manager_service_handler_proxy.cpp",
+    "src/window_manager_service_handler_stub.cpp",
+  ]
+
+  if (ability_runtime_graphics) {
+    sources += [
+      "src/ability_first_frame_state_data.cpp",
+      "src/ability_first_frame_state_observer_proxy.cpp",
+      "src/ability_first_frame_state_observer_stub.cpp",
+    ]
+  }
+
+  public_configs = [
+    ":ability_manager_public_config",
+    "${ability_runtime_services_path}/abilitymgr:abilityms_config",
+  ]
+
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
+
+  deps = [
+    ":ability_connect_callback_stub",
+    ":ability_start_options",
+    ":ability_start_setting",
+    ":mission_info",
+    ":process_options",
+    ":start_window_option",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_path}/utils/global/freeze:freeze_util",
+    "${ability_runtime_services_path}/abilitymgr:wantagent_manager",
+    "${ability_runtime_services_path}/common:app_util",
+  ]
+
+  external_deps = [
+    "bundle_framework:libappexecfwk_common",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "eventhandler:libeventhandler",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "hitrace:hitrace_meter",
+    "hitrace:libhitracechain",
+    "ipc:ipc_core",
+    "ipc:ipc_napi",
+    "relational_store:native_dataability",
+    "samgr:samgr_proxy",
+  ]
+
+  if (host_cpu != "arm64") {
+    external_deps += [ "relational_store:native_rdb" ]
+  }
+
+  public_external_deps = [
+    "ability_base:base",
+    "ability_base:configuration",
+    "ability_base:session_info",
+    "ability_base:want",
+    "ability_base:zuri",
+    "background_task_mgr:bgtaskmgr_innerkits",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "init:libbegetutil",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
+  ]
+
+  if (ability_runtime_graphics) {
+    deps += []
+    external_deps += [
+      "ability_base:session_info",
+      "image_framework:image_native",
+      "window_manager:libwsutils",
+      "window_manager:session_manager_lite",
+    ]
+    public_external_deps += [ "graphic_2d:color_manager" ]
+  }
+
+  cflags_cc = []
+  if (os_dlp_part_enabled) {
+    cflags_cc += [ "-DWITH_DLP" ]
+    external_deps += [ "dlp_permission_service:libdlpparse" ]
+  }
+
+  innerapi_tags = [
+    "platformsdk",
+    "sasdk",
+  ]
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("ability_start_options") {
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
+
+  include_dirs = [
+    "include/",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  sources =
+      [ "${ability_runtime_services_path}/abilitymgr/src/start_options.cpp" ]
+
+  deps = [
+    ":process_options",
+    ":start_window_option",
+  ]
+
+  external_deps = [
+    "bundle_framework:appexecfwk_base",
+    "c_utils:utils",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "ipc:ipc_core",
+    "window_manager:window_animation_utils",
+  ]
+
+  cflags_cc = []
+  innerapi_tags = [
+    "platformsdk",
+    "sasdk",
+  ]
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("mission_info") {
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "${ability_runtime_services_path}/abilitymgr/src/mission/mission_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/mission/mission_snapshot.cpp",
+  ]
+
+  public_configs = [ ":ability_manager_public_config" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ipc:ipc_core",
+  ]
+  public_external_deps = [
+    "ability_base:configuration",
+    "ability_base:want",
+    "ability_base:zuri",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+  ]
+  if (ability_runtime_graphics) {
+    external_deps += [ "image_framework:image_native" ]
+    public_external_deps += [ "graphic_2d:color_manager" ]
+  }
+
+  cflags_cc = []
+  innerapi_tags = [ "platformsdk" ]
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("ability_manager_c") {
+  include_dirs = [ "include" ]
+  sources = [ "src/ability_manager_client_c.cpp" ]
+  libs = []
+  ldflags = [ "-Wl,--exclude-libs=ALL" ]
+  deps = [ ":ability_manager" ]
+  external_deps = [
+    "ability_base:session_info",
+    "c_utils:utils",
+    "image_framework:image_native",
+    "ipc:ipc_core",
+    "ipc:ipc_napi",
+    "ipc:ipc_single",
+  ]
+  innerapi_tags = [ "platformsdk" ]
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("ability_start_setting") {
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "${ability_runtime_services_path}/abilitymgr/src/ability_start_setting.cpp",
+  ]
+
+  public_configs = [ ":ability_manager_public_config" ]
+
+  external_deps = [ "c_utils:utils" ]
+  public_external_deps = [
+    "ability_base:configuration",
+    "ability_base:want",
+    "ability_base:zuri",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "napi:ace_napi",
+  ]
+  if (ability_runtime_graphics) {
+    public_external_deps += [ "graphic_2d:color_manager" ]
+  }
+  cflags_cc = []
+  innerapi_tags = [ "platformsdk" ]
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("process_options") {
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
+
+  include_dirs = [
+    "include/",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  sources =
+      [ "${ability_runtime_services_path}/abilitymgr/src/process_options.cpp" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+  ]
+
+  cflags_cc = []
+  innerapi_tags = [ "platformsdk" ]
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("start_window_option") {
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
+
+  include_dirs = [
+    "include/",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  sources = [
+    "${ability_runtime_services_path}/abilitymgr/src/start_window_option.cpp",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "napi:ace_napi",
+  ]
+
+  if (ability_runtime_graphics &&
+      ability_runtime_start_window_options_with_pixelmap) {
+    defines = [ "START_WINDOW_OPTIONS_WITH_PIXELMAP" ]
+    external_deps += [ "image_framework:image_native" ]
+  }
+
+  cflags_cc = []
+  innerapi_tags = [ "platformsdk" ]
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("ability_connect_callback_stub") {
+  branch_protector_ret = "pac_ret"
+
+  defines = [ "AMS_LOG_TAG = \"Ability\"" ]
+  defines += [ "AMS_LOG_DOMAIN = 0xD001300" ]
+  include_dirs = [
+    "include/",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
+    "${ability_runtime_services_path}/abilitymgr/include",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  sources = [ "${ability_runtime_services_path}/abilitymgr/src/ability_connect_callback_stub.cpp" ]
+
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
+
+  public_configs = [ ":ability_manager_public_config" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+  ]
+  public_external_deps = [
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+  ]
+  if (ability_runtime_graphics) {
+    external_deps += [ "graphic_2d:color_manager" ]
+  }
+
+  cflags_cc = []
+  innerapi_tags = [
+    "platformsdk",
+    "sasdk",
+  ]
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}

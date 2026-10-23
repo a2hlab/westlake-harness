@@ -1,0 +1,388 @@
+diff --git a/services/appmgr/BUILD.gn b/services/appmgr/BUILD.gn
+index 79d5b117ad..40bd100fb2 100644
+--- a/services/appmgr/BUILD.gn
++++ b/services/appmgr/BUILD.gn
+@@ -40,7 +40,10 @@ ohos_shared_library("libappms") {
+   }
+   branch_protector_ret = "pac_ret"
+   shlib_type = "sa"
+-  include_dirs = [ "${ability_runtime_services_path}/appdfr/include" ]
++  include_dirs = [
++    "${ability_runtime_services_path}/appdfr/include",
++    "src/fn02",
++  ]
+   sources = [
+     "${ability_runtime_path}/tools/aa/src/shell_command_result.cpp",
+     "${ability_runtime_path}/tools/aa/src/test_observer_proxy.cpp",
+@@ -57,6 +60,9 @@ ohos_shared_library("libappms") {
+     "src/app_mgr_service_event_handler.cpp",
+     "src/app_mgr_service_inner.cpp",
+     "src/app_native_spawn_manager.cpp",
++    "src/fn02/fn02_coordinator.cpp",
++    "src/fn02/fn02_launch_registry.cpp",
++    "src/fn02/fn02_parent_binding.cpp",
+     "src/app_preloader.cpp",
+     "src/app_running_manager.cpp",
+     "src/app_running_record.cpp",
+diff --git a/services/appmgr/include/remote_client_manager.h b/services/appmgr/include/remote_client_manager.h
+index 0e13c7fc92..673dd28a20 100644
+--- a/services/appmgr/include/remote_client_manager.h
++++ b/services/appmgr/include/remote_client_manager.h
+@@ -63,6 +63,8 @@ public:
+ 
+     std::shared_ptr<AppSpawnClient> GetNativeSpawnClient();
+ 
++    std::shared_ptr<AppSpawnClient> GetAndroidSpawnClient();
++
+     std::shared_ptr<AppSpawnClient> GetHybridSpawnClient();
+ 
+ private:
+@@ -71,6 +73,7 @@ private:
+     std::shared_ptr<AppSpawnClient> nwebSpawnClient_;
+     std::shared_ptr<AppSpawnClient> cjAppSpawnClient_;
+     std::shared_ptr<AppSpawnClient> nativeSpawnClient_;
++    std::shared_ptr<AppSpawnClient> androidSpawnClient_;
+     std::shared_ptr<AppSpawnClient> hybridSpawnClient_;
+ };
+ }  // namespace AppExecFwk
+diff --git a/services/appmgr/src/app_mgr_service_inner.cpp b/services/appmgr/src/app_mgr_service_inner.cpp
+index f2c0d7e516..a981c52cc9 100644
+--- a/services/appmgr/src/app_mgr_service_inner.cpp
++++ b/services/appmgr/src/app_mgr_service_inner.cpp
+@@ -14,6 +14,7 @@
+  */
+ 
+ #include "app_mgr_service_inner.h"
++#include "fn02_launch_registry.h"
+ 
+ #include <cctype>
+ #include <cinttypes>
+@@ -1714,7 +1715,37 @@ void AppMgrServiceInner::AttachApplication(const pid_t pid, const sptr<IAppSched
+ 
+     appRecord->SetAppDeathRecipient(appDeathRecipient);
+     appRecord->SetApplicationClient(appScheduler);
+-    if (appRecord->GetState() == ApplicationState::APP_STATE_CREATE) {
++    const bool isAndroid =
++        applicationInfo != nullptr &&
++        applicationInfo->bundleType == BundleType::APP_ANDROID;
++    if (isAndroid) {
++        bridge::fn02::appmgr::AppMgrAttachFacts facts;
++        facts.record_id = appRecord->GetRecordId();
++        facts.pid = pid;
++        facts.uid = static_cast<uid_t>(appRecord->GetUid());
++        facts.app_scheduler_host_id = std::to_string(
++            reinterpret_cast<std::uintptr_t>(object.GetRefPtr()));
++        facts.death_observer_registered = true;
++        const auto attachStatus =
++            bridge::fn02::appmgr::Fn02LaunchRegistry::Instance()
++                .Attach(facts);
++        if (attachStatus !=
++            bridge::fn02::coordinator::StatusCode::kOk) {
++            TAG_LOGE(
++                AAFwkTag::APPMGR,
++                "Fn02 attach rejected, record=%{public}d pid=%{public}d status=%{public}u",
++                facts.record_id,
++                pid,
++                static_cast<unsigned>(attachStatus));
++            appRecord->RemoveAppDeathRecipient();
++            appRecord->SetAppDeathRecipient(nullptr);
++            appRecord->SetApplicationClient(nullptr);
++            NotifyAppAttachFailed(appRecord);
++            return;
++        }
++    } else if (
++        appRecord->GetState() ==
++        ApplicationState::APP_STATE_CREATE) {
+         LaunchApplicationExt(appRecord);
+     }
+ 
+@@ -4751,7 +4782,211 @@ int32_t AppMgrServiceInner::StartProcess(const std::string &appName, const std::
+     PerfProfile::GetInstance().SetAppForkStartTime(GetTickCount());
+     pid_t pid = 0;
+     ErrCode errCode = ERR_OK;
+-    if (isCJApp) {
++    if (bundleType == BundleType::APP_ANDROID) {
++        TAG_LOGI(
++            AAFwkTag::APPMGR,
++            "StartProcess: route Android app to appspawn-x: %{public}s",
++            bundleName.c_str());
++        if (!remoteClientManager_->GetAndroidSpawnClient()) {
++            TAG_LOGE(AAFwkTag::APPMGR, "androidSpawnClient null");
++            appRunningManager_->RemoveAppRunningRecordById(
++                appRecord->GetRecordId());
++            return AAFwk::ERR_GET_SPAWN_CLIENT_FAILED;
++        }
++        constexpr size_t ANDROID_OWNER_ID_MAX_LENGTH = 63;
++        if (startMsg.ownerId.empty()) {
++            startMsg.ownerId = "android:" + bundleName;
++            if (startMsg.ownerId.size() >
++                ANDROID_OWNER_ID_MAX_LENGTH) {
++                TAG_LOGE(
++                    AAFwkTag::APPMGR,
++                    "Android ownerId too long: %{public}zu",
++                    startMsg.ownerId.size());
++                appRunningManager_->RemoveAppRunningRecordById(
++                    appRecord->GetRecordId());
++                return AAFwk::ERR_CREATE_START_MSG_FAILED;
++            }
++        }
++        if (startMsg.uid <= 0) {
++            TAG_LOGE(
++                AAFwkTag::APPMGR,
++                "Fn02 refuses invalid Android uid: %{public}d",
++                startMsg.uid);
++            appRunningManager_->RemoveAppRunningRecordById(
++                appRecord->GetRecordId());
++            return AAFwk::ERR_CREATE_START_MSG_FAILED;
++        }
++
++        bridge::fn02::appmgr::LaunchDescriptor descriptor;
++        descriptor.record_id = appRecord->GetRecordId();
++        descriptor.user_id =
++            static_cast<std::uint32_t>(appRecord->GetUserId());
++        descriptor.android_package = bundleName;
++        descriptor.android_uid =
++            static_cast<std::uint32_t>(startMsg.uid);
++        descriptor.android_process_name = processName;
++        bridge::fn02::appmgr::BeginResult begin;
++        auto &registry =
++            bridge::fn02::appmgr::Fn02LaunchRegistry::Instance();
++        const auto beginStatus = registry.Begin(
++            descriptor,
++            [innerWeak = weak_from_this()](
++                const bridge::fn02::appmgr::ManagedReady &ready) {
++                auto inner = innerWeak.lock();
++                if (!inner || !inner->taskHandler_) {
++                    return false;
++                }
++                auto handle = inner->taskHandler_->SubmitTask(
++                    [innerWeak, ready]() {
++                        auto owner = innerWeak.lock();
++                        auto &registry =
++                            bridge::fn02::appmgr::
++                                Fn02LaunchRegistry::Instance();
++                        if (!owner) {
++                            (void)registry.RejectManagedReady(ready);
++                            return;
++                        }
++                        auto record =
++                            owner->GetAppRunningRecordByPid(
++                                ready.pid);
++                        auto info = record
++                            ? record->GetApplicationInfo()
++                            : nullptr;
++                        auto client = record
++                            ? record->GetApplicationClient()
++                            : nullptr;
++                        auto remote = client
++                            ? client->AsObject()
++                            : nullptr;
++                        const bool exact =
++                            record != nullptr &&
++                            record->GetRecordId() ==
++                                ready.record_id &&
++                            record->GetPid() == ready.pid &&
++                            static_cast<uid_t>(record->GetUid()) ==
++                                ready.uid &&
++                            record->GetState() ==
++                                ApplicationState::
++                                    APP_STATE_CREATE &&
++                            info != nullptr &&
++                            info->bundleType ==
++                                BundleType::APP_ANDROID &&
++                            remote != nullptr &&
++                            std::to_string(
++                                reinterpret_cast<std::uintptr_t>(
++                                    remote.GetRefPtr())) ==
++                                ready.app_scheduler_host_id;
++                        if (!exact) {
++                            (void)registry.RejectManagedReady(ready);
++                            if (record != nullptr &&
++                                record->GetRecordId() ==
++                                    ready.record_id &&
++                                record->GetPid() == ready.pid &&
++                                static_cast<uid_t>(
++                                    record->GetUid()) ==
++                                    ready.uid &&
++                                info != nullptr &&
++                                info->bundleType ==
++                                    BundleType::APP_ANDROID) {
++                                (void)owner->KillProcessByPid(
++                                    ready.pid,
++                                    "Fn02ReadyRevalidationFailed");
++                                owner->appRunningManager_
++                                    ->RemoveAppRunningRecordById(
++                                        ready.record_id);
++                            }
++                            return;
++                        }
++                        if (!registry.ConsumeManagedReady(ready)) {
++                            return;
++                        }
++                        owner->LaunchApplicationExt(record);
++                    },
++                    "Fn02ManagedReady#" +
++                        std::to_string(ready.record_id) + "#" +
++                        std::to_string(
++                            ready.launch_generation));
++                return static_cast<bool>(handle);
++            },
++            [innerWeak = weak_from_this()](
++                const bridge::fn02::appmgr::FailedLaunch &failed) {
++                auto inner = innerWeak.lock();
++                if (!inner || !inner->taskHandler_) {
++                    return false;
++                }
++                auto cleaned =
++                    std::make_shared<std::atomic<bool>>(false);
++                auto handle = inner->taskHandler_->SubmitTask(
++                    [innerWeak, failed, cleaned]() {
++                        auto owner = innerWeak.lock();
++                        if (!owner || failed.pid <= 0) {
++                            return;
++                        }
++                        auto record =
++                            owner->GetAppRunningRecordByPid(
++                                failed.pid);
++                        auto info = record
++                            ? record->GetApplicationInfo()
++                            : nullptr;
++                        if (record == nullptr ||
++                            record->GetRecordId() !=
++                                failed.record_id ||
++                            static_cast<uid_t>(record->GetUid()) !=
++                                failed.uid ||
++                            info == nullptr ||
++                            info->bundleType !=
++                                BundleType::APP_ANDROID) {
++                            return;
++                        }
++                        (void)owner->KillProcessByPid(
++                            failed.pid, "Fn02LaunchFailed");
++                        owner->appRunningManager_
++                            ->RemoveAppRunningRecordById(
++                                failed.record_id);
++                        cleaned->store(true);
++                    },
++                    "Fn02LaunchFailed#" +
++                        std::to_string(failed.record_id) + "#" +
++                        std::to_string(
++                            failed.launch_generation));
++                if (!static_cast<bool>(handle)) {
++                    return false;
++                }
++                handle.Sync();
++                return cleaned->load();
++            },
++            &begin);
++        if (beginStatus !=
++            bridge::fn02::coordinator::StatusCode::kOk) {
++            TAG_LOGE(
++                AAFwkTag::APPMGR,
++                "Fn02 generation begin failed: %{public}u",
++                static_cast<unsigned>(beginStatus));
++            appRunningManager_->RemoveAppRunningRecordById(
++                appRecord->GetRecordId());
++            return AAFwk::ERR_CREATE_START_MSG_FAILED;
++        }
++        const auto inserted = startMsg.fds.emplace(
++            bridge::fn02::appmgr::kChildCapabilityFdName,
++            begin.child_fd);
++        if (!inserted.second) {
++            close(begin.child_fd);
++            (void)registry.SpawnFailed(descriptor.record_id);
++            appRunningManager_->RemoveAppRunningRecordById(
++                appRecord->GetRecordId());
++            return AAFwk::ERR_CREATE_START_MSG_FAILED;
++        }
++        startMsg.gids.push_back(SHADER_CACHE_GROUPID);
++        errCode =
++            remoteClientManager_->GetAndroidSpawnClient()
++                ->StartProcess(startMsg, pid);
++        const auto childFd = startMsg.fds.find(
++            bridge::fn02::appmgr::kChildCapabilityFdName);
++        if (childFd != startMsg.fds.end()) {
++            close(childFd->second);
++            startMsg.fds.erase(childFd);
++        }
++    } else if (isCJApp) {
+         if (!remoteClientManager_->GetCJSpawnClient()) {
+             TAG_LOGE(AAFwkTag::APPMGR, "appSpawnClient null");
+             appRunningManager_->RemoveAppRunningRecordById(appRecord->GetRecordId());
+@@ -4771,6 +5006,10 @@ int32_t AppMgrServiceInner::StartProcess(const std::string &appName, const std::
+         errCode = remoteClientManager_->GetSpawnClient()->StartProcess(startMsg, pid);
+     }
+     if (FAILED(errCode)) {
++        if (bundleType == BundleType::APP_ANDROID) {
++            (void)bridge::fn02::appmgr::Fn02LaunchRegistry::
++                Instance().SpawnFailed(appRecord->GetRecordId());
++        }
+         TAG_LOGE(AAFwkTag::APPMGR, "spawn new app fail, errCode %{public}08x", errCode);
+         appRunningManager_->RemoveAppRunningRecordById(appRecord->GetRecordId());
+         if (!isCJApp) {
+@@ -4780,6 +5019,25 @@ int32_t AppMgrServiceInner::StartProcess(const std::string &appName, const std::
+         return AAFwk::ERR_SPAWN_PROCESS_FAILED;
+     }
+ 
++    if (bundleType == BundleType::APP_ANDROID) {
++        const auto bindStatus =
++            bridge::fn02::appmgr::Fn02LaunchRegistry::Instance()
++                .BindSpawnedPid(appRecord->GetRecordId(), pid);
++        if (bindStatus !=
++            bridge::fn02::coordinator::StatusCode::kOk) {
++            TAG_LOGE(
++                AAFwkTag::APPMGR,
++                "Fn02 PID bind failed: %{public}u",
++                static_cast<unsigned>(bindStatus));
++            (void)KillProcessByPid(pid, "Fn02BindPidFailed");
++            (void)bridge::fn02::appmgr::Fn02LaunchRegistry::
++                Instance().SpawnFailed(appRecord->GetRecordId());
++            appRunningManager_->RemoveAppRunningRecordById(
++                appRecord->GetRecordId());
++            return AAFwk::ERR_SPAWN_PROCESS_FAILED;
++        }
++    }
++
+     TAG_LOGI(AAFwkTag::APPMGR, "spawned pname_%{public}s, pid_%{public}d, idx_%{public}d",
+         processName.c_str(), pid, bundleIndex);
+     SetRunningSharedBundleList(bundleName, startMsg.hspList);
+diff --git a/services/appmgr/src/app_spawn_client.cpp b/services/appmgr/src/app_spawn_client.cpp
+index 481f9b24d2..f275c80390 100644
+--- a/services/appmgr/src/app_spawn_client.cpp
++++ b/services/appmgr/src/app_spawn_client.cpp
+@@ -72,6 +72,8 @@ AppSpawnClient::AppSpawnClient(const char* serviceName)
+         serviceName_ = NATIVESPAWN_SERVER_NAME;
+     } else if (serviceName__ == HYBRIDSPAWN_SERVER_NAME) {
+         serviceName_ = HYBRIDSPAWN_SERVER_NAME;
++    } else if (serviceName__ == APPSPAWNX_SERVER_NAME) {
++        serviceName_ = APPSPAWNX_SERVER_NAME;
+     } else {
+         TAG_LOGE(AAFwkTag::APPMGR, "unknown service name");
+         serviceName_ = NWEBSPAWN_SERVER_NAME;
+diff --git a/services/appmgr/src/remote_client_manager.cpp b/services/appmgr/src/remote_client_manager.cpp
+index 6f79acda18..a33c8a1c14 100644
+--- a/services/appmgr/src/remote_client_manager.cpp
++++ b/services/appmgr/src/remote_client_manager.cpp
+@@ -26,6 +26,7 @@ RemoteClientManager::RemoteClientManager()
+     : appSpawnClient_(std::make_shared<AppSpawnClient>()), nwebSpawnClient_(std::make_shared<AppSpawnClient>(true)),
+     cjAppSpawnClient_(std::make_shared<AppSpawnClient>("cjappspawn")),
+     nativeSpawnClient_(std::make_shared<AppSpawnClient>("nativespawn")),
++    androidSpawnClient_(std::make_shared<AppSpawnClient>("appspawn-x")),
+     hybridSpawnClient_(std::make_shared<AppSpawnClient>("hybridspawn"))
+ {}
+ 
+@@ -76,6 +77,14 @@ std::shared_ptr<AppSpawnClient> RemoteClientManager::GetNativeSpawnClient()
+     return nativeSpawnClient_;
+ }
+ 
++std::shared_ptr<AppSpawnClient> RemoteClientManager::GetAndroidSpawnClient()
++{
++    if (!androidSpawnClient_) {
++        return nullptr;
++    }
++    return androidSpawnClient_;
++}
++
+ std::shared_ptr<AppSpawnClient> RemoteClientManager::GetHybridSpawnClient()
+ {
+     if (hybridSpawnClient_) {

@@ -1,0 +1,194 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+config("ability_context_public_config") {
+  visibility = [ ":*" ]
+  visibility += [
+    "${ability_runtime_native_path}/ability/*",
+    "${ability_runtime_test_path}/fuzztest/connectability_fuzzer/*",
+    "${ability_runtime_test_path}/fuzztest/disconnectability_fuzzer/*",
+    "${print_fwk_path}/frameworks/kits/extension/*",
+    "${user_file_service_innerkits_path}/file_access/*",
+  ]
+  include_dirs = [
+    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/context",
+    "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime",
+    "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime/context",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native",
+  ]
+
+  cflags = []
+  defines = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+  if (ability_runtime_graphics) {
+    defines += [
+      "SUPPORT_GRAPHICS",
+      "SUPPORT_SCREEN",
+    ]
+  }
+}
+
+ohos_shared_library("ability_context_native") {
+  branch_protector_ret = "pac_ret"
+
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
+
+  public_configs = [ ":ability_context_public_config" ]
+  include_dirs = [ "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability/connection" ]
+
+  sources = [
+    "ability_runtime/ability_connection.cpp",
+    "ability_runtime/ability_context_impl.cpp",
+    "ability_runtime/authorization_result.cpp",
+    "ability_runtime/caller_callback.cpp",
+    "ability_runtime/connection_manager.cpp",
+    "ability_runtime/dialog_request_callback_impl.cpp",
+    "ability_runtime/dialog_ui_extension_callback.cpp",
+    "ability_runtime/js_extension_context.cpp",
+    "ability_runtime/local_call_container.cpp",
+    "ability_runtime/local_call_record.cpp",
+    "ability_runtime/start_vertical_panel.cpp",
+    "native/js_ui_extension_callback.cpp",
+    "native/panel_start_callback.cpp",
+    "native/ui_extension_callback.cpp",
+  ]
+
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_napi_path}/inner/napi_common:napi_common",
+    "${ability_runtime_native_path}/ability/native:dialog_request_callback",
+    "${ability_runtime_native_path}/appkit:app_context",
+    "${ability_runtime_native_path}/appkit:app_context_utils",
+    "${ability_runtime_services_path}/common:app_util",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:session_info",
+    "ability_base:want",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libtoken_callback_sdk",
+    "bundle_framework:libappexecfwk_common",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "eventhandler:libeventhandler",
+    "faultloggerd:libdfx_dumpcatcher",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "image_framework:image_native",
+    "ipc:ipc_core",
+    "napi:ace_napi",
+  ]
+  public_external_deps = [
+    "ability_base:extractortool",
+    "background_task_mgr:bgtaskmgr_innerkits",
+  ]
+  if (ability_runtime_graphics) {
+    external_deps += [
+      "ace_engine:ace_uicontent",
+      "window_manager:libwsutils",
+      "window_manager:scene_session",
+      "window_manager:session_manager_lite",
+    ]
+  }
+
+  if (hichecker_enabled) {
+    external_deps += [ "hichecker:libhichecker" ]
+  }
+
+  innerapi_tags = [ "platformsdk" ]
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("cj_ability_context_native") {
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
+
+  include_dirs = [
+    "${ability_runtime_path}/frameworks/cj/ffi",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability/connection",
+  ]
+
+  sources = [ "ability_runtime/cj_extension_context.cpp" ]
+
+  deps = [
+    ":ability_context_native",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_native_path}/ability/native:dialog_request_callback",
+    "${ability_runtime_native_path}/appkit:app_context",
+    "${ability_runtime_native_path}/appkit:app_context_utils",
+    "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_ffi",
+    "${ability_runtime_path}/frameworks/cj/ffi/context:cj_context_ffi",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:session_info",
+    "ability_base:want",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libtoken_callback_sdk",
+    "bundle_framework:cj_bundle_manager_ffi",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "faultloggerd:libdfx_dumpcatcher",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "image_framework:image_native",
+    "ipc:ipc_single",
+    "napi:cj_bind_ffi",
+    "napi:cj_bind_native",
+  ]
+
+  public_external_deps = [
+    "ability_base:extractortool",
+    "background_task_mgr:bgtaskmgr_innerkits",
+  ]
+  if (ability_runtime_graphics) {
+    external_deps += [
+      "ace_engine:ace_uicontent",
+      "window_manager:libwsutils",
+      "window_manager:scene_session",
+      "window_manager:session_manager_lite",
+    ]
+  }
+
+  if (hichecker_enabled) {
+    external_deps += [ "hichecker:libhichecker" ]
+  }
+
+  innerapi_tags = [ "platformsdk" ]
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}

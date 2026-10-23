@@ -1,0 +1,216 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+bundle_framework_path = "//foundation/bundlemanager/bundle_framework"
+ecological_rule_mgr_path = "//foundation/bundlemanager/ecological_rule_mgr/interfaces/innerkits/include"
+common_path = "${bundle_framework_path}/common"
+fuzz_test_path = "bundle_framework/bundle_framework"
+test_path = "${bundle_framework_path}/test"
+services_path = "${bundle_framework_path}/services"
+kits_path = "${bundle_framework_path}/interfaces/kits"
+inner_api_path = "${bundle_framework_path}/interfaces/inner_api"
+tools_path = "${bundle_framework_path}/tools"
+base_path = "${bundle_framework_path}/interfaces/inner_api/appexecfwk_base"
+core_path = "${bundle_framework_path}/interfaces/inner_api/appexecfwk_core"
+extension_path =
+    "${bundle_framework_path}/interfaces/inner_api/bundlemgr_extension"
+
+declare_args() {
+  bundle_framework_power_mgr_enable = true
+  bundle_framework_graphics = true
+  bundle_framework_free_install = true
+  bundle_framework_default_app = true
+  bundle_framework_launcher = true
+  bundle_framework_sandbox_app = true
+  bundle_framework_quick_fix = true
+  bundle_framework_app_control = true
+  distributed_bundle_framework = true
+  bundle_framework_overlay_install = true
+  bundle_framework_bundle_resource = true
+  bundle_framework_form_dimension_2_3 = false
+  bundle_framework_form_dimension_3_3 = false
+
+  ability_runtime_enable = true
+  account_enable = true
+  configpolicy_enable = true
+  global_resmgr_enable = true
+  global_i18n_enable = true
+  hicollie_enable = true
+  hisysevent_enable = true
+  storage_service_enable = true
+  use_pre_bundle_profile = true
+  window_enable = true
+  dlp_permission_enable = true
+  code_signature_enable = true
+  code_encryption_enable = true
+  verify_abc_enabled = true
+  check_eldir_enabled = true
+  udmf_enabled = true
+  bms_device_info_manager_part_enabled = true
+  app_domain_verify_enabled = true
+  device_usage_statistics_enabled = true
+  dfx_sigdump_handler_enabled = true
+  webview_enable = true
+  user_auth_framework_impl_enabled = true
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.resourceschedule_device_usage_statistics)) {
+    device_usage_statistics_enabled = false
+    bundle_framework_free_install = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.ability_ability_runtime)) {
+    ability_runtime_enable = false
+    bundle_framework_free_install = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.account_os_account)) {
+    account_enable = false
+    bundle_framework_free_install = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.bundlemanager_distributed_bundle_framework)) {
+    distributed_bundle_framework = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.customization_config_policy)) {
+    configpolicy_enable = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.global_resource_management)) {
+    global_resmgr_enable = false
+    bundle_framework_bundle_resource = false
+  }
+
+  if (defined(global_parts_info) && !defined(global_parts_info.global_i18n)) {
+    global_i18n_enable = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.hiviewdfx_hicollie)) {
+    hicollie_enable = false
+  }
+
+  if (defined(global_parts_info) &&
+      (!defined(global_parts_info.powermgr_power_manager) ||
+       !defined(global_parts_info.powermgr_battery_manager) ||
+       !defined(global_parts_info.powermgr_display_manager) ||
+       !defined(global_parts_info.resourceschedule_device_usage_statistics))) {
+    bundle_framework_free_install = false
+  }
+
+  if (defined(global_parts_info) &&
+      (!defined(global_parts_info.powermgr_power_manager) ||
+       !defined(global_parts_info.powermgr_battery_manager) ||
+       !defined(global_parts_info.powermgr_display_manager))) {
+    bundle_framework_power_mgr_enable = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.hiviewdfx_hisysevent)) {
+    hisysevent_enable = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.window_window_manager)) {
+    window_enable = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.filemanagement_storage_service)) {
+    storage_service_enable = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.security_dlp_permission_service)) {
+    dlp_permission_enable = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.security_code_signature)) {
+    code_signature_enable = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.security_code_crypto_metadata_process)) {
+    code_encryption_enable = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.multimedia_image_framework)) {
+    bundle_framework_graphics = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.arkcompiler_runtime_core)) {
+    verify_abc_enabled = false
+  }
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.distributeddatamgr_udmf)) {
+    udmf_enabled = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.deviceprofile_device_info_manager)) {
+    bms_device_info_manager_part_enabled = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.bundlemanager_app_domain_verify)) {
+    app_domain_verify_enabled = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.hiviewdfx_faultloggerd)) {
+    dfx_sigdump_handler_enabled = false
+  }
+
+  if (defined(global_parts_info) && !defined(global_parts_info.web_webview)) {
+    webview_enable = false
+  }
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.useriam_user_auth_framework)) {
+    user_auth_framework_impl_enabled = false
+  }
+}
+
+print("bundle_framework_power_mgr_enable = " +
+      "$bundle_framework_power_mgr_enable")
+print("bundle_framework_graphics = " + "$bundle_framework_graphics")
+print("bundle_framework_free_install = " + "$bundle_framework_free_install")
+print("bundle_framework_default_app = " + "$bundle_framework_default_app")
+print("bundle_framework_launcher = " + "$bundle_framework_launcher")
+print("bundle_framework_sandbox_app = " + "$bundle_framework_sandbox_app")
+print("bundle_framework_quick_fix = " + "$bundle_framework_quick_fix")
+print("bundle_framework_app_control = " + "$bundle_framework_app_control")
+print("distributed_bundle_framework = " + "$distributed_bundle_framework")
+print("ability_runtime_enable = " + "$ability_runtime_enable")
+print("account_enable = " + "$account_enable")
+print("configpolicy_enable = " + "$configpolicy_enable")
+print("global_resmgr_enable = " + "$global_resmgr_enable")
+print("hicollie_enable = " + "$hicollie_enable")
+print("support_jsapi = " + "$support_jsapi")
+print("hisysevent_enable = " + "$hisysevent_enable")
+print(
+    "bundle_framework_overlay_install = " + "$bundle_framework_overlay_install")
+print(
+    "bundle_framework_bundle_resource = " + "$bundle_framework_bundle_resource")
+print("verify_abc_enabled = " + "$verify_abc_enabled")
+print(
+    "user_auth_framework_impl_enabled = " + "$user_auth_framework_impl_enabled")

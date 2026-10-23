@@ -1,0 +1,1635 @@
+diff --git a/common/BUILD.gn b/common/BUILD.gn
+index f162c6348..473aa78d6 100644
+--- a/common/BUILD.gn
++++ b/common/BUILD.gn
+@@ -45,6 +45,7 @@ ohos_shared_library("libappexecfwk_common") {
+   defines = [
+     "APP_LOG_TAG = \"BMS\"",
+     "LOG_DOMAIN = 0xD001120",
++    "OH_ADAPTER_ANDROID",  # Adapter project: enable .apk in CheckFilePath
+   ]
+ 
+   cflags = [
+diff --git a/common/utils/src/bundle_file_util.cpp b/common/utils/src/bundle_file_util.cpp
+index e318e9e0c..002ec72c9 100644
+--- a/common/utils/src/bundle_file_util.cpp
++++ b/common/utils/src/bundle_file_util.cpp
+@@ -61,8 +61,14 @@ bool BundleFileUtil::CheckFilePath(const std::string &bundlePath, std::string &r
+         !CheckFileType(bundlePath, CODE_SIGNATURE_SUFFIX) &&
+         !CheckFileType(bundlePath, PGO_SUFFIX) &&
+         !CheckFileType(bundlePath, JSON_FILE_SUFFIX) &&
+-        !CheckFileType(bundlePath, APP_FILE_SUFFIX)) {
+-        APP_LOGE("file is not hap, hsp or hqf or sig or ap or json or app");
++        !CheckFileType(bundlePath, APP_FILE_SUFFIX)
++#ifdef OH_ADAPTER_ANDROID
++        // Adapter project: allow Android .apk extension; downstream
++        // BundleInstaller::Install dispatches .apk via libapk_installer.so.
++        && !CheckFileType(bundlePath, ".apk")
++#endif
++        ) {
++        APP_LOGE("file is not hap, hsp or hqf or sig or ap or json or app or apk");
+         return false;
+     }
+     if (!PathToRealPath(bundlePath, realPath)) {
+diff --git a/interfaces/inner_api/appexecfwk_base/include/application_info.h b/interfaces/inner_api/appexecfwk_base/include/application_info.h
+index 6287a3657..c2081db90 100644
+--- a/interfaces/inner_api/appexecfwk_base/include/application_info.h
++++ b/interfaces/inner_api/appexecfwk_base/include/application_info.h
+@@ -60,6 +60,7 @@ enum class BundleType {
+     SHARED = 2,
+     APP_SERVICE_FWK = 3,
+     APP_PLUGIN = 4,
++    APP_ANDROID = 10,      // Android application (APK installed via adapter)
+ };
+ 
+ enum class CompatiblePolicy {
+diff --git a/services/bundlemgr/BUILD.gn b/services/bundlemgr/BUILD.gn
+index 9d1a49ed0..13916d663 100644
+--- a/services/bundlemgr/BUILD.gn
++++ b/services/bundlemgr/BUILD.gn
+@@ -310,6 +310,7 @@ ohos_shared_library("libbms") {
+     "APP_LOG_TAG = \"BMS\"",
+     "LOG_DOMAIN = 0xD001120",
+   ]
++  defines += [ "OH_ADAPTER_ANDROID" ]  # enable Android APK routing in libbms (gap 0.6)
+ 
+   if (is_emulator) {
+     defines += [ "X86_EMULATOR_MODE" ]
+diff --git a/services/bundlemgr/include/installd/installd_operator.h b/services/bundlemgr/include/installd/installd_operator.h
+index 67623f390..3eaa318c2 100644
+--- a/services/bundlemgr/include/installd/installd_operator.h
++++ b/services/bundlemgr/include/installd/installd_operator.h
+@@ -103,6 +103,14 @@ public:
+     static bool IsNativeSo(const std::string &entryName, const std::string &cpuAbi);
+ 
+     static bool ExtractFiles(const ExtractParam &extractParam);
++
++    // Adapter APK transforms run in installs domain, which owns code-root I/O.
++    // Synthesize OH resources HAP from APK launcher icon + baked-in template.
++    static bool BuildApkResourcesHap(const std::string &apkPath, const std::string &outHapPath);
++
++    // Extract exactly lib/<cpuAbi>/lib*.so into a dedicated staging directory.
++    // Zero matches and every path/read/write/CRC/ELF/owner/mode failure are fatal.
++    static bool ExtractApkNativeFiles(const ExtractParam &extractParam);
+     static bool ExtractFiles(const std::map<std::string, std::string> &hnpPackageMap,
+         const ExtractParam &extractParam);
+     static bool ExtractTargetFile(
+diff --git a/services/bundlemgr/include/ipc/extract_param.h b/services/bundlemgr/include/ipc/extract_param.h
+index e52b2a490..861caf7c8 100755
+--- a/services/bundlemgr/include/ipc/extract_param.h
++++ b/services/bundlemgr/include/ipc/extract_param.h
+@@ -1,48 +1,50 @@
+-/*
+- * Copyright (c) 2022 Huawei Device Co., Ltd.
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *     http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-#ifndef FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_IPC_EXTRACT_PARAM_H
+-#define FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_IPC_EXTRACT_PARAM_H
+-
+-#include "message_parcel.h"
+-
+-namespace OHOS {
+-namespace AppExecFwk {
+-enum ExtractFileType : uint8_t {
+-    ALL,
+-    SO,
+-    AN,
+-    PATCH,
+-    AP,
+-    RESOURCE,
+-    RES_FILE,
+-    HNPS_FILE
+-};
+-
+-struct ExtractParam : public Parcelable {
+-    std::string srcPath;
+-    std::string targetPath;
+-    std::string cpuAbi;
+-    ExtractFileType extractFileType = ExtractFileType::ALL;
+-    bool needRemoveOld = false;
+-
+-    std::string ToString() const;
+-    bool ReadFromParcel(Parcel &parcel);
+-    virtual bool Marshalling(Parcel &parcel) const override;
+-    static ExtractParam *Unmarshalling(Parcel &parcel);
+-};
+-}  // namespace AppExecFwk
+-}  // namespace OHOS
+-#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_IPC_EXTRACT_PARAM_H
++/*
++ * Copyright (c) 2022 Huawei Device Co., Ltd.
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_IPC_EXTRACT_PARAM_H
++#define FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_IPC_EXTRACT_PARAM_H
++
++#include "message_parcel.h"
++
++namespace OHOS {
++namespace AppExecFwk {
++enum ExtractFileType : uint8_t {
++    ALL,
++    SO,
++    AN,
++    PATCH,
++    AP,
++    RESOURCE,
++    RES_FILE,
++    HNPS_FILE,
++    APK_RESOURCES_HAP,  // adapter project: synthesize launcher resource HAP
++    APK_NATIVE_SO       // adapter project: strict APK lib/<abi>/*.so extraction
++};
++
++struct ExtractParam : public Parcelable {
++    std::string srcPath;
++    std::string targetPath;
++    std::string cpuAbi;
++    ExtractFileType extractFileType = ExtractFileType::ALL;
++    bool needRemoveOld = false;
++
++    std::string ToString() const;
++    bool ReadFromParcel(Parcel &parcel);
++    virtual bool Marshalling(Parcel &parcel) const override;
++    static ExtractParam *Unmarshalling(Parcel &parcel);
++};
++}  // namespace AppExecFwk
++}  // namespace OHOS
++#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_IPC_EXTRACT_PARAM_H
+diff --git a/services/bundlemgr/src/base_bundle_installer.cpp b/services/bundlemgr/src/base_bundle_installer.cpp
+index d17c1f01c..f13fd4d87 100644
+--- a/services/bundlemgr/src/base_bundle_installer.cpp
++++ b/services/bundlemgr/src/base_bundle_installer.cpp
+@@ -14,6 +14,15 @@
+  */
+ 
+ #include "base_bundle_installer.h"
++#include "bundle_resource/bundle_resource_rdb.h"  // adapter project
++#include "bundle_resource/resource_info.h"  // adapter project
++#include "installd_client.h"  // adapter project: route entry.hap copy via installd
++#include "nlohmann/json.hpp"  // adapter project: parse libapk_installer manifest JSON
++#include <sys/stat.h>  // adapter project: chmod for entry.hap copy
++#ifdef OH_ADAPTER_ANDROID
++#include <dlfcn.h>  // adapter project: libapk_installer.so dispatch
++#include <cctype>
++#endif
+ 
+ #include <algorithm>
+ #include <fcntl.h>
+@@ -1470,6 +1479,726 @@ ErrCode BaseBundleInstaller::ProcessBundleInstall(const std::vector<std::string>
+     CHECK_RESULT(result, "hap file check failed %{public}d");
+     UpdateInstallerState(InstallerState::INSTALL_BUNDLE_CHECKED);                  // ---- 5%
+ 
++#ifdef OH_ADAPTER_ANDROID
++    // adapter project: .apk register with manifest v3
++    // 1. dispatch to libapk_installer.so — manifest parse only (no fs writes)
++    // 2. parse returned JSON manifest data
++    // 3. route file deployment via InstalldClient IPC (installs domain)
++    // 4. construct minimum-viable InnerBundleInfo
++    // 5. allocate real HAP AccessTokenID via AccessTokenKit::AllocHapToken
++    // 6. dataMgr->AddInnerBundleInfo + SaveInnerBundleInfo (reboot-safe)
++    {
++        const size_t apkCount = static_cast<size_t>(std::count_if(bundlePaths.begin(), bundlePaths.end(),
++            [](const std::string &path) { return BundleUtil::CheckFileType(path, ".apk"); }));
++        if (apkCount > 0) {
++            if (apkCount != 1 || bundlePaths.size() != 1) {
++                LOG_E(BMS_TAG_INSTALLER, "APK install requires exactly one APK and no mixed HAP/app inputs");
++                return ERR_APPEXECFWK_INSTALL_MORE_THAN_ONE_APP;
++            }
++            LOG_I(BMS_TAG_INSTALLER, "adapter .apk path detected, dispatching+register v2");
++            void* handle = dlopen("libapk_installer.so", RTLD_NOW | RTLD_GLOBAL);
++            using ApkFn2 = int (*)(const char*, int, char*, int);
++            ApkFn2 fn = handle ? reinterpret_cast<ApkFn2>(
++                dlsym(handle, "oh_adapter_install_apk_with_manifest")) : nullptr;
++            const auto callApkFn2 = [fn](const char* path, int userId, char* manifest, int capacity)
++                __attribute__((no_sanitize("cfi"))) { return fn(path, userId, manifest, capacity); };
++            if (fn == nullptr) {
++                LOG_E(BMS_TAG_INSTALLER, "oh_adapter_install_apk_with_manifest unavailable");
++                return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++            }
++            constexpr int kJsonBufSize = 65536;
++            std::vector<char> jsonBuf(kJsonBufSize, 0);
++            for (const auto &p : bundlePaths) {
++                if (!BundleUtil::CheckFileType(p, ".apk")) continue;
++                int r = callApkFn2(p.c_str(), installParam.userId, jsonBuf.data(), kJsonBufSize);
++                if (r != 0) {
++                    LOG_E(BMS_TAG_INSTALLER, "oh_adapter_install_apk_with_manifest failed: %{public}d", r);
++                    return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                }
++                // Parse without exceptions: libbms is intentionally built with
++                // -fno-exceptions in OH 6.1 LTS. Validate every field consumed by
++                // value()/get() before conversion so malformed APK metadata fails
++                // closed instead of reaching nlohmann's throwing paths.
++                {
++                    auto j = nlohmann::json::parse(std::string(jsonBuf.data()), nullptr, false);
++                    const auto isInteger = [](const auto &value) {
++                        return value.is_number_integer() || value.is_number_unsigned();
++                    };
++                    if (j.is_discarded() || !j.is_object() ||
++                        !j.contains("bundleName") || !j["bundleName"].is_string() ||
++                        !j.contains("abilities") || !j["abilities"].is_array() || j["abilities"].empty() ||
++                        (j.contains("versionCode") && !isInteger(j["versionCode"])) ||
++                        (j.contains("versionName") && !j["versionName"].is_string()) ||
++                        (j.contains("minSdkVersion") && !isInteger(j["minSdkVersion"])) ||
++                        (j.contains("targetSdkVersion") && !isInteger(j["targetSdkVersion"])) ||
++                        (j.contains("appLabel") && !j["appLabel"].is_string()) ||
++                        (j.contains("debuggable") && !j["debuggable"].is_boolean()) ||
++                        (j.contains("primaryAbi") && !j["primaryAbi"].is_string()) ||
++                        !j.contains("nativePayloadState") || !j["nativePayloadState"].is_string() ||
++                        !j.contains("hasNativeLibraries") || !j["hasNativeLibraries"].is_boolean() ||
++                        (j.contains("uid") && !isInteger(j["uid"]))) {
++                        LOG_E(BMS_TAG_INSTALLER, "manifest JSON schema rejected");
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    const auto &abilitiesJson = j["abilities"];
++                    for (const auto &ability : abilitiesJson) {
++                        const bool actionsValid = !ability.contains("actions") ||
++                            (ability["actions"].is_array() &&
++                            std::all_of(ability["actions"].begin(), ability["actions"].end(),
++                                [](const auto &item) { return item.is_string(); }));
++                        const bool categoriesValid = !ability.contains("categories") ||
++                            (ability["categories"].is_array() &&
++                            std::all_of(ability["categories"].begin(), ability["categories"].end(),
++                                [](const auto &item) { return item.is_string(); }));
++                        if (!ability.is_object() || !ability.contains("name") || !ability["name"].is_string() ||
++                            (ability.contains("label") && !ability["label"].is_string()) ||
++                            (ability.contains("launchMode") && !isInteger(ability["launchMode"])) ||
++                            (ability.contains("isMainAbility") && !ability["isMainAbility"].is_boolean()) ||
++                            !actionsValid || !categoriesValid) {
++                            LOG_E(BMS_TAG_INSTALLER, "manifest ability schema rejected");
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                    }
++                    const std::string pkg = j.value("bundleName", std::string());
++                    const bool validPackageName = pkg.size() >= Constants::MIN_BUNDLE_NAME &&
++                        pkg.size() <= Constants::MAX_BUNDLE_NAME &&
++                        std::isalpha(static_cast<unsigned char>(pkg.front())) &&
++                        std::all_of(pkg.begin(), pkg.end(), [](unsigned char c) {
++                            return std::isalnum(c) || c == '.' || c == '_';
++                        });
++                    if (!validPackageName) {
++                        LOG_E(BMS_TAG_INSTALLER, "invalid Android package name");
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    const int32_t versionCode = j.value("versionCode", 0);
++                    const std::string versionName = j.value("versionName", std::string());
++                    const int32_t minSdkVersion = j.value("minSdkVersion", 0);
++                    const int32_t targetSdkVersion = j.value("targetSdkVersion", 0);
++                    const std::string appLabel = j.value("appLabel", pkg);
++                    const bool debuggable = j.value("debuggable", false);
++                    const std::string primaryAbi = j.value("primaryAbi", std::string());
++                    const std::string nativePayloadState =
++                        j.value("nativePayloadState", std::string());
++                    if (nativePayloadState != "none" && nativePayloadState != "supported") {
++                        LOG_E(BMS_TAG_INSTALLER, "native payload state rejected: %{public}s",
++                            nativePayloadState.c_str());
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    if (!j.contains("hasNativeLibraries") || !j["hasNativeLibraries"].is_boolean()) {
++                        LOG_E(BMS_TAG_INSTALLER, "native payload boolean missing or invalid");
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    const bool hasNativeLibraries = j["hasNativeLibraries"].get<bool>();
++                    if (nativePayloadState == "none") {
++                        if (hasNativeLibraries || !primaryAbi.empty()) {
++                            LOG_E(BMS_TAG_INSTALLER, "inconsistent no-native payload contract");
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                    } else if (!hasNativeLibraries ||
++                        (primaryAbi != "arm64-v8a" && primaryAbi != "armeabi-v7a")) {
++                        LOG_E(BMS_TAG_INSTALLER, "unsupported or inconsistent primaryAbi: %{public}s",
++                            primaryAbi.c_str());
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    auto dataMgr = DelayedSingleton<BundleMgrService>::GetInstance()->GetDataMgr();
++                    if (dataMgr == nullptr) {
++                        LOG_E(BMS_TAG_INSTALLER, "BundleDataMgr unavailable for register");
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    const int32_t activeUserId = AccountHelper::GetCurrentActiveUserId();
++                    const bool adapterIsUpdate = dataMgr->IsBundleExist(pkg);
++                    uint32_t adapterOldVersionCode = 0;
++                    InnerBundleInfo adapterOldInfo;
++                    if (adapterIsUpdate) {
++                        const InnerBundleInfo *oldInfo = nullptr;
++                        if (!dataMgr->GetInnerBundleInfoWithFlags(pkg, 0, oldInfo, activeUserId) || oldInfo == nullptr) {
++                            LOG_E(BMS_TAG_INSTALLER, "existing APK record unavailable for update");
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                        adapterOldInfo = *oldInfo;
++                        adapterOldVersionCode = oldInfo->GetVersionCode();
++                    }
++                    // adapter v2: route all fs writes via InstalldClient IPC (installs
++                    // domain has write perms on data_app_el*_file; foundation does not).
++                    // Previous design leaked direct fs writes from foundation and
++                    // required setenforce 0 to actually work.
++                    const std::string codeRoot = Constants::BUNDLE_CODE_DIR;
++                    const std::string bundleRoot = codeRoot + ServiceConstants::PATH_SEPARATOR + pkg;
++                    const std::string stagedBundleRoot = codeRoot + ServiceConstants::PATH_SEPARATOR +
++                        ServiceConstants::BUNDLE_NEW_CODE_DIR + pkg;
++                    const std::string deployedDir = stagedBundleRoot + "/android";
++                    const std::string deployedApk = deployedDir + "/base.apk";
++                    const std::string entryHapPath = stagedBundleRoot + "/entry.hap";
++                    const std::string nativeStagePath = hasNativeLibraries ?
++                        deployedDir + "/lib/" + primaryAbi : std::string();
++                    const std::string finalDeployedDir = bundleRoot + "/android";
++                    const std::string finalDeployedApk = finalDeployedDir + "/base.apk";
++                    const std::string finalEntryHapPath = bundleRoot + "/entry.hap";
++                    const std::string finalNativePath = hasNativeLibraries ?
++                        finalDeployedDir + "/lib/" + primaryAbi : std::string();
++                    const std::string moduleNativePath = hasNativeLibraries ?
++                        std::string("android/lib/") + primaryAbi : std::string();
++                    const std::string srcApkPath = p;
++                    auto installd = InstalldClient::GetInstance();
++                    if (installd == nullptr) {
++                        LOG_E(BMS_TAG_INSTALLER, "InstalldClient unavailable — cannot deploy APK");
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    // OH 6.1 LTS has no CREATE_NEW_DIR exception state. The scoped
++                    // +new- stage below is the LTS-compatible pre-publish contract.
++                    ErrCode ec = ERR_OK;
++                    // Build the complete code root under +new-; final remains untouched.
++                    bool stageExists = false;
++                    ec = installd->IsExistDir(stagedBundleRoot, stageExists);
++                    if (ec != ERR_OK || (stageExists && installd->RemoveDir(stagedBundleRoot, false) != ERR_OK)) {
++                        LOG_E(BMS_TAG_INSTALLER, "cannot clear stale APK stage %{public}s", stagedBundleRoot.c_str());
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    ec = installd->CreateBundleDir(stagedBundleRoot);
++                    if (ec != ERR_OK) {
++                        LOG_E(BMS_TAG_INSTALLER, "CreateBundleDir(%{public}s) failed: %{public}d",
++                            stagedBundleRoot.c_str(), ec);
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    ScopeGuard stageGuard([&installd, &stagedBundleRoot]() {
++                        (void)installd->RemoveDir(stagedBundleRoot, false);
++                    });
++                    // 2. 'android/' subdir — holds adapter-specific files (base.apk, lib/, oat/).
++                    //    Owned root:root so app process can't tamper.
++                    ec = installd->Mkdir(deployedDir, 0755, 0, 0);
++                    if (ec != ERR_OK) {
++                        LOG_E(BMS_TAG_INSTALLER, "Mkdir(%{public}s) failed: %{public}d", deployedDir.c_str(), ec);
++                        (void)installd->RemoveDir(stagedBundleRoot);
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    // 3. base.apk — copy from stream_install staging to persistent
++                    //    location via installs-domain CopyFile.
++                    ec = installd->CopyFile(srcApkPath, deployedApk, std::string());
++                    if (ec != ERR_OK) {
++                        LOG_E(BMS_TAG_INSTALLER, "CopyFile(%{public}s -> %{public}s) failed: %{public}d",
++                            srcApkPath.c_str(), deployedApk.c_str(), ec);
++                        (void)installd->RemoveDir(stagedBundleRoot);
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    // 4. Synthesize OH resources HAP directly at entry.hap location —
++                    //    installd loads libapk_installer.so (installs domain) and calls
++                    //    oh_adapter_build_resources_hap(apk, outPath). No fs work in BMS.
++                    ExtractParam ep;
++                    ep.srcPath = srcApkPath;
++                    ep.targetPath = entryHapPath;
++                    ep.extractFileType = ExtractFileType::APK_RESOURCES_HAP;
++                    ec = installd->ExtractFiles(ep);
++                    if (ec != ERR_OK) {
++                        LOG_E(BMS_TAG_INSTALLER, "ExtractFiles(APK_RESOURCES_HAP) %{public}s -> %{public}s failed: %{public}d",
++                            srcApkPath.c_str(), entryHapPath.c_str(), ec);
++                        (void)installd->RemoveDir(stagedBundleRoot);
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    LOG_I(BMS_TAG_INSTALLER, "ExtractFiles(APK_RESOURCES_HAP) OK %{public}s", entryHapPath.c_str());
++
++                    if (hasNativeLibraries) {
++                        ExtractParam nativeParam;
++                        nativeParam.srcPath = srcApkPath;
++                        nativeParam.targetPath = nativeStagePath;
++                        nativeParam.cpuAbi = primaryAbi;
++                        nativeParam.extractFileType = ExtractFileType::APK_NATIVE_SO;
++                        ec = installd->ExtractFiles(nativeParam);
++                        if (ec != ERR_OK) {
++                            LOG_E(BMS_TAG_INSTALLER,
++                                "ExtractFiles(APK_NATIVE_SO) failed abi=%{public}s ec=%{public}d",
++                                primaryAbi.c_str(), ec);
++                            (void)installd->RemoveDir(stagedBundleRoot);
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                        bool nativeStageExists = false;
++                        ec = installd->IsExistDir(nativeStagePath, nativeStageExists);
++                        if (ec != ERR_OK || !nativeStageExists) {
++                            LOG_E(BMS_TAG_INSTALLER, "APK native extractor capability/path gate failed");
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                        bool nativeStageEmpty = true;
++                        ec = installd->IsDirEmpty(nativeStagePath, nativeStageEmpty);
++                        if (ec != ERR_OK || nativeStageEmpty) {
++                            LOG_E(BMS_TAG_INSTALLER, "APK native extractor returned an empty stage");
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                    }
++
++                    InnerBundleInfo innerBundleInfo;
++                    BundleInfo bundleInfo;
++                    bundleInfo.name = pkg;
++                    bundleInfo.vendor = "android";
++                    bundleInfo.versionCode = versionCode;
++                    bundleInfo.versionName = versionName;
++                    bundleInfo.minSdkVersion = minSdkVersion;
++                    bundleInfo.targetVersion = targetSdkVersion;
++                    bundleInfo.cpuAbi = primaryAbi;
++                    innerBundleInfo.SetBaseBundleInfo(bundleInfo);
++
++                    ApplicationInfo appInfo;
++                    appInfo.name = pkg;
++                    appInfo.bundleName = pkg;
++                    appInfo.label = appLabel;
++                    appInfo.codePath = finalDeployedApk;
++                    appInfo.dataDir = std::string("/data/app/el2/") +
++                        std::to_string(activeUserId) + "/base/" + pkg;
++                    appInfo.uid = j.value("uid", 10000);
++                    appInfo.debug = debuggable;
++                    appInfo.deviceId = "PHONE-001";
++                    appInfo.cpuAbi = primaryAbi;
++                    appInfo.nativeLibraryPath = finalNativePath;
++                    // Icon path: launcher requires applicationInfo.iconPath OR
++                    // applicationInfo.iconResource non-empty to render the icon.
++                    // ApkInstaller writes a fallback icon.png to deployedDir at
++                    // install time (extracts from APK or uses generic placeholder).
++                    appInfo.iconPath = finalDeployedDir + "/icon.png";
++                    appInfo.icon = appInfo.iconPath;
++                    // adapter project: app-level iconId/labelId from synthesized
++                    // resources.index (restool-generated AppScope-level entries):
++                    //   media:app_icon  -> 0x01000001
++                    //   string:app_name -> 0x01000000
++                    appInfo.iconId  = 0x01000001;
++                    appInfo.labelId = 0x01000000;
++                    // Mark as Android app so AMS routes spawn requests through
++                    // the AndroidSpawnClient branch (-> appspawn-x) instead of
++                    // standard OH appspawn (which expects HAP + ArkTS runtime).
++                    appInfo.bundleType = BundleType::APP_ANDROID;
++                    // Preserve the existing token on update. Fresh installs allocate one
++                    // token and explicitly delete it on every pre-commit failure path.
++                    Security::AccessToken::AccessTokenIDEx allocTokenIdEx {};
++                    bool adapterAllocatedToken = false;
++                    if (adapterIsUpdate) {
++                        allocTokenIdEx.tokenIdExStruct.tokenID = adapterOldInfo.GetAccessTokenId(activeUserId);
++                        allocTokenIdEx.tokenIDEx = adapterOldInfo.GetAccessTokenIdEx(activeUserId);
++                    } else {
++                        Security::AccessToken::HapInfoParams hapInfo;
++                        hapInfo.userID = activeUserId;
++                        hapInfo.bundleName = pkg;
++                        hapInfo.instIndex = 0;
++                        hapInfo.dlpType = 0;
++                        hapInfo.appIDDesc = pkg + "_apk_adapter";
++                        hapInfo.apiVersion = 14;
++                        hapInfo.isSystemApp = false;
++                        hapInfo.appDistributionType = "none";
++                        Security::AccessToken::HapPolicyParams hapPolicy;
++                        hapPolicy.apl = Security::AccessToken::APL_NORMAL;
++                        hapPolicy.domain = "android.adapter.domain";
++                        allocTokenIdEx = Security::AccessToken::AccessTokenKit::AllocHapToken(hapInfo, hapPolicy);
++                        adapterAllocatedToken = allocTokenIdEx.tokenIdExStruct.tokenID != 0;
++                    }
++                    if (allocTokenIdEx.tokenIdExStruct.tokenID == 0) {
++                        LOG_E(BMS_TAG_INSTALLER,
++                            "AccessToken unavailable for %{public}s",
++                            pkg.c_str());
++                        (void)installd->RemoveDir(stagedBundleRoot);
++                        return ERR_APPEXECFWK_INSTALL_GRANT_REQUEST_PERMISSIONS_FAILED;
++                    }
++                    LOG_I(BMS_TAG_INSTALLER,
++                        "AccessToken %{public}s %{public}s tokenID=0x%{public}x",
++                        pkg.c_str(),
++                        adapterIsUpdate ? "reused" : "allocated",
++                        static_cast<uint32_t>(allocTokenIdEx.tokenIdExStruct.tokenID));
++                    auto deleteAllocatedToken = [&adapterAllocatedToken, &allocTokenIdEx]() {
++                        if (adapterAllocatedToken) {
++                            (void)Security::AccessToken::AccessTokenKit::DeleteToken(
++                                allocTokenIdEx.tokenIdExStruct.tokenID);
++                            adapterAllocatedToken = false;
++                        }
++                    };
++                    ScopeGuard allocatedTokenGuard([&deleteAllocatedToken]() { deleteAllocatedToken(); });
++                    appInfo.accessTokenId   = allocTokenIdEx.tokenIdExStruct.tokenID;
++                    appInfo.accessTokenIdEx = allocTokenIdEx.tokenIDEx;
++                    innerBundleInfo.SetBaseApplicationInfo(appInfo);
++                    // Override the bundleType field on InnerBundleInfo itself
++                    // (used by GetApplicationBundleType() which AMS reads to dispatch).
++                    innerBundleInfo.SetApplicationBundleType(BundleType::APP_ANDROID);
++
++                    InnerModuleInfo moduleInfo;
++                    moduleInfo.name = "entry";
++                    moduleInfo.modulePackage = "entry";
++                    moduleInfo.moduleName = "entry";
++                    moduleInfo.modulePath = finalDeployedDir;
++                    moduleInfo.cpuAbi = primaryAbi;
++                    moduleInfo.nativeLibraryPath = moduleNativePath;
++                    moduleInfo.isEntry = true;
++                    moduleInfo.installationFree = false;
++                    moduleInfo.distro.moduleType = "entry";
++                    moduleInfo.distro.installationFree = false;
++                    moduleInfo.distro.deliveryWithInstall = true;
++                    moduleInfo.distro.moduleName = "entry";
++                    // v2: entry.hap already synthesized by installd above via
++                    //     ExtractFiles(APK_RESOURCES_HAP). No BMS-side staging.
++                    moduleInfo.hapPath = finalEntryHapPath;
++                    moduleInfo.moduleResPath = moduleInfo.hapPath;
++
++                    {
++                        for (const auto &ab : abilitiesJson) {
++                            std::string abilityName = ab.value("name", std::string());
++                            if (abilityName.empty()) continue;
++                            InnerAbilityInfo innerAbility;
++                            innerAbility.name = abilityName;
++                            innerAbility.bundleName = pkg;
++                            innerAbility.moduleName = "entry";
++                            innerAbility.package = "entry";
++                            innerAbility.applicationName = pkg;
++                            innerAbility.label = ab.value("label", abilityName);
++                            innerAbility.launchMode = static_cast<LaunchMode>(
++                                ab.value("launchMode", 0));
++                            // OH InnerAbilityInfo defaults: visible=false, enabled=false,
++                            // isLauncherAbility=false. All three need to be true for
++                            // launcher's QueryLauncherAbilityInfos to surface this ability.
++                            innerAbility.visible = true;
++                            innerAbility.enabled = true;
++                            innerAbility.isLauncherAbility = ab.value("isMainAbility", false);
++                            innerAbility.kind = "page";
++                            innerAbility.type = AbilityType::PAGE;
++                            innerAbility.codePath = finalDeployedDir;
++                            innerAbility.deviceId = "PHONE-001";
++                            innerAbility.iconPath = finalDeployedDir + "/icon.png";
++                            // adapter project: iconId / labelId match the synthesized
++                            // resources.index inside entry.hap (restool-generated):
++                            //   media:icon  -> 0x01000005
++                            //   string:EntryAbility_label -> 0x01000003
++                            // OH launcher's getAppIconWithCache requires iconId > 0
++                            // and ResourceManager.getMediaBase64(iconId) succeeds.
++                            innerAbility.iconId  = 0x01000005;
++                            innerAbility.labelId = 0x01000003;
++                            innerAbility.hapPath = finalEntryHapPath;
++                            innerAbility.resourcePath = innerAbility.hapPath;
++                            // Translate Android intent-filter to OH skills.
++                            // Crucially: when Android MAIN+LAUNCHER are present (isMainAbility=true)
++                            // we also add ohos.want.action.home so OH launcher's QueryLauncherAbilityInfos
++                            // (which filters by Want::ACTION_HOME = "ohos.want.action.home") finds this ability.
++                            Skill skill;
++                            if (ab.contains("actions") && ab["actions"].is_array()) {
++                                for (const auto &act : ab["actions"]) {
++                                    skill.actions.push_back(act.get<std::string>());
++                                }
++                            }
++                            if (ab.contains("categories") && ab["categories"].is_array()) {
++                                for (const auto &cat : ab["categories"]) {
++                                    skill.entities.push_back(cat.get<std::string>());
++                                }
++                            }
++                            if (ab.value("isMainAbility", false)) {
++                                skill.actions.push_back("ohos.want.action.home");
++                                skill.entities.push_back("entity.system.home");
++                            }
++                            innerAbility.skills.push_back(skill);
++                            std::string key = pkg + ".entry." + abilityName;
++                            innerBundleInfo.InsertAbilitiesInfo(key, innerAbility);
++                            if (ab.value("isMainAbility", false)) {
++                                moduleInfo.mainAbility = abilityName;
++                                moduleInfo.entryAbilityKey = key;
++                            }
++                        }
++                    }
++                    innerBundleInfo.InsertInnerModuleInfo("entry", moduleInfo);
++
++                    // adapter project: support reinstall/update. OH BMS state machine
++                    // (transferStates_) forbids INSTALL_SUCCESS -> INSTALL_START, so an
++                    // already-registered bundle must take the UPDATING path
++                    // (INSTALL_SUCCESS -> UPDATING_START -> UPDATING_SUCCESS). Detect
++                    // existence and pick the state; fresh install keeps INSTALL_START.
++                    InstallState adapterStartState = adapterIsUpdate
++                        ? InstallState::UPDATING_START : InstallState::INSTALL_START;
++                    if (!dataMgr->UpdateBundleInstallState(pkg, adapterStartState)) {
++                        LOG_E(BMS_TAG_INSTALLER, "UpdateBundleInstallState %{public}s failed for %{public}s",
++                            adapterIsUpdate ? "UPDATING_START" : "INSTALL_START", pkg.c_str());
++                        (void)installd->RemoveDir(stagedBundleRoot);
++                        deleteAllocatedToken();
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    auto restoreAdapterUpdate = [&dataMgr, &pkg, &adapterOldInfo](bool restoreMetadata) {
++                        const bool rollbackStateOk =
++                            dataMgr->UpdateBundleInstallState(pkg, InstallState::ROLL_BACK);
++                        const bool metadataOk = !restoreMetadata ||
++                            dataMgr->UpdateInnerBundleInfo(adapterOldInfo, true);
++                        const bool stableStateOk =
++                            dataMgr->UpdateBundleInstallState(pkg, InstallState::INSTALL_SUCCESS);
++                        if (!rollbackStateOk || !metadataOk || !stableStateOk) {
++                            LOG_E(BMS_TAG_INSTALLER,
++                                "APK update rollback incomplete state=%{public}d metadata=%{public}d stable=%{public}d",
++                                rollbackStateOk, metadataOk, stableStateOk);
++                        }
++                    };
++                    auto removeFreshRegistration = [&dataMgr, &pkg]() {
++                        const bool uninstallStartOk =
++                            dataMgr->UpdateBundleInstallState(pkg, InstallState::UNINSTALL_START);
++                        const bool uninstallSuccessOk =
++                            dataMgr->UpdateBundleInstallState(pkg, InstallState::UNINSTALL_SUCCESS);
++                        if (!uninstallStartOk || !uninstallSuccessOk) {
++                            LOG_E(BMS_TAG_INSTALLER,
++                                "fresh APK rollback incomplete start=%{public}d success=%{public}d",
++                                uninstallStartOk, uninstallSuccessOk);
++                        }
++                    };
++                    bool freshCodePublished = false;
++                    ScopeGuard freshCodeGuard([&installd, &bundleRoot, &adapterIsUpdate, &freshCodePublished]() {
++                        if (!adapterIsUpdate && freshCodePublished) {
++                            (void)installd->RemoveDir(bundleRoot, false);
++                        }
++                    });
++
++                    // Publish only after all staged files and metadata have passed their gates.
++                    if (adapterIsUpdate) {
++                        // Keep the OH 6.1 LTS atomic-publish contract in this
++                        // current-vintage port. The similarly named InnerProcess*
++                        // helpers belong to a later five-file BMS refactor and are
++                        // deliberately not imported into this LTS tree.
++                        const std::string oldBundleRoot = codeRoot + ServiceConstants::PATH_SEPARATOR +
++                            ServiceConstants::BUNDLE_OLD_CODE_DIR + pkg;
++                        ec = installd->RenameModuleDir(bundleRoot, oldBundleRoot);
++                        if (ec != ERR_OK) {
++                            if (!BundleUtil::IsExistDir(bundleRoot) && errno == ENOENT) {
++                                LOG_W(BMS_TAG_INSTALLER,
++                                    "APK update real code path absent, continue publishing +new-");
++                                ec = ERR_OK;
++                            } else {
++                                LOG_E(BMS_TAG_INSTALLER,
++                                    "rename APK real to +old- failed: %{public}d", ec);
++                            }
++                        }
++                        if (ec == ERR_OK) {
++                            InstallExceptionInfo exceptionInfo;
++                            exceptionInfo.status = InstallRenameExceptionStatus::RENAME_RELA_TO_OLD_PATH;
++                            exceptionInfo.versionCode = adapterOldVersionCode;
++                            ErrCode saveEc = DelayedSingleton<InstallExceptionMgr>::GetInstance()
++                                ->SaveBundleExceptionInfo(pkg, exceptionInfo);
++                            if (saveEc != ERR_OK) {
++                                LOG_W(BMS_TAG_INSTALLER,
++                                    "save APK real-to-old exception state failed: %{public}d", saveEc);
++                            }
++                            ec = installd->RenameModuleDir(stagedBundleRoot, bundleRoot);
++                            if (ec == ERR_OK) {
++                                exceptionInfo.status =
++                                    InstallRenameExceptionStatus::RENAME_NEW_TO_RELA_PATH;
++                                saveEc = DelayedSingleton<InstallExceptionMgr>::GetInstance()
++                                    ->SaveBundleExceptionInfo(pkg, exceptionInfo);
++                                if (saveEc != ERR_OK) {
++                                    LOG_E(BMS_TAG_INSTALLER,
++                                        "save APK new-to-real exception state failed: %{public}d", saveEc);
++                                }
++                            }
++                        }
++                    } else {
++                        (void)installd->RemoveDir(bundleRoot);
++                        ec = installd->RenameModuleDir(stagedBundleRoot, bundleRoot);
++                        freshCodePublished = ec == ERR_OK;
++                    }
++                    if (ec != ERR_OK) {
++                        LOG_E(BMS_TAG_INSTALLER, "publish APK code root failed: %{public}d", ec);
++                        if (adapterIsUpdate) {
++                            RollbackCodePath(pkg, true);
++                            restoreAdapterUpdate(false);
++                        } else {
++                            (void)installd->RemoveDir(stagedBundleRoot);
++                            removeFreshRegistration();
++                        }
++                        deleteAllocatedToken();
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    stageGuard.Dismiss();
++                    ScopeGuard registrationGuard([this, &adapterIsUpdate, &pkg, &restoreAdapterUpdate,
++                        &removeFreshRegistration]() {
++                        if (adapterIsUpdate) {
++                            RollbackCodePath(pkg, true);
++                            restoreAdapterUpdate(true);
++                        } else {
++                            removeFreshRegistration();
++                        }
++                    });
++                    // adapter project: register InnerBundleUserInfo ONLY for the current
++                    // active user (100). Previously userId 0 (system) was also registered
++                    // so some AMS/AppMS internal lookups would resolve, but that made the
++                    // bundle multi-user: a normal uninstall (user 100) then took the
++                    // user-level branch (isMultiUser==true -> "only delete userinfo") and
++                    // left the userId-0 entry behind, so the bundle stayed in BMS (still in
++                    // `bm dump -a`) and reloaded on reboot. Single-user registration makes
++                    // GetInnerBundleUserInfos().size()==1 -> uninstall takes the full-bundle
++                    // removal path -> symmetric install/uninstall.
++                    // NOTE: if a future launch path needs a userId-0 entry (old comment
++                    // referenced CheckLaunchApplicationParams), resolve it AMS-side against
++                    // the active user rather than re-introducing the dual registration.
++                    auto installTime = std::chrono::duration_cast<std::chrono::milliseconds>(
++                        std::chrono::system_clock::now().time_since_epoch()).count();
++                    for (int32_t uid_user : {AccountHelper::GetCurrentActiveUserId()}) {
++                        InnerBundleUserInfo userInfo;
++                        userInfo.bundleName = pkg;
++                        userInfo.bundleUserInfo.userId = uid_user;
++                        userInfo.bundleUserInfo.enabled = true;
++                        // OH-native uid/gid: uid = bundleUserInfo.userId*BASE_USER_RANGE + GenerateBundleId()
++                        dataMgr->GenerateUidAndGid(userInfo);
++                        userInfo.installTime = installTime;
++                        userInfo.updateTime = installTime;
++                        // adapter v3: persist allocated HAP token into the per-userId
++                        // InnerBundleUserInfo so InnerBundleInfo::GetAccessTokenId(userId)
++                        // (called by AMS to populate bundleInfo.applicationInfo.accessTokenId)
++                        // returns the real allocated token, not 0.
++                        userInfo.accessTokenId = allocTokenIdEx.tokenIdExStruct.tokenID;
++                        userInfo.accessTokenIdEx = allocTokenIdEx.tokenIDEx;
++                        innerBundleInfo.AddInnerBundleUserInfo(userInfo);
++                        // Also set via official setter so any side-state inside
++                        // InnerBundleInfo (e.g. cached lookup tables) stays consistent.
++                        innerBundleInfo.SetAccessTokenIdEx(allocTokenIdEx, uid_user);
++                    }
++                    // adapter project: fresh install adds a new entry; update replaces it
++                    // in-place. AddInnerBundleInfo enforces state==INSTALL_START and would
++                    // reject the UPDATING path, so use UpdateInnerBundleInfo when updating.
++                    bool adapterAddOk = adapterIsUpdate
++                        ? dataMgr->UpdateInnerBundleInfo(innerBundleInfo, false)
++                        : dataMgr->AddInnerBundleInfo(pkg, innerBundleInfo, true);
++                    if (!adapterAddOk) {
++                        LOG_E(BMS_TAG_INSTALLER, "%{public}s failed for %{public}s",
++                            adapterIsUpdate ? "UpdateInnerBundleInfo" : "AddInnerBundleInfo", pkg.c_str());
++                        deleteAllocatedToken();
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    // Persist the new record before publishing a success state. This keeps
++                    // a crash from leaving final code plus INSTALL_SUCCESS with no reboot-safe
++                    // bundle record. UpdateInnerBundleInfo above is intentionally memory-only;
++                    // both fresh and update paths cross the same storage commit gate here.
++                    if (!dataMgr->SaveInnerBundleInfo(innerBundleInfo)) {
++                        LOG_E(BMS_TAG_INSTALLER, "SaveInnerBundleInfo failed for %{public}s", pkg.c_str());
++                        deleteAllocatedToken();
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    InstallState adapterSuccessState = adapterIsUpdate
++                        ? InstallState::UPDATING_SUCCESS : InstallState::INSTALL_SUCCESS;
++                    if (!dataMgr->UpdateBundleInstallState(pkg, adapterSuccessState)) {
++                        LOG_E(BMS_TAG_INSTALLER, "UpdateBundleInstallState success(%{public}d) failed for %{public}s",
++                            static_cast<int32_t>(adapterSuccessState), pkg.c_str());
++                        deleteAllocatedToken();
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    registrationGuard.Dismiss();
++                    freshCodeGuard.Dismiss();
++                    ProcessOldCodePath(pkg, adapterIsUpdate);
++                    allocatedTokenGuard.Dismiss();
++                    LOG_I(BMS_TAG_INSTALLER, "registered %{public}s in BMS for userId=100 (persistent)", pkg.c_str());
++                    // Fire COMMON_EVENT_PACKAGE_ADDED broadcast so launcher / Sceneboard
++                    // refresh and add the icon dynamically. Without this, launcher only
++                    // re-queries BMS at startup and won't notice our manual register.
++                    NotifyBundleEvents installRes;
++                    installRes.type           = NotifyType::INSTALL;
++                    installRes.resultCode     = ERR_OK;
++                    installRes.bundleName     = pkg;
++                    installRes.modulePackage  = "entry";
++                    installRes.uid            = innerBundleInfo.GetUid(AccountHelper::GetCurrentActiveUserId());
++                    installRes.userId         = AccountHelper::GetCurrentActiveUserId();
++                    installRes.isAppUpdate    = false;
++                    // adapter v3 (A+ fix 2026-05-09): launcher consumes these two
++                    // fields directly from the broadcast event JSON (without a BMS
++                    // re-query). Hardcoding bundleType=0 / accessTokenId=0 made
++                    // launcher silent-skip the view refresh — icon only appeared
++                    // after a reboot's full re-scan. Carry the real values written
++                    // by AllocHapToken + SetApplicationBundleType above.
++                    installRes.bundleType     = static_cast<int32_t>(BundleType::APP_ANDROID);
++                    installRes.accessTokenId  = allocTokenIdEx.tokenIdExStruct.tokenID;
++                    installRes.appDistributionType = "none";
++                    if (NotifyBundleStatus(installRes) != ERR_OK) {
++                        LOG_W(BMS_TAG_INSTALLER, "NotifyBundleStatus(INSTALL) failed for %{public}s — launcher may not refresh", pkg.c_str());
++                    } else {
++                        LOG_I(BMS_TAG_INSTALLER, "broadcast COMMON_EVENT_PACKAGE_ADDED for %{public}s", pkg.c_str());
++                    }
++                    // Directly write ResourceInfo into BundleResourceRdb with the
++                    // PNG bytes already extracted by ApkInstaller to
++                    // /data/app/android/<pkg>/icon.png. Bypass
++                    // BundleResourceManager::AddResourceInfoByBundleNameWhenInstall
++                    // because it tries to parse resources.index (always missing for
++                    // .apk) and ProcessResourceInfoWhenParseFailed substitutes a
++                    // generic default icon instead of our extracted PNG.
++                    {
++                        std::vector<uint8_t> iconBytes;
++                        std::vector<std::string> candidates = {
++                            finalDeployedDir + "/icon.png"
++                        };
++                        for (const auto &iconFile : candidates) {
++                            std::ifstream icf(iconFile, std::ios::binary | std::ios::ate);
++                            if (!icf) continue;
++                            std::streamsize sz = icf.tellg();
++                            if (sz <= 0 || sz >= (10 * 1024 * 1024)) continue;
++                            icf.seekg(0);
++                            iconBytes.resize(static_cast<size_t>(sz));
++                            if (icf.read(reinterpret_cast<char*>(iconBytes.data()), sz)) {
++                                LOG_I(BMS_TAG_INSTALLER, "loaded icon %{public}s (%{public}zu bytes)", iconFile.c_str(), iconBytes.size());
++                                break;
++                            }
++                            iconBytes.clear();
++                        }
++                        if (iconBytes.empty()) {
++                            LOG_W(BMS_TAG_INSTALLER, "no icon file found for %{public}s — RDB row will lack icon", pkg.c_str());
++                        }
++                        // OH launcher reads the ICON TEXT column which holds a
++                        // "data:image/png;base64,..." URI, NOT the FOREGROUND BLOB.
++                        // Inline base64 encode iconBytes into a data URI so the row
++                        // matches what BundleResourceParser would produce for a HAP.
++                        std::string iconDataUri;
++                        if (!iconBytes.empty()) {
++                            static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
++                            std::string b64str;
++                            b64str.reserve(((iconBytes.size() + 2) / 3) * 4);
++                            size_t i = 0;
++                            for (; i + 2 < iconBytes.size(); i += 3) {
++                                uint32_t n = (uint32_t(iconBytes[i]) << 16) | (uint32_t(iconBytes[i+1]) << 8) | uint32_t(iconBytes[i+2]);
++                                b64str.push_back(b64[(n >> 18) & 0x3F]);
++                                b64str.push_back(b64[(n >> 12) & 0x3F]);
++                                b64str.push_back(b64[(n >> 6)  & 0x3F]);
++                                b64str.push_back(b64[n & 0x3F]);
++                            }
++                            if (i < iconBytes.size()) {
++                                uint32_t n = uint32_t(iconBytes[i]) << 16;
++                                if (i + 1 < iconBytes.size()) n |= uint32_t(iconBytes[i+1]) << 8;
++                                b64str.push_back(b64[(n >> 18) & 0x3F]);
++                                b64str.push_back(b64[(n >> 12) & 0x3F]);
++                                b64str.push_back(i + 1 < iconBytes.size() ? b64[(n >> 6) & 0x3F] : '=');
++                                b64str.push_back('=');
++                            }
++                            iconDataUri = std::string("data:image/png;base64,") + b64str;
++                        }
++                        BundleResourceRdb rdb;
++                        // App-level row (abilityName empty).
++                        ResourceInfo appRes;
++                        appRes.bundleName_     = pkg;
++                        appRes.moduleName_     = "entry";
++                        appRes.abilityName_    = "";
++                        appRes.label_          = appLabel;
++                        appRes.iconNeedParse_  = false;
++                        appRes.labelNeedParse_ = false;
++                        appRes.icon_           = iconDataUri;
++                        if (!iconBytes.empty()) {
++                            appRes.foreground_ = iconBytes;
++                        }
++                        if (!rdb.AddResourceInfo(appRes)) {
++                            LOG_W(BMS_TAG_INSTALLER, "BundleResourceRdb app-level Add fail %{public}s", pkg.c_str());
++                        } else {
++                            LOG_I(BMS_TAG_INSTALLER, "BundleResourceRdb app-level Add OK %{public}s", pkg.c_str());
++                        }
++                        // Per-ability rows (one per launcher activity so
++                        // GetLauncherAbilityResourceInfo returns a list).
++                        for (const auto &abilityJson : abilitiesJson) {
++                            ResourceInfo aRes = appRes;
++                            aRes.abilityName_ = abilityJson.value("name", std::string(""));
++                            std::string aLabel = abilityJson.value("label", appLabel);
++                            if (!aLabel.empty()) {
++                                aRes.label_ = aLabel;
++                            }
++                            if (aRes.abilityName_.empty()) continue;
++                            if (!rdb.AddResourceInfo(aRes)) {
++                                LOG_W(BMS_TAG_INSTALLER, "BundleResourceRdb ability Add fail %{public}s/%{public}s", pkg.c_str(), aRes.abilityName_.c_str());
++                            } else {
++                                LOG_I(BMS_TAG_INSTALLER, "BundleResourceRdb ability Add OK %{public}s/%{public}s", pkg.c_str(), aRes.abilityName_.c_str());
++                            }
++                        }
++                    }
++                }
++            }
++            LOG_I(BMS_TAG_INSTALLER, "adapter .apk install + register completed");
++            return ERR_OK;
++        }
++    }
++#endif
++
+     // copy the haps to the dir which cannot be accessed from caller
+     result = CopyHapsToSecurityDir(installParam, bundlePaths);
+     CHECK_RESULT(result, "copy file failed %{public}d");
+diff --git a/services/bundlemgr/src/bundle_data_mgr.cpp b/services/bundlemgr/src/bundle_data_mgr.cpp
+index ad7f50233..bd2aa4c02 100644
+--- a/services/bundlemgr/src/bundle_data_mgr.cpp
++++ b/services/bundlemgr/src/bundle_data_mgr.cpp
+@@ -14,6 +14,9 @@
+  */
+ 
+ #include "bundle_data_mgr.h"
++#ifdef GLOBAL_RESMGR_ENABLE
++#include <fstream>  // adapter project: iconPath fallback
++#endif
+ 
+ #include <algorithm>
+ #include <sys/stat.h>
+@@ -8271,6 +8274,27 @@ ErrCode BundleDataMgr::GetMediaData(const std::string &bundleName, const std::st
+             return ERR_BUNDLE_MANAGER_ABILITY_DISABLED;
+         }
+     }
++    // adapter project: iconPath fallback when iconId=0
++    // Android-APK bundles registered without OH resources.index have iconId=0.
++    // Read PNG bytes from abilityInfo.iconPath directly, bypass ResourceManager.
++    if (abilityInfo.iconId == 0 && !abilityInfo.iconPath.empty()) {
++        std::ifstream ifs(abilityInfo.iconPath, std::ios::binary | std::ios::ate);
++        if (ifs) {
++            std::streamsize sz = ifs.tellg();
++            if (sz > 0 && sz < (10 * 1024 * 1024)) {
++                ifs.seekg(0);
++                mediaDataPtr = std::make_unique<uint8_t[]>(static_cast<size_t>(sz));
++                if (ifs.read(reinterpret_cast<char*>(mediaDataPtr.get()), sz)) {
++                    len = static_cast<size_t>(sz);
++                    APP_LOGI("adapter iconPath fallback: %{public}s (%{public}zu bytes)",
++                        abilityInfo.iconPath.c_str(), len);
++                    return ERR_OK;
++                }
++                mediaDataPtr.reset();
++            }
++        }
++        APP_LOGW("adapter iconPath fallback failed for %{public}s", abilityInfo.iconPath.c_str());
++    }
+     std::shared_ptr<Global::Resource::ResourceManager> resourceManager =
+         GetResourceManager(bundleName, abilityInfo.moduleName, responseUserId);
+     if (resourceManager == nullptr) {
+diff --git a/services/bundlemgr/src/bundle_installer.cpp b/services/bundlemgr/src/bundle_installer.cpp
+index 21031309b..96e2f28a2 100644
+--- a/services/bundlemgr/src/bundle_installer.cpp
++++ b/services/bundlemgr/src/bundle_installer.cpp
+@@ -27,6 +27,33 @@
+ 
+ namespace OHOS {
+ namespace AppExecFwk {
++#ifdef OH_ADAPTER_ANDROID
++// Route C (feedback.txt 2026-04-17): APK parsing lives in the adapter-owned
++// libapk_installer.so, NOT compiled into libbms. libbms only routes .apk
++// install requests via runtime dlopen — this keeps libbms free of AOSP-chain
++// DT_NEEDED (libandroidfw + its transitive libbase/libutils/libcutils/liblog/
++// libicuuc) so that BMS SA can start in OH foundation without /system/android/
++// lib being on the default namespace linker path.
++#include <dlfcn.h>
++
++namespace {
++using AdapterApkInstallFn = int (*)(const char* apkPath, int userId);
++
++AdapterApkInstallFn LoadAdapterApkInstaller() {
++    static void* handle = dlopen("libapk_installer.so", RTLD_NOW | RTLD_GLOBAL);
++    if (handle == nullptr) {
++        return nullptr;
++    }
++    // Adapter-owned C ABI entry. libapk_installer.so exports this as
++    // extern "C" to keep the bridge name-mangle-stable across toolchains.
++    // Signature: int oh_adapter_install_apk(const char* apkPath, int userId);
++    return reinterpret_cast<AdapterApkInstallFn>(
++        dlsym(handle, "oh_adapter_install_apk"));
++}
++
++constexpr int kErrAdapterNotAvailable = -1001;
++}  // namespace
++#endif
+ namespace {
+ constexpr const char* USER_DATA_DIR = "/data";
+ constexpr double MIN_FREE_INODE_PERCENT = 0.005; // 0.5%
+@@ -66,6 +93,24 @@ BundleInstaller::~BundleInstaller()
+ 
+ void BundleInstaller::Install(const std::string &bundleFilePath, const InstallParam &installParam)
+ {
++#ifdef OH_ADAPTER_ANDROID
++    // Android APK detection: dispatch to adapter-owned libapk_installer.so
++    // via runtime dlopen. Keeps libbms zero-AOSP-dep (Route C).
++    if (bundleFilePath.size() > 4 &&
++        bundleFilePath.compare(bundleFilePath.size() - 4, 4, ".apk") == 0) {
++        AdapterApkInstallFn installFn = LoadAdapterApkInstaller();
++        int rc = kErrAdapterNotAvailable;
++        if (installFn != nullptr) {
++            rc = installFn(bundleFilePath.c_str(), installParam.userId);
++        }
++        if (statusReceiver_ != nullptr) {
++            statusReceiver_->OnFinished(rc == 0 ? ERR_OK : rc,
++                rc == 0 ? "Install success" :
++                installFn == nullptr ? "APK adapter unavailable" : "APK install failed");
++        }
++        return;
++    }
++#endif
+     ErrCode resultCode = ERR_OK;
+     if (installParam.userId == Constants::ALL_USERID) {
+         auto userInstallParam = installParam;
+@@ -114,6 +159,46 @@ void BundleInstaller::Recover(const std::string &bundleName, const InstallParam
+ 
+ void BundleInstaller::Install(const std::vector<std::string> &bundleFilePaths, const InstallParam &installParam)
+ {
++#ifdef OH_ADAPTER_ANDROID
++    // adapter project: vector-overload .apk dispatch.
++    // bm install -p X.apk takes the stream-install path which calls THIS
++    // overload (not the string overload). If any path ends in .apk, route
++    // the whole batch through the libapk_installer.so dlopen entry and
++    // skip the OH HAP signature/decompress/install pipeline entirely.
++    {
++        bool anyApk = false;
++        for (const auto &p : bundleFilePaths) {
++            if (p.size() > 4 && p.compare(p.size() - 4, 4, ".apk") == 0) {
++                anyApk = true;
++                break;
++            }
++        }
++        if (anyApk) {
++            AdapterApkInstallFn installFn = LoadAdapterApkInstaller();
++            ErrCode rc = ERR_OK;
++            std::string finalMsg = "Install success";
++            if (installFn == nullptr) {
++                rc = static_cast<ErrCode>(kErrAdapterNotAvailable);
++                finalMsg = "APK adapter unavailable";
++            } else {
++                for (const auto &p : bundleFilePaths) {
++                    if (p.size() > 4 && p.compare(p.size() - 4, 4, ".apk") == 0) {
++                        int r = installFn(p.c_str(), installParam.userId);
++                        if (r != 0) {
++                            rc = static_cast<ErrCode>(r);
++                            finalMsg = "APK install failed";
++                            break;
++                        }
++                    }
++                }
++            }
++            if (statusReceiver_ != nullptr) {
++                statusReceiver_->OnFinished(rc, finalMsg);
++            }
++            return;
++        }
++    }
++#endif
+     ErrCode resultCode = ERR_OK;
+     if (installParam.userId == Constants::ALL_USERID) {
+         auto userInstallParam = installParam;
+diff --git a/services/bundlemgr/src/bundle_stream_installer_host_impl.cpp b/services/bundlemgr/src/bundle_stream_installer_host_impl.cpp
+index 69683f7ff..8f81d6a9c 100644
+--- a/services/bundlemgr/src/bundle_stream_installer_host_impl.cpp
++++ b/services/bundlemgr/src/bundle_stream_installer_host_impl.cpp
+@@ -21,6 +21,7 @@
+ #include "bundle_mgr_service.h"
+ #include "bundle_parser.h"
+ #include "bundle_permission_mgr.h"
++#include "common_profile.h"
+ #include "contrib/minizip/unzip.h"
+ #include "ipc_skeleton.h"
+ #include "scope_guard.h"
+@@ -143,8 +144,13 @@ int32_t BundleStreamInstallerHostImpl::CreateStream(const std::string &fileName)
+ 
+     if (!BundleUtil::CheckFileType(fileName, ServiceConstants::INSTALL_FILE_SUFFIX) &&
+         !BundleUtil::CheckFileType(fileName, ServiceConstants::HSP_FILE_SUFFIX) &&
+-        !BundleUtil::CheckFileType(fileName, ServiceConstants::APP_FILE_SUFFIX)) {
+-        APP_LOGE("file is not hap or hsp or app");
++        !BundleUtil::CheckFileType(fileName, ServiceConstants::APP_FILE_SUFFIX)
++#ifdef OH_ADAPTER_ANDROID
++        // adapter project: allow .apk extension
++        && !BundleUtil::CheckFileType(fileName, ".apk")
++#endif
++        ) {
++        APP_LOGE("file is not hap or hsp or app or apk");
+         return Constants::DEFAULT_STREAM_FD;
+     }
+     // to prevent the hap copied to relevant path
+@@ -247,8 +253,13 @@ int32_t BundleStreamInstallerHostImpl::CreateSharedBundleStream(const std::strin
+ 
+     if (!BundleUtil::CheckFileType(hspName, ServiceConstants::INSTALL_FILE_SUFFIX) &&
+         !BundleUtil::CheckFileType(hspName, ServiceConstants::HSP_FILE_SUFFIX) &&
+-        !BundleUtil::CheckFileType(hspName, ServiceConstants::CODE_SIGNATURE_FILE_SUFFIX)) {
+-        APP_LOGE("file is not hap or hsp");
++        !BundleUtil::CheckFileType(hspName, ServiceConstants::CODE_SIGNATURE_FILE_SUFFIX)
++#ifdef OH_ADAPTER_ANDROID
++        // adapter project: allow .apk extension (covers "two-stream" install path used by some bm flows)
++        && !BundleUtil::CheckFileType(hspName, ".apk")
++#endif
++        ) {
++        APP_LOGE("file is not hap or hsp or apk");
+         return Constants::DEFAULT_STREAM_FD;
+     }
+ 
+@@ -401,7 +412,12 @@ static bool GetAppFilesFromBundlePath(const std::string &currentBundlePath, std:
+             continue;
+         }
+         const std::string hapFilePath = bundlePath + entry->d_name;
+-        if (!BundleFileUtil::CheckFileType(hapFilePath, ServiceConstants::APP_FILE_SUFFIX)) {
++        bool isSupportedContainer =
++            BundleFileUtil::CheckFileType(hapFilePath, ServiceConstants::APP_FILE_SUFFIX);
++#ifdef OH_ADAPTER_ANDROID
++        isSupportedContainer = isSupportedContainer || BundleFileUtil::CheckFileType(hapFilePath, ".apk");
++#endif
++        if (!isSupportedContainer) {
+             ret = false;
+             continue;
+         }
+@@ -579,9 +595,46 @@ bool BundleStreamInstallerHostImpl::InstallApp(const std::vector<std::string> &p
+         return false;
+     }
+     if (!installParam_.isCallByShell) {
+-        receiver_->OnFinished(ERR_APPEXECFWK_INSTALL_FILE_PATH_INVALID, "");
+-        return false;
++        // A13 minimal exception (task #51): bind the current IPC caller to the
++        // stream owner, resolve its installed identity/APL from BMS data, and
++        // re-check INSTALL_BUNDLE on the current calling token. Client-supplied
++        // InstallParam fields cannot satisfy any of these gates.
++        const int32_t callingUid = IPCSkeleton::GetCallingUid();
++        auto dataMgr = DelayedSingleton<BundleMgrService>::GetInstance()->GetDataMgr();
++        InnerBundleInfo callingBundleInfo;
++        bool allowNonShellApkInstall =
++            (callingUid == installedUid_) &&
++            (dataMgr != nullptr) &&
++            (dataMgr->GetInnerBundleInfoByUid(callingUid, callingBundleInfo) == ERR_OK) &&
++            (callingBundleInfo.GetBundleName() == "com.a2hlab.apkinstaller") &&
++            (callingBundleInfo.GetAppPrivilegeLevel() == Profile::AVAILABLELEVEL_SYSTEM_CORE) &&
++            BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_BUNDLE) &&
++            (installParam_.installBundlePermissionStatus == PermissionStatus::HAVE_PERMISSION_STATUS);
++        if (!allowNonShellApkInstall) {
++            receiver_->OnFinished(ERR_APPEXECFWK_INSTALL_FILE_PATH_INVALID, "");
++            return false;
++        }
++        APP_LOGI("A13: allow non-shell StreamInstall from system_core ApkInstaller");
++    }
++
++#ifdef OH_ADAPTER_ANDROID
++    // APK verification/registration has one owner in
++    // BaseBundleInstaller::ProcessBundleInstall. Keep staged APKs intact and
++    // bypass only this HAP-specific verification/decompression pre-pass.
++    {
++        const size_t apkCount = static_cast<size_t>(std::count_if(appPaths.begin(), appPaths.end(),
++            [](const std::string &path) { return BundleFileUtil::CheckFileType(path, ".apk"); }));
++        if (apkCount > 0) {
++            if (apkCount != 1 || appPaths.size() != 1) {
++                APP_LOGE("APK stream install rejects mixed or multi-package batches");
++                receiver_->OnFinished(ERR_APPEXECFWK_INSTALL_MORE_THAN_ONE_APP, "");
++                return false;
++            }
++            APP_LOGI("APK batch retained for BaseBundleInstaller v2 route");
++            return true;
++        }
+     }
++#endif
+ 
+     auto bundleInstallChecker = std::make_unique<BundleInstallChecker>();
+     std::vector<Security::Verify::HapVerifyResult> hapVerifyResults;
+@@ -661,4 +714,4 @@ void BundleStreamInstallerHostImpl::SetInstallerId(uint32_t installerId)
+     installerId_ = installerId;
+ }
+ } // AppExecFwk
+-} // OHOS
+\ No newline at end of file
++} // OHOS
+diff --git a/services/bundlemgr/src/bundle_util.cpp b/services/bundlemgr/src/bundle_util.cpp
+index 21ebfb253..e51eed942 100644
+--- a/services/bundlemgr/src/bundle_util.cpp
++++ b/services/bundlemgr/src/bundle_util.cpp
+@@ -88,8 +88,13 @@ ErrCode BundleUtil::CheckFilePath(const std::string &bundlePath, std::string &re
+     if (!CheckFileType(bundlePath, ServiceConstants::INSTALL_FILE_SUFFIX) &&
+         !CheckFileType(bundlePath, ServiceConstants::HSP_FILE_SUFFIX) &&
+         !CheckFileType(bundlePath, ServiceConstants::QUICK_FIX_FILE_SUFFIX) &&
+-        !CheckFileType(bundlePath, ServiceConstants::CODE_SIGNATURE_FILE_SUFFIX)) {
+-        APP_LOGE("file is not hap, hsp, hqf or sig");
++        !CheckFileType(bundlePath, ServiceConstants::CODE_SIGNATURE_FILE_SUFFIX)
++#ifdef OH_ADAPTER_ANDROID
++        // adapter project: allow .apk extension (Route C dispatcher in BundleInstaller::Install)
++        && !CheckFileType(bundlePath, ".apk")
++#endif
++        ) {
++        APP_LOGE("file is not hap, hsp, hqf or sig or apk");
+         return ERR_APPEXECFWK_INSTALL_INVALID_HAP_NAME;
+     }
+     if (!PathToRealPath(bundlePath, realPath)) {
+diff --git a/services/bundlemgr/src/installd/installd_operator.cpp b/services/bundlemgr/src/installd/installd_operator.cpp
+index d20622ddd..f901d23ea 100644
+--- a/services/bundlemgr/src/installd/installd_operator.cpp
++++ b/services/bundlemgr/src/installd/installd_operator.cpp
+@@ -16,6 +16,7 @@
+ #include "installd/installd_operator.h"
+ 
+ #include <algorithm>
++#include <elf.h>
+ #if defined(CODE_SIGNATURE_ENABLE)
+ #include "code_sign_utils.h"
+ #endif
+@@ -33,6 +34,7 @@
+ #include <iostream>
+ #include <map>
+ #include <regex>
++#include <set>
+ #include <sstream>
+ #include <string.h>
+ #include <sys/ioctl.h>
+@@ -41,6 +43,7 @@
+ #include <sys/stat.h>
+ #include <sys/types.h>
+ #include <unistd.h>
++#include <zlib.h>
+ 
+ #include "app_log_tag_wrapper.h"
+ #include "app_log_wrapper.h"
+@@ -137,6 +140,25 @@ static bool StartsWith(const std::string &sourceString, const std::string &targe
+     return sourceString.find(targetPrefix) == 0;
+ }
+ 
++static bool IsValidBundleName(const std::string &bundleName)
++{
++    if (bundleName.size() < Constants::MIN_BUNDLE_NAME || bundleName.size() > Constants::MAX_BUNDLE_NAME) {
++        return false;
++    }
++    const auto isAsciiAlpha = [](char value) {
++        return (value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z');
++    };
++    const auto isAsciiDigit = [](char value) {
++        return value >= '0' && value <= '9';
++    };
++    if (!isAsciiAlpha(bundleName.front())) {
++        return false;
++    }
++    return std::all_of(bundleName.begin(), bundleName.end(), [&isAsciiAlpha, &isAsciiDigit](char value) {
++        return isAsciiAlpha(value) || isAsciiDigit(value) || value == '.' || value == '_';
++    });
++}
++
+ static bool EndsWith(const std::string &sourceString, const std::string &targetSuffix)
+ {
+     if (sourceString.length() < targetSuffix.length()) {
+@@ -423,6 +445,15 @@ bool InstalldOperator::ExtractFiles(const std::string &sourcePath, const std::st
+ bool InstalldOperator::ExtractFiles(const ExtractParam &extractParam)
+ {
+     LOG_D(BMS_TAG_INSTALLD, "InstalldOperator::ExtractFiles start");
++
++    // adapter project: APK_RESOURCES_HAP
++    if (extractParam.extractFileType == ExtractFileType::APK_RESOURCES_HAP) {
++        return BuildApkResourcesHap(extractParam.srcPath, extractParam.targetPath);
++    }
++    if (extractParam.extractFileType == ExtractFileType::APK_NATIVE_SO) {
++        return ExtractApkNativeFiles(extractParam);
++    }
++
+     BundleExtractor extractor(extractParam.srcPath);
+     if (!extractor.Init()) {
+         LOG_E(BMS_TAG_INSTALLD, "extractor init failed");
+@@ -763,6 +794,10 @@ bool InstalldOperator::DeterminePrefix(const ExtractFileType &extractFileType, c
+             prefix = ServiceConstants::LIBS + cpuAbi + ServiceConstants::PATH_SEPARATOR;
+             break;
+         }
++        case ExtractFileType::APK_NATIVE_SO: {
++            prefix = std::string("lib/") + cpuAbi + ServiceConstants::PATH_SEPARATOR;
++            break;
++        }
+         case ExtractFileType::AN: {
+             prefix = ServiceConstants::AN + cpuAbi + ServiceConstants::PATH_SEPARATOR;
+             break;
+@@ -3144,5 +3179,215 @@ bool InstalldOperator::ReadCert(const std::string &path, std::vector<unsigned ch
+ #endif
+     return true;
+ }
++
++bool InstalldOperator::ExtractApkNativeFiles(const ExtractParam &extractParam)
++{
++    const std::string stagePrefix = std::string(Constants::BUNDLE_CODE_DIR) +
++        ServiceConstants::PATH_SEPARATOR + ServiceConstants::BUNDLE_NEW_CODE_DIR;
++    const std::string nativeSuffix = std::string("/android/lib/") + extractParam.cpuAbi;
++    const bool hasExactShape = StartsWith(extractParam.targetPath, stagePrefix) &&
++        EndsWith(extractParam.targetPath, nativeSuffix) &&
++        extractParam.targetPath.size() > stagePrefix.size() + nativeSuffix.size();
++    const std::string bundleName = hasExactShape ? extractParam.targetPath.substr(stagePrefix.size(),
++        extractParam.targetPath.size() - stagePrefix.size() - nativeSuffix.size()) : std::string();
++    if (extractParam.srcPath.empty() || extractParam.targetPath.empty() ||
++        (extractParam.cpuAbi != "arm64-v8a" && extractParam.cpuAbi != "armeabi-v7a") ||
++        !hasExactShape || !IsValidBundleName(bundleName) ||
++        extractParam.targetPath != stagePrefix + bundleName + nativeSuffix) {
++        LOG_E(BMS_TAG_INSTALLD, "invalid APK native extraction parameters");
++        return false;
++    }
++
++    class ApkExtractor final : public BundleExtractor {
++    public:
++        explicit ApkExtractor(const std::string &source) : BundleExtractor(source) {}
++        const ZipEntryMap &GetEntries() const
++        {
++            return zipFile_.GetAllEntries();
++        }
++    };
++
++    ApkExtractor extractor(extractParam.srcPath);
++    if (!extractor.Init()) {
++        LOG_E(BMS_TAG_INSTALLD, "APK extractor init failed");
++        return false;
++    }
++    const ZipEntryMap &entries = extractor.GetEntries();
++    if (entries.empty()) {
++        LOG_E(BMS_TAG_INSTALLD, "APK has no ZIP entries");
++        return false;
++    }
++
++    auto failAndClean = [&extractParam](const std::string &reason) {
++        LOG_E(BMS_TAG_INSTALLD, "APK native extraction failed: %{public}s", reason.c_str());
++        (void)DeleteDir(extractParam.targetPath);
++        return false;
++    };
++    if (!DeleteDir(extractParam.targetPath) ||
++        !MkOwnerDir(extractParam.targetPath, 0755, 0, 0)) {
++        return failAndClean("cannot create an empty native stage");
++    }
++    // Hardened vendor SDKs (e.g. MSA OAID) zero e_ident[EI_VERSION]; tolerate
++    // it here only because verifyOutput short-circuits on the CRC match before
++    // checkElf runs, so file content is already authenticated (task #64 B2).
++    auto checkElf = [&extractParam](const std::string &path) {
++        std::ifstream input(path, std::ios::binary);
++        unsigned char ident[EI_NIDENT] = {};
++        if (!input.read(reinterpret_cast<char *>(ident), sizeof(ident)) ||
++            memcmp(ident, ELFMAG, SELFMAG) != 0 || ident[EI_DATA] != ELFDATA2LSB) {
++            return false;
++        }
++        input.clear();
++        input.seekg(0);
++        if (extractParam.cpuAbi == "arm64-v8a") {
++            Elf64_Ehdr header = {};
++            return input.read(reinterpret_cast<char *>(&header), sizeof(header)).good() &&
++                header.e_ident[EI_CLASS] == ELFCLASS64 &&
++                (header.e_ident[EI_VERSION] == EV_CURRENT || header.e_ident[EI_VERSION] == 0) &&
++                header.e_version == EV_CURRENT && header.e_type == ET_DYN && header.e_machine == EM_AARCH64;
++        }
++        Elf32_Ehdr header = {};
++        return input.read(reinterpret_cast<char *>(&header), sizeof(header)).good() &&
++            header.e_ident[EI_CLASS] == ELFCLASS32 &&
++            (header.e_ident[EI_VERSION] == EV_CURRENT || header.e_ident[EI_VERSION] == 0) &&
++            header.e_version == EV_CURRENT && header.e_type == ET_DYN && header.e_machine == EM_ARM;
++    };
++    auto verifyOutput = [&checkElf](const std::string &path, const ZipEntry &entry) {
++        struct stat fileStat = {};
++        if (lstat(path.c_str(), &fileStat) != 0 || !S_ISREG(fileStat.st_mode) ||
++            fileStat.st_uid != 0 || fileStat.st_gid != 0 || (fileStat.st_mode & 0777) != 0755 ||
++            fileStat.st_size < 0 || static_cast<uint64_t>(fileStat.st_size) != entry.uncompressedSize) {
++            return false;
++        }
++        std::ifstream input(path, std::ios::binary);
++        if (!input) {
++            return false;
++        }
++        uLong crc = crc32(0L, Z_NULL, 0);
++        std::vector<char> buffer(BUFFER_SIZE);
++        while (input.read(buffer.data(), buffer.size()) || input.gcount() > 0) {
++            crc = crc32(crc, reinterpret_cast<const Bytef *>(buffer.data()),
++                static_cast<uInt>(input.gcount()));
++        }
++        return !input.bad() && static_cast<uint32_t>(crc) == entry.crc && checkElf(path);
++    };
++
++    ExtractParam fileParam = extractParam;
++    fileParam.extractFileType = ExtractFileType::APK_NATIVE_SO;
++    const std::string prefix = std::string("lib/") + extractParam.cpuAbi +
++        ServiceConstants::PATH_SEPARATOR;
++    constexpr size_t MAX_NATIVE_FILES = 1024;
++    constexpr uint64_t MAX_NATIVE_FILE_BYTES = 1ULL << 30;
++    constexpr uint64_t MAX_NATIVE_TOTAL_BYTES = 4ULL << 30;
++    std::set<std::string> targetNames;
++    size_t extractedCount = 0;
++    uint64_t totalUncompressedSize = 0;
++    for (const auto &entryItem : entries) {
++        const std::string &entryName = entryItem.first;
++        const ZipEntry &entry = entryItem.second;
++        if (!StartsWith(entryName, prefix)) {
++            continue;
++        }
++        if (entryName == prefix) {
++            continue;
++        }
++        const std::string targetName = entryName.substr(prefix.size());
++        if (targetName.empty() || targetName.find(ServiceConstants::PATH_SEPARATOR) != std::string::npos ||
++            !StartsWith(targetName, "lib") || !EndsWith(targetName, ".so") ||
++            !targetNames.insert(targetName).second) {
++            return failAndClean("unsafe or duplicate selected-ABI entry");
++        }
++        const uint64_t entrySize = static_cast<uint64_t>(entry.uncompressedSize);
++        if (entrySize == 0 || entrySize > MAX_NATIVE_FILE_BYTES ||
++            targetNames.size() > MAX_NATIVE_FILES ||
++            totalUncompressedSize > MAX_NATIVE_TOTAL_BYTES - entrySize) {
++            return failAndClean("missing, empty, or excessive ZIP metadata");
++        }
++        totalUncompressedSize += entrySize;
++        if (!ExtractTargetFile(extractor, entryName, fileParam)) {
++            return failAndClean("extract/write/fsync failed");
++        }
++        std::string outputPath = extractParam.targetPath;
++        if (outputPath.back() != ServiceConstants::FILE_SEPARATOR_CHAR) {
++            outputPath.push_back(ServiceConstants::FILE_SEPARATOR_CHAR);
++        }
++        outputPath += targetName;
++        if (!ChangeFileAttr(outputPath, 0, 0) ||
++            !OHOS::ChangeModeFile(outputPath, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) ||
++            !verifyOutput(outputPath, entry)) {
++            return failAndClean("CRC/ELF/owner/mode verification failed");
++        }
++        const std::string digest = Sha256File(outputPath);
++        if (digest.empty()) {
++            return failAndClean("SHA-256 failed");
++        }
++        LOG_I(BMS_TAG_INSTALLD, "extracted APK native %{public}s sha256=%{public}s",
++            targetName.c_str(), digest.c_str());
++        ++extractedCount;
++    }
++    if (extractedCount == 0) {
++        return failAndClean("no matching native libraries");
++    }
++    std::set<std::string> actualNames;
++    std::error_code fsError;
++    std::filesystem::directory_iterator iter(extractParam.targetPath, fsError);
++    const std::filesystem::directory_iterator end;
++    while (!fsError && iter != end) {
++        const auto status = std::filesystem::symlink_status(iter->path(), fsError);
++        if (fsError || !std::filesystem::is_regular_file(status) ||
++            !actualNames.insert(iter->path().filename().string()).second) {
++            return failAndClean("native stage contains a non-regular or duplicate output");
++        }
++        iter.increment(fsError);
++    }
++    if (fsError || actualNames != targetNames) {
++        return failAndClean("native stage file set differs from selected ZIP entries");
++    }
++    if (!RestoreconPath(extractParam.targetPath)) {
++        return failAndClean("restorecon failed");
++    }
++    LOG_I(BMS_TAG_INSTALLD, "APK native extraction complete abi=%{public}s count=%{public}zu",
++        extractParam.cpuAbi.c_str(), extractedCount);
++    return true;
++}
++// adapter project: APK_RESOURCES_HAP
++bool InstalldOperator::BuildApkResourcesHap(const std::string &apkPath,
++    const std::string &outHapPath)
++{
++    LOG_I(BMS_TAG_INSTALLD, "BuildApkResourcesHap: apk=%{public}s out=%{public}s",
++        apkPath.c_str(), outHapPath.c_str());
++    if (apkPath.empty() || outHapPath.empty()) {
++        LOG_E(BMS_TAG_INSTALLD, "BuildApkResourcesHap: empty path");
++        return false;
++    }
++    // Cache handle across calls; installd is long-lived so no dlclose.
++    static void *cached = nullptr;
++    static bool tried = false;
++    if (!tried) {
++        tried = true;
++        cached = dlopen("libapk_installer.so", RTLD_NOW | RTLD_GLOBAL);
++        if (cached == nullptr) {
++            LOG_E(BMS_TAG_INSTALLD, "BuildApkResourcesHap: dlopen libapk_installer.so failed: %{public}s",
++                dlerror());
++        }
++    }
++    if (cached == nullptr) {
++        return false;
++    }
++    using BuildFn = int (*)(const char*, const char*);
++    auto fn = reinterpret_cast<BuildFn>(dlsym(cached, "oh_adapter_build_resources_hap"));
++    if (fn == nullptr) {
++        LOG_E(BMS_TAG_INSTALLD, "BuildApkResourcesHap: symbol oh_adapter_build_resources_hap missing");
++        return false;
++    }
++    int rc = fn(apkPath.c_str(), outHapPath.c_str());
++    if (rc != 0) {
++        LOG_E(BMS_TAG_INSTALLD, "BuildApkResourcesHap: synth returned %{public}d", rc);
++        return false;
++    }
++    LOG_I(BMS_TAG_INSTALLD, "BuildApkResourcesHap: OK");
++    return true;
++}
++
+ }  // namespace AppExecFwk
+ }  // namespace OHOS
+diff --git a/services/bundlemgr/src/ipc/extract_param.cpp b/services/bundlemgr/src/ipc/extract_param.cpp
+index 6449fb35e..4427e7188 100755
+--- a/services/bundlemgr/src/ipc/extract_param.cpp
++++ b/services/bundlemgr/src/ipc/extract_param.cpp
+@@ -29,13 +29,17 @@ constexpr const char* TYPE_AP = "Ap";
+ constexpr const char* TYPE_RESOURCE = "Resource";
+ constexpr const char* TYPE_RES_FILE = "ResFile";
+ constexpr const char* TYPE_HNPS_FILE = "HnpsFile";
++constexpr const char* TYPE_APK_RESOURCES_HAP = "ApkResourcesHap";
++constexpr const char* TYPE_APK_NATIVE_SO = "ApkNativeSo";
+ constexpr const char* TYPE_OTHER = "Other";
+ const ExtractFileType ARGS_MAP_KEY[] = {
+     ExtractFileType::ALL, ExtractFileType::SO, ExtractFileType::AN, ExtractFileType::PATCH, ExtractFileType::AP,
+     ExtractFileType::RESOURCE, ExtractFileType::RES_FILE, ExtractFileType::HNPS_FILE,
++    ExtractFileType::APK_RESOURCES_HAP, ExtractFileType::APK_NATIVE_SO,
+ };
+ constexpr const char* ARGS_MAP_VALUE[] = {
+     TYPE_ALL, TYPE_SO, TYPE_AN, TYPE_PATCH, TYPE_AP, TYPE_RESOURCE, TYPE_RES_FILE, TYPE_HNPS_FILE,
++    TYPE_APK_RESOURCES_HAP, TYPE_APK_NATIVE_SO,
+ };
+ 
+ std::string GetExtractFileTypeStrVal(const ExtractFileType &extractFileType)
+diff --git a/services/bundlemgr/src/zip_file.cpp b/services/bundlemgr/src/zip_file.cpp
+index 0d908f9a6..eea6e78a0 100644
+--- a/services/bundlemgr/src/zip_file.cpp
++++ b/services/bundlemgr/src/zip_file.cpp
+@@ -87,10 +87,8 @@ bool ZipFile::CheckEndDir(const EndDir &endDir) const
+         APP_LOGE("endDir.totalEntriesInThisDisk != endDir.totalEntries");
+         return false;
+     }
+-    if (endDir.commentLen != 0) {
+-        APP_LOGE("endDir.commentLen != 0");
+-        return false;
+-    }
++    // Zip comments are accepted: ParseEndDirectory locates the EOCD by
++    // scanning, so a trailing comment no longer breaks parsing (task #64 B1).
+     if ((endDir.offset + endDir.sizeOfCentralDir + lenEndDir) > fileLength_) {
+         APP_LOGE("(endDir.offset + endDir.sizeOfCentralDir + lenEndDir) > fileLength_");
+         return false;
+@@ -108,14 +106,38 @@ bool ZipFile::ParseEndDirectory()
+         return false;
+     }
+ 
+-    size_t eocdPos = endFilePos - endDirLen;
+-    if (fseek(file_, eocdPos, SEEK_SET) != 0) {
+-        APP_LOGE("locate EOCD seek failed, error: %{public}d", errno);
++    // Scan the trailing window backwards for the EOCD signature instead of
++    // assuming a fixed end-minus-size position: real-world APKs may carry a
++    // zip comment (e.g. channel markers), which shifts the EOCD (task #64 B1).
++    constexpr size_t MAX_ZIP_COMMENT_LEN = 0xFFFF;
++    size_t windowLen = (fileLength_ < endDirLen + MAX_ZIP_COMMENT_LEN) ?
++        fileLength_ : (endDirLen + MAX_ZIP_COMMENT_LEN);
++    std::string window(windowLen, '\0');
++    if (fseek(file_, endFilePos - windowLen, SEEK_SET) != 0) {
++        APP_LOGE("locate EOCD scan window seek failed, error: %{public}d", errno);
+         return false;
+     }
+-
+-    if (fread(&endDir_, sizeof(EndDir), FILE_READ_COUNT, file_) != FILE_READ_COUNT) {
+-        APP_LOGE("read EOCD struct failed, error: %{public}d", errno);
++    if (fread(&window[0], windowLen, FILE_READ_COUNT, file_) != FILE_READ_COUNT) {
++        APP_LOGE("read EOCD scan window failed, error: %{public}d", errno);
++        return false;
++    }
++    bool found = false;
++    for (size_t pos = windowLen - endDirLen;; --pos) {
++        EndDir candidate = {};
++        if (memcpy_s(&candidate, sizeof(candidate), window.data() + pos, endDirLen) != EOK) {
++            break;
++        }
++        if (candidate.signature == EOCD_SIGNATURE && pos + endDirLen + candidate.commentLen == windowLen) {
++            endDir_ = candidate;
++            found = true;
++            break;
++        }
++        if (pos == 0) {
++            break;
++        }
++    }
++    if (!found) {
++        APP_LOGE("EOCD signature not found in trailing window");
+         return false;
+     }
+ 
+@@ -157,7 +179,13 @@ bool ZipFile::ParseAllEntries()
+             break;
+         }
+ 
+-        size_t fileLength = (directoryEntry.nameSize >= MAX_FILE_PATH) ? (MAX_FILE_PATH - 1) : directoryEntry.nameSize;
++        if (directoryEntry.nameSize == 0 || directoryEntry.nameSize >= MAX_FILE_PATH) {
++            APP_LOGE("parse entry(%{public}d) invalid file name length: %{public}u",
++                i, directoryEntry.nameSize);
++            ret = false;
++            break;
++        }
++        size_t fileLength = directoryEntry.nameSize;
+         if (fread(&(fileName[0]), fileLength, FILE_READ_COUNT, file_) != FILE_READ_COUNT) {
+             APP_LOGE("parse entry(%{public}d) read file name failed, error: %{public}d", i, errno);
+             ret = false;
+@@ -165,9 +193,25 @@ bool ZipFile::ParseAllEntries()
+         }
+         fileName.resize(fileLength);
+ 
++        bool invalidFileName = false;
++        for (unsigned char c : fileName) {
++            if (c == 0 || c < 0x20 || c == 0x7f || c == '\\') {
++                invalidFileName = true;
++                break;
++            }
++        }
++        if (invalidFileName) {
++            APP_LOGE("zip entry contains a NUL, control character, or backslash");
++            return false;
++        }
++        if (entriesMap_.find(fileName) != entriesMap_.end()) {
++            APP_LOGE("duplicate zip entry rejected: %{private}s", fileName.c_str());
++            return false;
++        }
++
+         ZipEntry currentEntry(directoryEntry);
+         currentEntry.fileName = fileName;
+-        entriesMap_[fileName] = currentEntry;
++        entriesMap_.emplace(fileName, currentEntry);
+ 
+         currentPos += sizeof(directoryEntry);
+         currentPos += directoryEntry.nameSize + directoryEntry.extraSize + directoryEntry.commentSize;
