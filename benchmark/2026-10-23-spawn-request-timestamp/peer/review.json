@@ -1,0 +1,47 @@
+{
+  "verdict": "REJECT_CURRENT_CANDIDATE_STDOUT_DRIFT_ON_LOGGING_FAILURE",
+  "baseline_sha256": "46337ba8364d871c19fb077e29a4087f37921bf609c70e9f3c1f98e1fff124a3",
+  "candidate_sha256": "d82af82321abc298b974b9d4b139a2c41d1af232eb896e1412a5537f92945143",
+  "candidate_still_same_bytes": true,
+  "source_line": "../westlake-harness-g10-env/benchmark/2026-10-23-spawn-request-timestamp/candidate.sh:4",
+  "execution": {
+    "command": "python3 benchmark/2026-10-23-spawn-request-timestamp/peer/check_semantics.py --candidate-dir ../westlake-harness-g10-env/benchmark/2026-10-23-spawn-request-timestamp --original ../westlake-harness/benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-01/deploy-package-r3-root/payload/real-spawn.sh",
+    "rc": 1,
+    "cases": 24,
+    "passing_cases": 22,
+    "failures": [
+      {
+        "shell": "/bin/sh",
+        "case": "readonly_stderr",
+        "failed_checks": [
+          "stdout"
+        ]
+      },
+      {
+        "shell": "/bin/bash",
+        "case": "readonly_stderr",
+        "failed_checks": [
+          "stdout"
+        ]
+      }
+    ]
+  },
+  "finding": "With fd2 connected to a read-only file descriptor, /bin/sh and /bin/bash append [WL-SPAWN-REQUEST] uptime_s=1234.56\\n to stdout after the fake client output. Baseline has no marker. Client still runs and returns27. /bin/dash did not reproduce this output drift.",
+  "preserved_in_all_cases": [
+    "original absolute command line unchanged in candidate",
+    "argv",
+    "binary stdin",
+    "client return code",
+    "observed process hierarchy"
+  ],
+  "failure_cases_checked": [
+    "missing uptime",
+    "empty uptime",
+    "directory instead of uptime",
+    "closed stderr",
+    "read-only stderr"
+  ],
+  "limits": "Local shells only; no target-shell claim. Fixtures replace only executable and uptime paths; never invoke real host_spawn or device commands. No forbidden scripts read. No candidate change made.",
+  "raw": "check.stdout.json",
+  "next": "Author must resolve logging-failure stdout drift and rerun this regression before offline acceptance; no deployment approval."
+}

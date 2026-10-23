@@ -1,0 +1,13 @@
+# T89: bound host lifecycle, no repair candidate
+
+**Unknown; no evidenced lifecycle defect or patch.** The proposed source entry point is not byte-identical to the deployed producer input. The measured27s wait must not be charged wholly to the host's foreground callback.
+
+**Binding.** T78's accepted installed HAP SHA `b18978…` matches the local signed HAP. Its EntryAbility ABC (`bb1ecc…`) exactly matches the preserved T32 compile output. The compile receipt, source pin, release input-lock pin, raw command receipts and signed output pass35 checks. The actual source is `benchmark/2026-10-20-toutiao-launcher-page/sources/baseline/EntryAbility.js` in the main tree (SHA `9dc302d9…`). The suggested source-build-host file is `922a13a5…`; only line27 differs: deployed baseline uses `#fff4f6f8`, the starting file `#ff000000`. Historical compiler hash is receipt-pinned; no compiler, signing, manifest reinspection or device command was run.
+
+**Trace evidence.** In T87 `raw/04/t87-61aa5791.trace`, same-thread B/E pairing gives EntryAbility transaction1401.744191–1401.751176 (**6.985ms**, lines203/267), `onNewWant` dispatch **0.116ms** (210/211), and `onForeground` dispatch **0.480ms** (235/236). Framework foreground completion is1401.750138 (245); `onDidForeground` dispatch follows at1401.752090 (271). These dispatch markers do not prove an application override exists: the bound source has no `onNewWant`, which is not itself a demonstrated defect. No new loadContent/window-ready callback is established by this reopen trace.
+
+Seq2 spawn confirmation is uptime1428 (`raw/02/s30.stdout:9`), approximately26.25s after framework foreground completion. Window/session31 is requested at1436.952157 (trace819) and focus shifts to31 at1436.994538 (1218); these records do not bind its owner to child6291. The first PID6291 marker, `content::Start` at1461.881765 (2229), is a WebView startup marker, not process creation or its first window.
+
+**One causal gap / next evidence.** The host-foreground-to-spawn interval lacks a boot/seq2/child6291-birth142694-correlated ordinary request-issued/accepted/completed receipt. That is the single necessary next evidence; no new collection or prohibited-source analysis was initiated. No speculative runtime candidate or repair test is justified. Current feed was untouched; cold-start acceptance and overall sealing remain unpassed.
+
+Reproduce: `python3 benchmark/2026-10-23-host-lifecycle-latency/check_evidence.py --main-tree ../westlake-harness` (rc0,35 checks). See `check.stdout.json`, `trace-excerpts.txt`, and `results.json` for complete hashes and line references.

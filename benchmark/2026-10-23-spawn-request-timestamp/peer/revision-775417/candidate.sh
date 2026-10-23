@@ -1,0 +1,6 @@
+#!/system/bin/sh
+# Best-effort request boundary; shell builtins only, original client below unchanged.
+if { IFS=' ' read -r wl_spawn_uptime wl_spawn_unused < /proc/uptime; } 2>/dev/null; then
+    { printf '[WL-SPAWN-REQUEST] uptime_s=%s\n' "$wl_spawn_uptime" >&2 2>/dev/null || :; printf '\n' || :; } >/dev/null
+fi
+/data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d/host_spawn /dev/unix/socket/A2HSourcec91d26bfb4db4fd5a002 /data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d/request.bin
