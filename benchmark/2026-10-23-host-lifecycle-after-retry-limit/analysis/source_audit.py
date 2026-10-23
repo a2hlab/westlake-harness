@@ -1,0 +1,14 @@
+from pathlib import Path
+import json,hashlib,datetime
+out=Path(__file__).resolve().parent
+main=out.parents[3]/'westlake-harness'
+source=main/'benchmark/2026-10-20-toutiao-launcher-page/sources/baseline/EntryAbility.js'
+sha=hashlib.sha256(source.read_bytes()).hexdigest();assert sha=='9dc302d9aa72eb1be8635d7bc4bc4306da76f0e45d2414d67bd96d024e2a24c6'
+base=Path.home()/'.local/share/westlake'
+click=base/'after-reboot-icon-recovery-20261023/raw/03'
+def pin(p):return {'path':str(p).replace(str(Path.home()),'$HOME'),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
+start=float((click/'click.start').read_text().split()[0]);end=float((click/'click.end').read_text().split()[0]);assert (click/'click.rc').read_text().strip()=='0'
+new=base/'host-lifecycle-after-retry-limit-20261023'
+result={'task':'T114','status':'source_facts_complete_awaiting_collector','source':pin(source),'source_facts':{'record':[7,16],'event_timestamp':'Date.now(), line 8; explicit wall-clock milliseconds','hilog_before_file_write':{'line':9,'tag':'WL_IME_HOST'},'file_write':{'lines':[11,12,13],'path_suffix':'/window-state.json','mode':'CREATE | WRITE_ONLY | TRUNC','semantics':'Last successful record replaces preceding contents; file is not event history.'},'write_failure_logged':{'line':15,'message':'record failed'},'callbacks':{'onCreate':{'line':18,'event':'created'},'onWindowStageCreate':{'line':19,'registers_stage_event_lines':[21,23],'loadContent_lines':[24,29],'events':['stage-event','load-error','window-ready']},'onForeground':{'line':31,'event':'foreground'},'onBackground':{'line':32,'event':'background'},'onWindowStageDestroy':{'line':33,'event':'window-destroyed'},'onDestroy':{'line':34,'event':'destroyed'}},'onNewWant_override':False,'onNewWant_limit':'Absence is not a demonstrated defect or proof that click did not reach the host.'},'t112_click':{'start_epoch':start,'end_epoch':end,'start_utc':datetime.datetime.fromtimestamp(start,datetime.timezone.utc).isoformat(),'end_utc':datetime.datetime.fromtimestamp(end,datetime.timezone.utc).isoformat(),'rc':0,'pins':{x:pin(click/('click.'+x)) for x in ['argv','start','end','rc','stdout','stderr']}},'collector_directory_exists':new.exists(),'collector_files':[str(p.relative_to(new)) for p in new.rglob('*') if p.is_file()] if new.exists() else [],'callback_arrival_at_click':'unknown','candidate':None,'limits':['Need boot/PID/birth stability and actual hilog coverage before matching click.','Missing or overwritten file records cannot prove absent callbacks.','No device/REA/deployment, retry-policy or stopped-source analysis.']}
+(out/'source-results.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+print(json.dumps({'source_sha256':sha,'collector_directory_exists':new.exists(),'collector_files':result['collector_files']},ensure_ascii=False))

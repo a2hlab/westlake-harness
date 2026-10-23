@@ -315,3 +315,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-23 最新用户重新允许CC合理分配，覆盖此前不让CC分析的偏好；本轮CC唯一备用板普通UI执行，Codex负责REA与静态入口复核。历史内容停止不因换执行者重试。T103仅查WorkSpace0..2不能判定无入口；百余APK桌面要按不同页ID遍历到边界/有界页数，目标坐标取当前布局，不能用历史页号坐标直接点击。
 
 - 2026-10-23 T106补采陷阱：zsh默认不拆分变量字符串，serial与PID拼成一个参数导致/proc//stat，传输rc0也不是目标HAP回执。改Python subprocess argv列表，精确serial白名单+fresh纯数字PID本地校验，正常maps绝对路径走该PID/root，stat/dev/inode与birth前后夹持；失败原件不覆盖，后继有界修正独立计时。
+
+- 2026-10-23 用户明确本轮启动验收用agent发重启命令继续，不再等待人工断电；T109已改为hdc普通软件重启重复。原始物理断电记录保留，后续软件重启不能标成实际切供电，不因这个证据边界再次要求用户操作。

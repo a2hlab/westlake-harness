@@ -1092,3 +1092,9 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-23 T106: 当前61b/5cd的18个实际映射backing-file路径逐件SHA一致（36项maps dev/inode与stat夹持），后继HAP b18978也一致；按完整相对路径区分两份不同libandroid.so，不能按basename合并。9个BCP jar/active顺序仍unknown，文件一致不证明启动条件一致，暂无可据此换包的版本差异。
 
 - 2026-10-23 T107/T108: 61b同child6291的Home→图标回到原视频详情，5/20/30秒非白屏；5cd一次软件reboot新boot abf413ed、首次图标t30白/t60/90/120推荐feed，5张实采。t60只是首次成功采样上界；不同板/boot/数据条件不归因版本或宣称修复，物理断电尚待operator实际操作。
+
+- 2026-10-23 T109/T112: 5cd重复软件reboot ecb84d86首点5张全白；普通事件记7011/9860/12688三attempt后RETRY_LIMIT，不能将T108单次成功当重复通过。同boot后续一次Home→图标6张全白且无新child、状态不变，首次失败与恢复失败分开记；T113两128KiB前缀共有警告不足以归因，也不排除未采尾部/时序交互。
+
+- 2026-10-23 T114: T112点击后宿主5074的hilog有foreground及stage-event1/2，不能把无新child误判成图标未触发。window-state.json固定路径缺失只记unknown；源码TRUNC单文件是末事件快照，不能当事件流。跨机时钟未测偏移，不宣称精确点击延迟。
+
+- 2026-10-23 T115: 历史61b手动重入r3控制件8bf74a08/entryad76c656与5cd T52回滚2b635ef1/entry81dd0557不同；T106核心18件相同不覆盖启动管理链。历史版本差异须补当前boot/root/config/hash绑定，不能直接推根因或跨板复制。
