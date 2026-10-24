@@ -1,0 +1,13 @@
+# Child window and record-path observations
+
+A missing selected marker is not a missing call, and root path access is not child access. This is an offline closeout of five separate existing collections; no device command, source analysis, repair or continuous timeline is claimed.
+
+- **Growing log, bounded selection:** `child-window-lifecycle-20261024/collection-01` stat samples report 29,180,290 → 29,185,906 bytes (growth 5,616), dev66352/inode568790. Existing grep returned **19 matches, 0 NotifyDestroy**. This does not prove NotifyDestroy was never called. Original log line numbers and address-redacted selected lines are in results; the full log is not copied.
+- **Later WMS:** `collection-02` at 12:54:01–02 +08 reports illegal arguments for `-w 54/55/56`, each rc0; `-w 62` returns PID10486/ParentWindowId0. These queries follow Home at 12:33:37–38. Neither missing sessions nor t90 state can be inferred.
+- **Module path matters:** namespace `collection-01` queried the nonmodule `base/files` path. `collection-02/10486.stdout:3–4` instead establishes host `base/haps/entry/files` and its record. The same sandbox path under child `/proc/22035/root` is absent (`22035.stdout:3–4`). Namespace `collection-03/record-global.stdout:1–2` finds the record through child global `/data/app/el2/100/base/org.westlake.imehost/haps/entry/files/window-state.json` and the observer global path: both match the host sample at **dev66352/inode438987, UID/GID20011206, mode660, 518 bytes**.
+- **Access remains unknown:** these are root-observer stat/cat results. They do not demonstrate reads under child credentials or actual consumption by child22035. The ordinary JSON's only published payload fact is **window id62**.
+- **Namespaces:** existing links show the same netns `4026531840`, different mntns (host `4026532978`, child `4026533005`). Full mountinfo, raw process-stat bodies and record payload are private. Available process identity samples bind boot61aa5791-fd69-4bbb-a7b5-333b5d913c81, host10486/birth7039472 and child22035/birth6535369; results preserve which collection actually sampled which process, without inventing missing brackets.
+
+[results.json](results.json) holds sanitized facts and limitations; [command-receipts.json](command-receipts.json) holds actual argv/rc/time boundaries; [raw-manifest.json](raw-manifest.json) pins private originals by SHA256/bytes. All private roots are under `$HOME/.local/share/westlake/`. [landing-paths.txt](landing-paths.txt) is the exact public list.
+
+Knowledge suggestion: bind **path + namespace + observer credentials + inode + sample time** together; root visibility does not establish child readability/consumption, and absent selected markers do not establish absent calls.
