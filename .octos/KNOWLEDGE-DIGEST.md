@@ -1121,3 +1121,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 
 - 2026-10-24 普通重入对照：61b Recent单卡划掉后host4958消失而child22035/birth6535369保留；后续独立窗桌面单击生成host10486/window62，t10/30/60/90全白。旧成功child日志parent32/session53仅证明创建时关联，不能直接证明重开后父关系；52个观察样本从点击结束10.98秒后开始，父/events零增长不等于无请求。三独立窗不可拼成连续实验，见 benchmark/2026-10-24-recents-close-desktop-reopen/。
 - 2026-10-24 头条新host/旧child白屏：实际宿主记录在模块路径 haps/entry/files/window-state.json；child沙箱路径缺失但同UID全局app路径指向同inode，root代读不等于child凭据已读。OH对应源码普通子窗随父销毁路径不保证NotifyDestroy，缺日志不能否定会话已删除；event4是HIDDEN，恢复消费者仅准入明确前台记录。现仅离线候选，未封板。见 benchmark/2026-10-24-toutiao-window-reattach-review/ 与 native-host-window-recovery/record-reader/。
+
+- 2026-10-24 验收收据检查：同SHA不等于同发布对象，activation须绑定发布dev/inode、UI须保持activation namespace；parent可为UID0，宿主新birth可重用PID；首开与加载观察必须共用同一点击回执，阶段区间不冒充单命令时界。规范化JSON+哈希只验内部一致性，不认证来源或图像含义；当前缺真实收据仍pending_missing，见native-host-window-recovery/device-validation/outer-review-02.json。

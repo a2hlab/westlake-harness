@@ -701,6 +701,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-24-native-host-window-recovery/record-reader/`** | Bounded production C++ reader with 81 passing assertions; preserves raw visibility event, no runtime recovery claim. |
 | **`benchmark/2026-10-24-wmc-build-preparation/`** | Exact source/object/link mapping, pinned toolchain staging and reproducible baseline build inputs. |
 | **`benchmark/2026-10-24-native-host-window-recovery/session-recovery/`** | Native window recovery candidate, bounded callback replay and offline tests; actual build receipts are in adjacent `candidate-build-02/`, device validation remains pending. |
+| **`benchmark/2026-10-24-native-host-window-recovery/device-validation/`** | Offline normalized receipt checker with independent regression review; missing real-device receipts remain unverified, not a seal. |
 | **`benchmark/2026-10-24-api-reference-git-audit/`** | Historical API reference identities confirmed through Git metadata; preserves the existing full-table render failure without rewriting old evidence. |
 
 ---
