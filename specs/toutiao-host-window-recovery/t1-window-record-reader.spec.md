@@ -13,6 +13,7 @@ tags: [native, window, recovery]
 - 同一次读核前后dev/inode/size/mtime与当前路径身份；截断、替换或短读返回unavailable/drift，不发布半截记录。不能宣称检出采样间完全恢复的内容改写。
 - 仅接受window-ready/details.id或stage-event/details.window.id，id为1..2147483647的整数；不接受bool/string/fraction。foreground/background及不含id的正常事件返回unavailable，绝不清除已有绑定。
 - 成功只返回candidate，不返回authenticated/attached；同UID与root可读不证明现役child可读。检测周期、SSM调用和渲染恢复由后继任务承担。
+- Candidate保留来源事件类别与可选的整数stage event，不将hidden记录混成visible；stage-event缺少event时仍是候选但状态unknown。下游据SDK的SHOWN=1/ACTIVE=2、INACTIVE=3/HIDDEN=4区分，reader不自行执行窗口动作。
 - 测试运行生产C++ reader，覆盖真实本地文件、symlink和FIFO拒绝；不调用设备、SSH、REA、编译生产bridge或修改控制配置。
 ## 边界
 ### 允许修改
@@ -26,6 +27,7 @@ tags: [native, window, recovery]
   假设真实本地同UID/GID的0660 regular文件分别含window-ready/details.id32和stage-event/details.window.id62
   当生产C++ reader读取完整记录
   那么分别返回candidate32和candidate62与文件身份且不写输入文件
+  并且分别保留window-ready类别和stage-event类别及其event值或unknown
 场景: 正常事件暂不含窗口
   测试: host_window_record_reader_fixtures
   假设记录是foreground或background或缺少id

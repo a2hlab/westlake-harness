@@ -12,6 +12,7 @@ tags: [native, window, recovery]
 - 只为精确头条包的成功初始会话启用正常窗口记录观察；复用t1生产reader。路径来自已证同应用模块数据路径，核实际UID/GID，不读取控制配置、不创建额外进程或发信号。root路径可见不算child读取通过。
 - 普通记录来自同UID/GID私有模块文件，只是同应用候选来源。通过对应OH普通GetParentMainWindowId接口核candidate为当前main；只有WM_OK且返回id等于candidate才接受。旧parent仍有效、查询拒绝/结果未知或记录无id时不重建。不申请权限，不绕过系统调用门禁，不将这些检查称为SSM宿主owner证明。
 - 现有成功记录的host父ID与新候选不同才尝试；每1000ms至多一次检测，读取和IPC遵守实际API的有界机制；每个候选文件身份至多一次在途事务，结果未知停止该事务且不得紧循环重建。普通前后台和重复记录不更换producer。
+- 不因后台记录抢前台：仅window-ready或已核SDK的SHOWN/ACTIVE阶段可准入；INACTIVE/HIDDEN/unknown阶段保留现有状态且不创建或请求focus，提交前重新核记录未变。
 - 新SSM子会话提交原APP_WINDOW节点；保留其内容node、ProducerSurface、NativeWindow、Java逻辑session与SurfaceControl关联。不得走现有完整destroySurface或destroySession来准备重连。
 - 显式分离逻辑session与实际persistentID；Java/Surface查询保留逻辑ID，focus、SSM销毁、remote操作、子窗口父关系使用实际ID。MMI输入在GetAgentWindowId后先翻译实际ID到逻辑ID，再复用原publisher；旧实际ID拒绝，不能因activeSessionId更新就宣称触控恢复。
 - 新remote与实际ID先暂存，创建及必要连接步骤成功后提交映射。失败不发布已恢复，不释放原producer；仅清理本事务新会话，未知IPC结果保留证据停止而非再次创建。旧callback不能清除已提交新关联，callback身份与并发顺序显式处理。
@@ -35,7 +36,7 @@ tags: [native, window, recovery]
   那么不创建新会话不重建producer且每代最多一个事务
 场景: 候选或旧父不满足准入
   测试: host_window_session_recovery_fixtures
-  假设缺id或候选不是main或旧父仍有效或查询拒绝
+  假设缺id或候选不是main或旧父仍有效或查询拒绝或事件为INACTIVE/HIDDEN/unknown
   当生产协调代码核准入
   那么不发起创建并保留当前逻辑关联
 场景: 部分失败或IPC结果未知
