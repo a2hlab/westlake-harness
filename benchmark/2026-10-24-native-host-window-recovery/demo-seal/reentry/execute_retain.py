@@ -1,0 +1,536 @@
+#!/usr/bin/env python3
+"""T141 retain entry = T136 execute_v7 (sha 0658440f) + minimal delta (t4a-reentry-demo-retain).
+Two independent windows: --phase boot1 (publish, reboot, three stages, close with candidate in place)
+and --phase boot2 (new software boot, three stages, retain or exact rollback).
+Requires a separate outer receipt per phase. No old executor/controller is imported.
+All visual decisions are external receipts, schema-checked before use.
+"""
+import argparse, datetime, hashlib, json, os, re, shlex, subprocess, sys, time, uuid
+from pathlib import Path
+HERE=Path(__file__).resolve().parent
+REPO=next(p for p in HERE.parents if (p/'scripts/lab/lab_paths.py').is_file())
+sys.path.insert(0,str(REPO/'scripts/lab'))
+import lab_paths
+MAIN=lab_paths.harness()
+INPUT=REPO/'.private/t141-retain-input'  # candidate.so + rollback.so supplied by the device writer
+HDC='/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc'
+SERIAL='61b0657200000000000000000324012c'
+CANDIDATE='3291f76db0945f90b402ea61b14c3a912efbeecec9e0422af1a92fec95b8a819'
+BASELINE='b0e5602a97133ebb1dca12972a8931a86528322685a211bb1a7a0a2185fefbd4'
+SYSTEM_SHA='8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e'
+TARGET='/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/liboh_adapter_bridge.so'
+SYSTEM='/system/android/lib64/liboh_adapter_bridge.so'
+MAPPED='/data/local/tmp/asx/liboh_adapter_bridge.so'
+UID=20011206
+LABEL='u:object_r:appdat:s0'
+STEPS=json.loads((HERE/'steps_retain.json').read_text())
+# Latest exact restored-binding provenance; fixed by the outer plan (input gap until pinned).
+IDLE_SOURCE=REPO/STEPS['idle_exception']['source']
+IDLE_SOURCE_SHA=STEPS['idle_exception']['source_sha256']
+IDLE_SOURCE_KIND=STEPS['idle_exception'].get('source_kind','mapped_binding')  # mapped_binding | restored_idle_exact_object
+NO_EARLY_MAPPING='no actual baseline mapping within90s early observation'
+IDLE_SOURCE_RESULT_SHA=STEPS['idle_exception'].get('source_result_sha256')  # required only for a T141-own kind receipt
+NOTE=MAIN/'scripts/lab/board_note.sh'
+BOARD=MAIN/'.octos/boards/app-lighting.md'
+LANE='t141-reentry-retain'
+CHILD='com.ss.android.article.news';HOST='org.westlake.imehost';PARENT='appspawn-x'
+STAGE_KINDS=('firstopen','samehost','recreated','restore')
+q=shlex.quote
+
+def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+def save(p,x):
+    with p.open('x') as f:json.dump(x,f,indent=2);f.write('\n')
+def parse_identity(s):
+    lines=s.splitlines();procs=[]
+    for i,line in enumerate(lines):
+        if line.startswith('PROC:'):
+            _,pid,parent,uid,name=line.split(':',4)
+            rest=lines[i+1].rsplit(')',1)[1].split()
+            procs.append(dict(pid=int(pid),parent=int(parent),uid=int(uid),name=name,birth=int(rest[19])))
+    return dict(boot=lines[lines.index('BOOT')+1],processes=procs)
+def one(identity,name):
+    rows=[p for p in identity['processes'] if p['name']==name]
+    if len(rows)!=1:raise RuntimeError('non-unique/missing '+name)
+    return rows[0]
+def article_present(identity):return any(p['name'].startswith(CHILD) for p in identity['processes'])  # includes colon subprocesses
+def same_process(a,b):return all(a[k]==b[k] for k in ('pid','birth','uid'))
+def parent_root(identity):
+    # RUNBOOK 178: the appspawn-x root is the unique name appspawn-x with PPID 1 and UID 0. Other appspawn-x-named
+    # entries (unspecialized children, PPID=root, app UID) stay in the raw identity; zero or two roots are rejected.
+    roots=[p for p in identity['processes'] if p['name']==PARENT and p['parent']==1 and p['uid']==0]
+    if len(roots)!=1:raise RuntimeError('require exactly one appspawn-x root (PPID1 UID0), found '+str(len(roots)))
+    return roots[0]
+def select_main(identity, allow_empty=False):
+    # v7 logic (names via constants): exactly one appspawn-x direct main child;
+    # every other same-name process must reach it by PPID, same UID, unique PID, acyclic.
+    # Startup transient: right after the click only the host may exist (appspawn-x not started yet), so with
+    # allow_empty an empty child set returns None BEFORE the parent lookup; any present child still needs the root.
+    named=[p for p in identity['processes'] if p['name']==CHILD]
+    if not named and allow_empty:return None,[]
+    parent=parent_root(identity)
+    direct=[p for p in named if p['parent']==parent['pid']]
+    if len(direct)!=1:raise RuntimeError('require exactly one appspawn direct main child')
+    main=direct[0]; bypid={p['pid']:p for p in named}; descendants=[]
+    if len(bypid)!=len(named):raise RuntimeError('duplicate PID')
+    for item in named:
+        if item['uid']!=UID:raise RuntimeError('application UID mismatch')
+        if item==main:continue
+        chain=[item['pid']]; current=item
+        while current['pid']!=main['pid']:
+            if current['parent'] not in bypid or current['parent'] in chain:
+                raise RuntimeError('same-name process lineage unknown or cyclic')
+            current=bypid[current['parent']];chain.append(current['pid'])
+        descendants.append({'process':item,'lineage_to_main':chain})
+    return main,descendants
+def select_main_child(identity):return select_main(identity)[0]
+def core_identity(identity):
+    # boot + host + appspawn-x + main child full records; select_main also rejects unknown lineage.
+    return (identity['boot'],one(identity,HOST),parent_root(identity),select_main(identity)[0])
+class ReviewSchemaError(Exception):pass
+def ints(v,n):return isinstance(v,list) and len(v)==n and all(type(x) is int and 0<=x<=3000 for x in v)
+REVIEW_CONTEXTS=('desktop','stage','content','recent','closeout')
+def validate_review(r,context,allowed_touch=('click','swipe')):
+    # Field contract checked BEFORE use. clock/Recent always need swipe[4]; USB needs xy[2];
+    # feed needs touch fields only in a stage sample (desktop feed means Home only).
+    if context not in REVIEW_CONTEXTS:raise ValueError('unknown review context '+str(context))
+    if not isinstance(r,dict) or not isinstance(r.get('verdict'),str):raise ReviewSchemaError('missing verdict')
+    v=r['verdict']
+    if v in ('clock_no_credentials','recent_host_card') and not ints(r.get('swipe'),4):raise ReviewSchemaError(v+' requires swipe[4]')
+    if v=='usb_dialog' and not ints(r.get('xy'),2):raise ReviewSchemaError('usb_dialog requires xy[2]')
+    if context=='content' and v=='usable' and r.get('changed_from_feed') is not True:raise ReviewSchemaError('content usable requires changed_from_feed true')
+    if context=='closeout' and v not in ('closeout_ok','closeout_reject'):raise ReviewSchemaError('closeout requires closeout_ok|closeout_reject')
+    if context=='stage' and v=='feed':
+        k=r.get('touch_kind')
+        if k not in ('click','swipe'):raise ReviewSchemaError('feed requires touch_kind click|swipe')
+        if not ints(r.get('touch_coordinates'),2 if k=='click' else 4):raise ReviewSchemaError('feed touch_coordinates length mismatch')
+        if k not in allowed_touch:raise ReviewSchemaError('touch_kind '+k+' not allowed now; required one of '+','.join(allowed_touch))
+    return r
+def linux_device_pair(dev):
+    return (((dev>>8)&0xfff)|((dev>>32)&0xfffff000), (dev&0xff)|((dev>>12)&0xffffff00))
+
+class Window:
+    def __init__(self):
+        self.run=HERE/'.private'/('execute-'+datetime.datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:6]);self.run.mkdir()
+        self.start=None;self.owner=None;self.n=0;self.recovery=False;self.closing=False;self.baseline_obj=None;self.boot1=None;self.publish_attempted=False;self.backup=None;self.prepower=None;self.published=None;self.original=None
+        self.result={'status':'running','runtime_result':'pending_review','device_commands':0}
+        print('RUN '+str(self.run),flush=True)
+    def elapsed(self):return time.monotonic()-self.start if self.start is not None else 0
+    def call(self,label,argv,allow_failure=False):
+        if self.start is not None and self.elapsed()>=(1800 if (self.recovery or self.closing) else 900):raise RuntimeError('window deadline')
+        self.n+=1;d=self.run/(f'{self.n:04d}-'+label);d.mkdir();r=dict(argv=argv,start_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),start_monotonic=time.monotonic(),timeout_seconds=15)
+        save(d/'command.json',r)
+        with (d/'stdout').open('wb') as o,(d/'stderr').open('wb') as e:
+            try:r['local_rc']=subprocess.run(argv,stdout=o,stderr=e,timeout=15).returncode
+            except subprocess.TimeoutExpired:r['local_rc']=124
+        r.update(end_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),end_monotonic=time.monotonic(),stdout_sha256=digest(d/'stdout'),stderr_sha256=digest(d/'stderr'));save(d/'receipt.json',r)
+        s=(d/'stdout').read_text(errors='replace');e=(d/'stderr').read_text(errors='replace')
+        if argv[0]==HDC:self.result['device_commands']+=1
+        if not allow_failure and (r['local_rc']!=0 or e.strip() or any(t in s for t in ('[Fail]','Connect server failed','Permission denied','not found'))):raise RuntimeError('command failed '+d.name)
+        return r,s,e
+    def shell(self,label,script):
+        # Captures remote outcome separately from the transport return code.
+        token='T136_REMOTE_'+uuid.uuid4().hex
+        command='( '+script+' ); r=$?; echo '+token+':$r'
+        r,s,e=self.call(label,[HDC,'-t',SERIAL,'shell',command])
+        if not s.rstrip().endswith(token+':0'):raise RuntimeError('remote/body failure '+label)
+        return s.rsplit(token+':',1)[0]
+    def held(self):
+        r,s,e=self.call('held-owned',['bash',str(NOTE),'held',SERIAL],True)
+        if r['local_rc']!=0 or e.strip() or s.strip()!=self.owner:raise RuntimeError('self lock lost')
+    def identity(self,label):
+        s=self.shell(label,"set -e; echo BOOT; cat /proc/sys/kernel/random/boot_id; echo UPTIME; cat /proc/uptime; ps -A -o PID,PPID,UID,NAME | while read p pp uid name; do case \"$name\" in org.westlake.imehost|com.ss.android.article.news*|appspawn-x) echo PROC:$p:$pp:$uid:$name; cat /proc/$p/stat;; esac; done")
+        return parse_identity(s)
+    def object(self,label,path):
+        s=self.shell(label,'set -e; stat -L -c '+q('%d|%i|%u|%g|%a|%s|%Y')+' '+q(path)+'; ls -ldZ '+q(path)+'; sha256sum '+q(path))
+        lines=s.splitlines();vals=lines[0].split('|');assert len(vals)==7 and lines[1].startswith('-'), 'object must be regular file'
+        return dict(dev=int(vals[0]),inode=int(vals[1]),uid=int(vals[2]),gid=int(vals[3]),mode=vals[4],size=int(vals[5]),mtime=int(vals[6]),selinux=next(w for w in lines[1].split() if w.startswith('u:object_r:')),sha256=lines[2].split()[0])
+    def bind(self,label,expected):
+        # Same check as outer recovery_lineage.RecoveryWindow.bind: main + every same-name descendant.
+        # Sampling race only (peer v7 follow-up): if core identity is stable and only the legal same-name descendant
+        # set changed during the bracket, take a complete fresh read-only sample, at most 3 rounds within 20s.
+        # Accept only a round whose full identity is equal before/after with every descendant's maps verified.
+        # Core change, wrong SHA/inode/metadata or unknown lineage still stops immediately.
+        t0=time.monotonic();core=None;resamples=[]
+        for attempt in (1,2,3):
+            stem0=label if attempt==1 else label+'-resample-'+str(attempt)
+            before=self.identity(stem0+'-identity-before');child,descendants=select_main(before);host=one(before,HOST);parent=parent_root(before)
+            if core is None:core=core_identity(before)
+            elif core_identity(before)!=core:raise RuntimeError('core identity changed between bind samples')
+            assert child['uid']==host['uid']==UID and child['parent']==parent['pid']
+            backing=self.object(stem0+'-backing',TARGET);assert backing['sha256']==expected
+            if expected==CANDIDATE and self.published is not None:
+                assert (backing['dev'],backing['inode'])==(self.published['dev'],self.published['inode']), 'activation object differs from published object'
+            objects=[]
+            for role,process in [('main',child)]+[('descendant',d['process']) for d in descendants]:
+                pid=process['pid'];stem=stem0+'-'+role+'-'+str(pid)
+                # 61b has no awk (rc127): read the full maps with cat and filter host-side in Python.
+                text=self.shell(stem+'-maps',f"set -e; test -r /proc/{pid}/maps; cat /proc/{pid}/maps")
+                maps=[line.split() for line in text.splitlines() if 'liboh_adapter_bridge.so' in line]
+                if not maps:
+                    if role=='main':raise RuntimeError('main child baseline not mapped')  # exact v7 text; early recovery poll matches it
+                    objects.append({'role':role,'process':process,'mapping':'not_mapped'});continue
+                assert all(row[-1]==MAPPED and '(deleted)' not in row for row in maps)
+                mount=self.shell(stem+'-mount',f"set -e; grep ' /data/local/tmp/asx ' /proc/{pid}/mountinfo; readlink /proc/{pid}/ns/mnt")
+                assert str(Path(TARGET).parent).removeprefix('/data') in mount
+                obj=self.object(stem+'-process-root',f'/proc/{pid}/root'+MAPPED)
+                assert obj==backing and obj['sha256']==expected
+                assert (obj['uid'],obj['gid'],obj['mode'],obj['selinux'])==(UID,UID,'644',LABEL)
+                assert all(int(row[4])==obj['inode'] and tuple(int(x,16) for x in row[3].split(':'))==linux_device_pair(obj['dev']) for row in maps)
+                objects.append({'role':role,'process':process,'mapping':'verified','object':obj})
+            after=self.identity(stem0+'-identity-after')
+            if core_identity(after)!=core:raise RuntimeError('core identity changed during mapping bracket')
+            if before==after:
+                save(self.run/(label+'-binding.json'),dict(identity=after,main_child=child,same_name_descendants=descendants,mappings=objects,object=backing,resamples=resamples));return after,backing
+            resamples.append(dict(attempt=attempt,before=[p for p in before['processes'] if p['name']==CHILD],after=[p for p in after['processes'] if p['name']==CHILD]))
+            if attempt==3 or time.monotonic()-t0>=20:raise RuntimeError('same-name descendant set still changing after bounded resampling')
+    def admit(self,label,expected=BASELINE,idle=None):
+        before=self.identity(label+'-presence')
+        main,descendants=select_main(before,allow_empty=True)
+        if main is not None:
+            bound,obj=self.bind(label,expected)
+            self.result['mapping_now']='strict_current_mapping_verified'
+            return bound,obj
+        if article_present(before):raise RuntimeError('article-prefixed process present without main child; idle exception prohibited')
+        if idle is not None:return idle(before)
+        raise RuntimeError('no child and no idle exception for this phase')
+    def power(self,label):
+        s=self.shell(label,"hidumper -s PowerManagerService -a '-a' | grep -E 'ScreenOffTime|Current State'")
+        b=re.search(r'ScreenOffTime: Timeout=(\d+)ms',s);v=re.search(r'OverrideTimeout=(\d+)ms',s);state=re.search(r'Current State: (\w+)',s)
+        if not b or not state:raise RuntimeError('incomplete base/state')
+        return dict(base=int(b.group(1)),override=int(v.group(1)) if v else None,state=state.group(1))
+    def keepawake(self,label):
+        self.held();p=self.power(label+'-power-read');assert p['base']==self.prepower['base']
+        if p['override']!=600000:self.shell(label+'-override','power-shell timeout -o 600000');p=self.power(label+'-power-verify')
+        assert p['override']==600000 and p['base']==self.prepower['base']
+        if p['state']!='AWAKE':self.shell(label+'-wake','power-shell wakeup');p=self.power(label+'-awake-verify')
+        assert p==dict(base=self.prepower['base'],override=600000,state='AWAKE')
+    def ui(self,label,command):
+        self.held();self.shell(label,'uitest uiInput '+command);self.keepawake(label+'-post-uitest')
+    def screen(self,label):
+        self.keepawake(label)
+        remote='/data/local/tmp/t136-'+self.run.name+'-'+label
+        self.shell(label+'-layout','uitest dumpLayout -p '+q(remote+'.json'));self.keepawake(label+'-post-layout')
+        self.call(label+'-layout-recv',[HDC,'-t',SERIAL,'file','recv',remote+'.json',str(self.run/(label+'.layout.json'))])
+        self.shell(label+'-capture','snapshot_display -f '+q(remote+'.jpeg'))
+        self.call(label+'-recv',[HDC,'-t',SERIAL,'file','recv',remote+'.jpeg',str(self.run/(label+'.jpeg'))])
+        pic=dict(run=self.run.name,label=label,image_sha256=digest(self.run/(label+'.jpeg')),layout_sha256=digest(self.run/(label+'.layout.json')))
+        save(self.run/(label+'.image.json'),pic);print('IMAGE_READY '+json.dumps(dict(pic,path=str(self.run/(label+'.jpeg')))),flush=True);return pic
+    def review(self,pic,deadline,wait=True,context='desktop',allowed_touch=('click','swipe')):
+        p=self.run/(pic['label']+'.review.json')
+        while time.monotonic()<deadline:
+            if p.exists():
+                raw=p.read_bytes()
+                try:
+                    r=json.loads(raw)
+                    if not isinstance(r,dict) or any(r.get(k)!=pic[k] for k in ('run','label','image_sha256','layout_sha256')):raise ReviewSchemaError('review identity mismatch')
+                    return validate_review(r,context,allowed_touch)
+                except (ValueError,ReviewSchemaError) as err:
+                    # Image-review error, not an application failure: record once per receipt version, keep waiting.
+                    note=dict(label=pic['label'],receipt_sha256=hashlib.sha256(raw).hexdigest(),error=str(err))
+                    errs=self.result.setdefault('review_errors',[])
+                    if note not in errs:errs.append(note);print('REVIEW_ERROR '+json.dumps(note),flush=True)
+            if not wait:return None
+            time.sleep(.2)
+        raise RuntimeError('visual review deadline (image-review timeout, not an application verdict)')
+    def desktop(self,label,deadline):
+        pic=self.screen(label)
+        for step in range(4):
+            r=self.review(pic,deadline)
+            if r['verdict']=='clock_no_credentials':
+                xy=r['swipe'];self.coords(xy,4);self.ui(label+'-unlock','swipe '+' '.join(map(str,xy))+' 600');time.sleep(1.5);pic=self.screen(label+'-unlocked')
+            elif r['verdict']=='usb_dialog':
+                # Review confirms the selected charge-only mode; tap only the fresh confirmation point.
+                xy=r['xy'];self.coords(xy,2);self.ui(label+'-usb-confirm','click '+' '.join(map(str,xy)));pic=self.screen(label+'-usb-dismissed')
+            elif r['verdict'] in ('host_white','feed'):
+                self.ui(label+'-home','keyEvent Home');pic=self.screen(label+'-desktop')
+            elif r['verdict']=='desktop':break
+            else:raise RuntimeError('no confirmed desktop; unknown/credentials prohibited')
+        else:raise RuntimeError('bounded desktop preparation incomplete')
+        for page in range(12):
+            if time.monotonic()>=deadline:raise RuntimeError('desktop preparation deadline')
+            tree=json.loads((self.run/(pic['label']+'.layout.json')).read_text());nodes=[];workspace=[]
+            def walk(n,launcher=False,visible=True):
+                at=n.get('attributes',{})
+                if at.get('bundleName'):launcher=at['bundleName']=='com.ohos.sceneboard'
+                visible=visible and at.get('visible') not in (False,'false') and at.get('enabled') not in (False,'false')
+                if str(at.get('id','')).startswith('SwiperPage_Grid_WorkSpace') and launcher and visible:workspace.append(at)
+                if at.get('id')=='AppIconCommonView_org.westlake.imehost.EntryAbility' and launcher and visible and all(at.get(k)=='true' for k in ('visible','enabled','clickable')):nodes.append(at)
+                for c in n.get('children',[]):walk(c,launcher,visible)
+            walk(tree);bounds=list(map(int,re.findall(r'\d+',tree['attributes']['bounds'])));assert len(bounds)==4
+            if len(nodes)==1:
+                v=list(map(int,re.findall(r'\d+',nodes[0]['bounds'])));assert len(v)==4 and bounds[0]<=v[0]<v[2]<=bounds[2] and bounds[1]<=v[1]<v[3]<=bounds[3]
+                print('TARGET_READY '+json.dumps(dict(pic,page=page)),flush=True)
+                if self.review(pic,deadline)['verdict']!='desktop':raise RuntimeError('target frame not confirmed desktop')
+                return [(v[0]+v[2])//2,(v[1]+v[3])//2]
+            if len(nodes)>1 or not workspace or page==11:raise RuntimeError('no unique target in12 desktop pages')
+            x1,y1,x2,y2=bounds;xy=[x1+(x2-x1)*4//5,(y1+y2)//2,x1+(x2-x1)//5,(y1+y2)//2]
+            self.ui(label+'-page-next-'+str(page),'swipe '+' '.join(map(str,xy))+' 600');time.sleep(.5);pic=self.screen(label+'-page-'+str(page+1))
+    def coords(self,xy,n):
+        assert isinstance(xy,list) and len(xy)==n and all(type(v) is int and 0<=v<=3000 for v in xy)
+    def stage(self,name,expected,old=None,kind=None,allowed_touch=('click','swipe')):
+        if kind not in STAGE_KINDS or (kind in ('samehost','recreated'))!=(old is not None):raise RuntimeError('explicit stage_kind/old mismatch '+name)
+        deadline=min(time.monotonic()+120,self.start+(1700 if self.recovery else 780))
+        xy=self.desktop(name+'-before',deadline)
+        print('TOUCH_REQUIRED '+json.dumps(dict(stage=name,stage_kind=kind,allowed_touch=list(allowed_touch))),flush=True)
+        if not self.recovery and self.elapsed()>750:raise RuntimeError('no complete120s plus cleanup reserve')
+        self.ui(name+'-icon','click '+' '.join(map(str,xy)));clicked=time.monotonic();deadline=min(clicked+120,self.start+(1750 if self.recovery else 900));bound=None
+        if self.recovery:
+            # Verbatim v7 early recovery observation: 1.5s read-only identity polls up to 90s, strict bind as soon
+            # as the main child exists (old baseline processes exit fast; fixed 5/30s sampling missed them).
+            poll=0
+            while time.monotonic()<min(clicked+90,deadline):
+                poll+=1;ident=self.identity(name+'-early-presence-'+str(poll))
+                main,descendants=select_main(ident,allow_empty=True)
+                if main is not None:
+                    try:bound,obj=self.bind(name+'-early-'+str(poll),expected)
+                    except RuntimeError as e:
+                        if str(e)!='main child baseline not mapped':raise
+                    else:
+                        assert bound['boot']!=self.original['boot'], 'recovery reboot must establish new boot'
+                        self.screen(name+'-bound');return bound
+                time.sleep(1.5)
+            raise RuntimeError(NO_EARLY_MAPPING)
+        for index,offset in enumerate((5,30,60,90)):
+            while time.monotonic()<clicked+offset:time.sleep(.2)
+            if time.monotonic()>deadline+1:raise RuntimeError('stage deadline')
+            ident=self.identity(name+f'-s{offset}-identity')
+            main,descendants=select_main(ident,allow_empty=True)
+            if main is not None:
+                bound,obj=self.bind(name+f'-s{offset}',expected)
+                if not self.recovery and bound['boot']==self.original['boot']:raise RuntimeError('software reboot not established')
+                if self.boot1 is not None and not self.recovery and bound['boot']==self.boot1:raise RuntimeError('second boot equals first candidate boot')
+                if old:
+                    # Decided by explicit stage kind, never by label/prefix.
+                    if not same_process(select_main_child(old),select_main_child(bound)):raise RuntimeError('old child changed; reassociation invalid')
+                    if kind=='recreated' and same_process(one(old,HOST),one(bound,HOST)):raise RuntimeError('host not recreated')
+                    if kind=='samehost' and not same_process(one(old,HOST),one(bound,HOST)):raise RuntimeError('same host changed')
+            pic=self.screen(name+f'-s{offset}');next_at=min(deadline,clicked+((30,60,90,120)[index]))
+            if self.recovery and bound:return bound
+            while time.monotonic()<next_at:
+                r=self.review(pic,next_at,False,'stage',allowed_touch)
+                if r:
+                    if r['verdict']!='feed':break
+                    if bound is None:raise RuntimeError('feed without mapped candidate')
+                    touch=r['touch_kind'];coords=r['touch_coordinates']  # validated by validate_review
+                    self.ui(name+'-content',touch+' '+' '.join(map(str,coords))+(' 600' if touch=='swipe' else ''))
+                    after=self.screen(name+'-content-after');verified=self.review(after,deadline,context='content')
+                    if verified['verdict']!='usable':raise RuntimeError('content not confirmed usable')
+                    self.result.setdefault('stage_touches',[]).append(dict(stage=name,stage_kind=kind,touch_kind=touch,touch_coordinates=coords,
+                        feed_image_sha256=pic['image_sha256'],after_image_sha256=after['image_sha256'],changed_from_feed=True))
+                    return bound
+                time.sleep(.2)
+        raise RuntimeError('no confirmed usable feed by120s')
+    def reboot(self,label):
+        self.held();old=self.identity(label+'-before')['boot']
+        self.call(label,[HDC,'-t',SERIAL,'target','boot'])
+        # Reuse demo_seal_61b.py wait_boot: new UUID plus exact boot.completed=true.
+        # Additionally require complete power fields and a successful parseable UITest dump.
+        deadline=time.monotonic()+120
+        while time.monotonic()<deadline-15:
+            time.sleep(2)
+            r,s,e=self.call(label+'-boot-completion-poll',[HDC,'-t',SERIAL,'shell','cat /proc/sys/kernel/random/boot_id; param get bootevent.boot.completed'],True)
+            lines=s.strip().splitlines()
+            if r['local_rc']!=0 or e.strip() or len(lines)!=2 or not re.fullmatch(r'[0-9a-f-]{36}',lines[0]) or lines[0]==old or lines[1]!='true':continue
+            new_boot=lines[0]
+            if time.monotonic()>=deadline-15:break
+            pr,ps,pe=self.call(label+'-power-service-poll',[HDC,'-t',SERIAL,'shell',"hidumper -s PowerManagerService -a '-a' | grep -E 'ScreenOffTime|Current State'"],True)
+            if pr['local_rc']!=0 or pe.strip() or not re.search(r'Current State: \w+',ps) or not re.search(r'ScreenOffTime: Timeout=\d+ms',ps):continue
+            if time.monotonic()>=deadline-15:break
+            self.keepawake(label+'-boot-ui')
+            remote='/data/local/tmp/t136-'+self.run.name+'-'+label+'-ready-'+str(self.n)+'.json'
+            ur,us,ue=self.call(label+'-layout-readiness',[HDC,'-t',SERIAL,'shell','uitest dumpLayout -p '+q(remote)+'; r=$?; echo T136_UI_RC:$r'],True)
+            if ur['local_rc']!=0 or ue.strip() or not us.rstrip().endswith('T136_UI_RC:0'):continue
+            if time.monotonic()>=deadline-15:break
+            local=self.run/(label+'-ready-'+str(self.n)+'.json')
+            fr,fs,fe=self.call(label+'-layout-recv',[HDC,'-t',SERIAL,'file','recv',remote,str(local)],True)
+            if fr['local_rc']!=0 or fe.strip() or '[Fail]' in fs or not local.is_file():continue
+            try:tree=json.loads(local.read_text())
+            except (OSError,ValueError):continue
+            if isinstance(tree,dict) and tree:return new_boot
+        raise RuntimeError('newboot/boot.completed/power/parseable layout not ready within120s')
+    def idle_baseline(self,before):
+        label='fresh' if self.owner is None else 'locked-fresh'
+        assert digest(IDLE_SOURCE)==IDLE_SOURCE_SHA, 'idle source SHA mismatch'
+        source=json.loads(IDLE_SOURCE.read_text())
+        restored=source.get('status')=='restored_idle_exact_object' or source.get('kind')=='restored_idle_exact_object'
+        assert restored==(IDLE_SOURCE_KIND=='restored_idle_exact_object'), 'idle source kind differs from steps pin'
+        if restored:
+            # Honest restored receipt, never a mapping claim; admission stays not_running on same boot/roles/object.
+            assert source['mapping_now']=='not_running' and source['baseline_actual_mapping_verified'] is False, 'restored idle source must be honest not_running'
+            assert source.get('current_maps_claim',False) is False and source.get('application_health_claim',False) is False, 'restored idle source claims maps/health'
+            if 'status' in source:
+                # Canonical T136 shape (status/released/identity_before/identity/object): closed and released in the same receipt.
+                assert source['status']=='restored_idle_exact_object' and source['released'] is True, 'T136 restored receipt not released'
+                pair=[source['identity_before'],source['identity']]
+            else:
+                # T141-own kind receipt: only with its own pinned, released result.json; an orphan receipt is refused.
+                result_path=IDLE_SOURCE.parent/'result.json'
+                assert IDLE_SOURCE_RESULT_SHA and result_path.is_file() and digest(result_path)==IDLE_SOURCE_RESULT_SHA, 'T141 restored receipt needs pinned result.json'
+                res=json.loads(result_path.read_text())
+                assert res.get('rollback')=='restored_idle_exact_object' and res.get('released') is True and res.get('restored_idle_receipt_sha256')==IDLE_SOURCE_SHA, 'T141 restored receipt not closed/released'
+                pair=source['points']
+            assert not any(article_present(i) for i in pair), 'restored idle source records an article process'
+            role=lambda i:(i['boot'],one(i,HOST),parent_root(i));assert role(pair[0])==role(pair[1])==role(source['identity']), 'restored idle source roles not stable'
+        else:assert 'status' not in source and 'kind' not in source, 'mapped_binding source must be a binding record'
+        assert before['boot']==source['identity']['boot'] and re.fullmatch(r'[0-9a-f-]{36}',before['boot'])
+        for pick in (lambda i:one(i,HOST),parent_root):
+            current=pick(before);prior=pick(source['identity'])
+            assert current==prior, 'idle host/parent identity changed'
+        assert not article_present(before), 'article process present at idle admission'
+        obj=self.object(label+'-idle-backing',TARGET)
+        assert obj==source['object'] and obj['sha256']==BASELINE and (obj['dev'],obj['inode'])==(66352,560578), 'idle backing differs from exact restored object'
+        after=self.identity(label+'-idle-identity-after');assert after==before, 'idle identity drift'
+        evidence=dict(identity=after,object=obj,mapping_now='not_running',exception='T136-idle-app-same-boot-restored-object',source=IDLE_SOURCE.name,source_run=IDLE_SOURCE.parent.name,source_sha256=IDLE_SOURCE_SHA,source_kind=IDLE_SOURCE_KIND,reason='No child exists; prior verified restored mapping is provenance, not current maps.' if IDLE_SOURCE_KIND=='mapped_binding' else 'No child exists; source is a restored_idle_exact_object receipt (baseline_actual_mapping_verified=false): same boot/roles/exact object only, no mapping claim.')
+        save(self.run/(label+'-idle-admission.json'),evidence)
+        self.result['mapping_now']='not_running';self.result['admission_exception']=evidence['exception'];self.result['idle_source_sha256']=IDLE_SOURCE_SHA
+        return after,obj
+    def restored_idle_exact(self,new_boot,reason):
+        # t3 spec named recovery exception restored_idle_exact_object: the faulty baseline need not run to close.
+        # Under own lock: two time points without any article process, stable boot/host/unique appspawn root,
+        # target full stat/SHA/metadata equal to this window's preimage. Never claims current mapping or app health.
+        points=[]
+        for k in (1,2):
+            self.held()
+            if k==2:time.sleep(5)
+            i=self.identity('restored-idle-point-'+str(k))
+            if article_present(i):raise RuntimeError('restored_idle_exact_object refused: article process present at point '+str(k))
+            points.append(i)
+        role=lambda i:(i['boot'],one(i,HOST),parent_root(i))
+        if points[0]['boot']!=new_boot or role(points[0])!=role(points[1]):raise RuntimeError('restored_idle_exact_object refused: boot/host/appspawn root not stable')
+        if new_boot in (self.candidate_boot,self.boot1):raise RuntimeError('restored_idle_exact_object refused: recovery boot equals a candidate boot')
+        obj=self.object('restored-idle-target',TARGET)
+        if obj!=self.baseline_obj:raise RuntimeError('restored_idle_exact_object refused: target differs from preimage object')
+        self.held()
+        return dict(kind='restored_idle_exact_object',rollback='restored_idle_exact_object',identity=points[1],points=points,object=obj,recovery_boot=new_boot,
+            trigger=reason,baseline_actual_mapping_verified=False,mapping_now='not_running',app_health='not_claimed',historical_provenance=self.provenance,
+            backup=dict(path=self.backup,object=self.baseline_obj),reason='Exact preimage restored and new boot established; baseline app did not start within 90s, so current mapping is not_running and unverified.')
+    def idle_candidate(self,before):
+        # boot2 only: no child; same boot and same published object as the boot1 close-out (provenance, not current maps).
+        label='fresh' if self.owner is None else 'locked-fresh'
+        h=self.handoff;assert before['boot']==h['closeout_identity']['boot'], 'boot changed since boot1 close-out'
+        assert not article_present(before), 'article process present at idle admission'
+        for pick in (lambda i:one(i,HOST),parent_root):assert pick(before)==pick(h['closeout_identity']), 'idle host/parent identity changed'
+        obj=self.object(label+'-idle-backing',TARGET);assert obj==h['published'] and obj['sha256']==CANDIDATE, 'idle backing differs from published candidate'
+        after=self.identity(label+'-idle-identity-after');assert after==before, 'idle identity drift'
+        save(self.run/(label+'-idle-admission.json'),dict(identity=after,object=obj,mapping_now='not_running',exception='T141-idle-candidate-same-boot-published-object'))
+        self.result['mapping_now']='not_running';return after,obj
+    def three_stages(self,prefix):
+        n=lambda x:prefix+x
+        def allowed(index):
+            # Per boot: at least one swipe and one content click, each with confirmed change; three scrolls never pass.
+            done={t['touch_kind'] for t in self.result.get('stage_touches',[]) if t['stage'].startswith(prefix) and t['stage'][len(prefix):] in ('firstopen','samehost','recreated')}
+            missing=tuple(k for k in ('click','swipe') if k not in done)
+            return missing if missing and len(missing)>=3-index else ('click','swipe')
+        first=self.stage(n('firstopen'),CANDIDATE,kind='firstopen',allowed_touch=allowed(0));same=self.stage(n('samehost'),CANDIDATE,first,kind='samehost',allowed_touch=allowed(1))
+        self.ui(n('recent'),'keyEvent 10011');pic=self.screen(n('recent-target'));r=self.review(pic,min(time.monotonic()+120,self.start+780),context='recent')
+        if r['verdict']!='recent_host_card':raise RuntimeError('own recent card not confirmed')
+        self.ui(n('recent-close'),'swipe '+' '.join(map(str,r['swipe']))+' 600')
+        self.ui(n('recent-to-desktop'),'keyEvent Home')
+        last=self.stage(n('recreated'),CANDIDATE,same,kind='recreated',allowed_touch=allowed(2))
+        kinds=[t['touch_kind'] for t in self.result['stage_touches'] if t['stage'] in (n('firstopen'),n('samehost'),n('recreated'))]
+        if len(kinds)!=3 or not {'click','swipe'}<=set(kinds):raise RuntimeError('content validation needs >=1 swipe and >=1 click with change: '+','.join(kinds))
+        return last
+    def run_window(self,phase,handoff=None):
+        assert phase in ('boot1','boot2');self.phase=phase;self.handoff=handoff;keep=False;prefix='' if phase=='boot1' else 'second-'
+        r,s,e=self.call('held-before',['bash',str(NOTE),'held',SERIAL],True);assert r['local_rc']==1 and not s.strip() and not e.strip()
+        self.call('frozen',['python3',str(MAIN/'scripts/lab/check_frozen.py'),'--git',str(MAIN)])
+        if phase=='boot1':idle=self.idle_baseline;expected=BASELINE
+        else:
+            idle=self.idle_candidate;expected=CANDIDATE
+            self.boot1=handoff['candidate_boot'];self.backup=handoff['backup'];self.baseline_obj=handoff['baseline_object'];self.published=handoff['published']
+        self.original,obj=self.admit('fresh',expected,idle);self.system_pre=self.object('system-before',SYSTEM);assert self.system_pre['sha256']==SYSTEM_SHA
+        self.candidate_boot=None
+        if phase=='boot1':self.provenance=dict(run=self.run.name,admission_mapping_now=self.result.get('mapping_now'),admission_exception=self.result.get('admission_exception'),idle_source_sha256=self.result.get('idle_source_sha256'),idle_source_kind=IDLE_SOURCE_KIND if self.result.get('admission_exception') else None)
+        else:self.provenance=handoff['baseline_provenance']
+        if phase=='boot2':assert obj==self.published, 'current candidate object differs from boot1 published object'
+        self.prepower=self.power('power-before');assert self.prepower['override'] is not None
+        self.start=time.monotonic()
+        try:
+            self.call('lock',['bash',str(NOTE),'lock',str(BOARD),SERIAL,LANE,'T141 reentry retain '+phase+' max1800s'])
+            r,s,e=self.call('held-acquired',['bash',str(NOTE),'held',SERIAL]);self.owner=s.strip();assert self.owner.startswith(LANE+' ')
+            self.held();again,original=self.admit('locked-fresh',expected,idle);assert again==self.original and original==obj
+            if phase=='boot1':
+                self.baseline_obj=obj
+                self.backup=TARGET+'.'+self.run.name+'.baseline';temp=TARGET+'.'+self.run.name+'.candidate'
+                self.shell('backup','set -e; test ! -e '+q(self.backup)+'; test ! -e '+q(temp)+'; ln '+q(TARGET)+' '+q(self.backup))
+                assert self.object('backup-verify',self.backup)==obj
+                self.call('preimage-recv',[HDC,'-t',SERIAL,'file','recv',self.backup,str(self.run/'baseline.so')]);assert digest(self.run/'baseline.so')==BASELINE
+                self.call('candidate-send',[HDC,'-t',SERIAL,'file','send',str(INPUT/'candidate.so'),temp])
+                self.shell('preserve-metadata',f'set -e; chown {UID}:{UID} '+q(temp)+'; chmod 0644 '+q(temp)+'; chcon '+q(LABEL)+' '+q(temp))
+                staged=self.object('staged',temp);assert staged['sha256']==CANDIDATE and staged['dev']==obj['dev'] and (staged['uid'],staged['gid'],staged['mode'],staged['selinux'])==(UID,UID,'644',LABEL)
+                self.held();self.publish_attempted=True;self.shell('atomic-publish','set -e; mv '+q(temp)+' '+q(TARGET));self.published=self.object('published',TARGET);assert self.published==staged
+            else:
+                self.publish_attempted=True  # candidate already on disk since boot1; any failure restores the exact baseline
+                assert self.object('backup-verify',self.backup)==self.baseline_obj and self.baseline_obj['sha256']==BASELINE
+            self.candidate_boot=self.reboot(phase+'-candidate-reboot')
+            self.three_stages(prefix)
+            # Success close-out (counts toward the 1200 s close-out start, not as a new experiment).
+            if self.elapsed()>=1200:raise RuntimeError('close-out not started before 1200s')
+            self.closing=True
+            closeout,final_obj=self.bind(prefix+'closeout',CANDIDATE);assert final_obj==self.published, 'retained object differs from published object'
+            assert self.object(prefix+'closeout-system',SYSTEM)==self.system_pre
+            assert self.object(prefix+'closeout-backup',self.backup)==self.baseline_obj
+            final=self.screen(prefix+'closeout-final')
+            try:fr=self.review(final,min(time.monotonic()+120,self.start+1500),context='closeout')
+            except RuntimeError:fr=None  # review timeout: never auto-pass; outer post-signoff required
+            if fr is not None and fr['verdict']!='closeout_ok':raise RuntimeError('closeout-final image rejected by review')
+            self.result.update(closeout_final_image_sha256=final['image_sha256'],closeout_review='passed' if fr else 'pending_outer_signoff')
+            if phase=='boot1':
+                h=dict(phase='boot1',run=self.run.name,candidate_boot=closeout['boot'],closeout_identity=closeout,published=self.published,backup=self.backup,baseline_object=self.baseline_obj,baseline_provenance=dict(self.provenance,preimage_local_sha256=digest(self.run/'baseline.so')))
+                save(self.run/'boot1-handoff.json',h);self.result.update(runtime_result='boot1_three_stages_passed_candidate_in_place_pending_boot2',boot1_handoff_sha256=digest(self.run/'boot1-handoff.json'),rollback='deferred_to_boot2_window_or_exact_rollback')
+            else:
+                self.result.update(runtime_result='retained_reentry_validated_av_pending' if fr else 'retained_reentry_closeout_review_pending',retain_eligibility='granted_av_pending' if fr else 'pending_outer_signoff',speaker_audio='pending',video_audio_acceptance='pending',t4_full_seal='pending',boots=[self.boot1,closeout['boot']],rollback='not_performed_candidate_retained',
+                    rollback_basis=dict(backup=self.backup,baseline_object=self.baseline_obj,steps=['held lock','mv backup -> target (atomic, same dir)','verify target object == baseline_object','normal software reboot','bind main child mapping == baseline']))
+            keep=True
+        except BaseException as e:self.result.update(status='experiment_stopped',error=str(e));print('STOP '+str(e),flush=True)
+        finally:
+            self.recovery=True;self.result['close_started_elapsed']=self.elapsed()
+            idle_exact=None
+            try:
+                if not keep:
+                    self.held()
+                    if self.publish_attempted:
+                        current=self.object('rollback-current',TARGET)
+                        if current['sha256'] not in (BASELINE,CANDIDATE):raise RuntimeError('unknown published object; recovery_required')
+                        assert self.object('rollback-backup',self.backup)==self.baseline_obj
+                        self.shell('atomic-rollback','set -e; mv '+q(self.backup)+' '+q(TARGET));assert self.object('rollback-disk',TARGET)==self.baseline_obj
+                        recovery_boot=self.reboot('rollback-reboot')
+                        try:self.stage('baseline-restored',BASELINE,kind='restore');self.result['baseline_actual_mapping_verified']=True
+                        except RuntimeError as e:
+                            if str(e)!=NO_EARLY_MAPPING:raise
+                            idle_exact=self.restored_idle_exact(recovery_boot,str(e))
+                    assert self.object('system-after',SYSTEM)==self.system_pre
+                    final=self.screen('final')
+                    if idle_exact:
+                        idle_exact.update(final_image_sha256=final['image_sha256'],system_object=self.system_pre)
+                        save(self.run/'restored-idle-exact-object.json',idle_exact)
+                        self.result.update(rollback='restored_idle_exact_object',baseline_actual_mapping_verified=False,mapping_now='not_running',app_health='not_claimed',
+                            historical_provenance=self.provenance,restored_idle_receipt_sha256=digest(self.run/'restored-idle-exact-object.json'),restore_reason=idle_exact['reason'])
+                    else:self.result['rollback']='verified'
+            except BaseException as e:self.result['recovery_error']=str(e);self.result['rollback']='recovery_required'
+            finally:
+                try:
+                    self.held();self.shell('power-restore','power-shell timeout -o '+str(self.prepower['override']));post=self.power('power-final');assert all(post[k]==self.prepower[k] for k in ('base','override'));self.result['power_restored']=True
+                    if self.result.get('rollback') in ('verified','restored_idle_exact_object') or keep:
+                        self.call('unlock',['bash',str(NOTE),'unlock',str(BOARD),SERIAL,LANE]);r,s,e=self.call('final-held',['bash',str(NOTE),'held',SERIAL],True);self.result['released']=r['local_rc']==1 and not s.strip() and not e.strip()
+                except BaseException as e:self.result['cleanup_error']=str(e)
+                self.result['elapsed_seconds']=self.elapsed();save(self.run/'result.json',self.result);print('DONE '+json.dumps(self.result),flush=True)
+
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument('--phase',choices=('boot1','boot2'),required=True);ap.add_argument('--outer-receipt',type=Path,required=True);ap.add_argument('--boot1-handoff',type=Path);a=ap.parse_args()
+    receipt=json.loads(a.outer_receipt.read_text())
+    assert receipt.get('decision')=='approve_execution' and receipt.get('serial')==SERIAL and receipt.get('phase')==a.phase
+    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps_retain.json')
+    assert receipt.get('candidate_sha256')==CANDIDATE and receipt.get('rollback_sha256')==BASELINE
+    for name,expected in [('candidate.so',CANDIDATE),('rollback.so',BASELINE)]:assert digest(INPUT/name)==expected
+    handoff=None
+    if a.phase=='boot1':assert receipt.get('idle_source_sha256')==IDLE_SOURCE_SHA and digest(IDLE_SOURCE)==IDLE_SOURCE_SHA
+    else:
+        assert a.boot1_handoff and receipt.get('boot1_handoff_sha256')==digest(a.boot1_handoff)
+        handoff=json.loads(a.boot1_handoff.read_text());assert handoff.get('phase')=='boot1'
+        prior=json.loads((a.boot1_handoff.parent/'result.json').read_text())
+        assert prior.get('runtime_result')=='boot1_three_stages_passed_candidate_in_place_pending_boot2' and prior.get('released') is True and prior.get('boot1_handoff_sha256')==digest(a.boot1_handoff)
+        assert prior.get('closeout_review')=='passed' or receipt.get('boot1_closeout_signoff_image_sha256')==prior.get('closeout_final_image_sha256'), 'boot1 close-out image neither reviewed nor outer-signed'
+    used=HERE/'.private'/('used-outer-receipt-'+digest(a.outer_receipt)+'.json');used.parent.mkdir(exist_ok=True);save(used,{'outer_receipt_sha256':digest(a.outer_receipt),'phase':a.phase})
+    w=Window();save(w.run/'outer-receipt.json',receipt);w.run_window(a.phase,handoff)
+if __name__=='__main__':main()
