@@ -1,0 +1,53 @@
+{
+  "status": "PLAN_ONLY_NOT_EXECUTED",
+  "argv": [
+    "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "set -u\nprintf '__IDENT_PRE__\\n'\ncat /proc/sys/kernel/random/boot_id || exit 91\ncat /proc/uptime || exit 91\ncat /proc/4958/stat || exit 91\ncat /proc/4958/cmdline || exit 91\nprintf '\\n'\nprintf '__HILOG_BEGIN__\\n'\nhilog -P 4958 -z 2000 -L D,I,W,E,F -v epoch\nr=$?\nprintf '__HILOG_RC__=%s\\n' \"$r\"\nprintf '__IDENT_POST__\\n'\ncat /proc/sys/kernel/random/boot_id || exit 92\ncat /proc/uptime || exit 92\ncat /proc/4958/stat || exit 92\ncat /proc/4958/cmdline || exit 92\nprintf '\\n__END__\\n'\nexit \"$r\"\n"
+  ],
+  "verified_inner_command": "hilog -P 4958 -z 2000 -L D,I,W,E,F -v epoch",
+  "host_runner": {
+    "hard_wall_deadline_seconds": 10,
+    "stdout_stderr_combined_byte_limit": 1048576,
+    "mode": "stream both pipes; never unbounded capture_output; stop local HDC client at first deadline or byte cap; no device process kill",
+    "timeout_or_cap": "preserve received bytes and actual local return code; mark partial and missing postguard UNKNOWN; no retry"
+  },
+  "receipt_root": "$HOME/.local/share/westlake/ordinary-host-4958-20261024/collect-01",
+  "receipt_files": [
+    "argv.json",
+    "stdout",
+    "stderr",
+    "receipt.json"
+  ],
+  "receipt_fields": [
+    "local_started_at",
+    "local_ended_at",
+    "elapsed_seconds",
+    "local_rc",
+    "remote_hilog_rc_or_null",
+    "timeout",
+    "byte_cap_reached",
+    "stdout_bytes",
+    "stderr_bytes",
+    "stdout_sha256",
+    "stderr_sha256",
+    "boot_pre",
+    "boot_post",
+    "host_birth_pre",
+    "host_birth_post",
+    "identity_status",
+    "first_epoch",
+    "last_epoch",
+    "body_CODE_error"
+  ],
+  "interpretation": [
+    "Reject normal-success classification if CODE error/unrecognized/usage appears even with rc0.",
+    "Compare complete pre/post boot and stat field22 plus cmdline org.westlake.imehost; missing fields or PID reuse means UNKNOWN, not discard raw.",
+    "No -x; tail2000 is historical bounded lines, not 10 seconds of log coverage. Report actual first/last epoch and whether click interval is included.",
+    "WL_IME_HOST event=foreground is observed callback evidence; stage-event details.event retain numeric values without assigning undocumented meaning.",
+    "child22035 start ticks6535369 / CLK_TCK100 = 65353.69 seconds since boot, not epoch. Use same-boot uptime/epoch anchor and recorded click interval; host/device clock offset remains unknown unless measured.",
+    "No fresh click or process-state modification. No new feed claim."
+  ]
+}

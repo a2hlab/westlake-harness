@@ -1112,3 +1112,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-24 T123：离线图标11例通过不等于实机录制入口通过；现场拼接的等待循环只看cleanup-now、不消费outer-review，导致有效T+66.388图审仍T+120清理，后继同名回执又覆盖。上板前冻结实际将运行的完整入口，测试走锁屏→解锁图→最终图审→同worker继续/统一cleanup；不在持板窗内写后继脚本或用PID交接，回执独占创建。
 
 - 2026-10-24 T123：103406已目读白屏图（950622b1…）对应的dumpLayout仍有ScreenLockRootComponent且visible=true/opacity1/focused=true；110011按该节点提前停止而未采解锁后图，不能据此判解锁失败。一次普通上滑后先保存真实截图，锁节点残留仅记证据，外环目读最终画面再决定Home；凭据/未知仍停止。
+
+- 2026-10-24 T123成功对照：同boot正常桌面一次点击，s10/s30白屏无child，s60文字feed/s90图片加载；实测CLK_TCK100+birth/uptime命令时界把child创建估为点击后43.95–44.62秒，后续16秒不能全称绘制。成功child22035也有与T122失败child同栈的HTML标题302→JSON异常（前缀3131–3136），异常出现本身不充分解释持续白屏；日志增长时只声明重复采集的512KiB前缀相同，不称整文件稳定。

@@ -21,3 +21,7 @@ The frozen v3 package passed 12 complete offline cases and independent review. T
 ## Observed revision 4 result
 
 [Exact facts](final-v4/facts.txt) and [receipts](final-v4/results.json) retain the six received screenshots, four actual post-click samples, single icon click and restored power/lock state. The reviewed public images show [initial white host](final-v4/screenshots/host-white.jpeg), [text feed at the +60s sample](final-v4/screenshots/s60.jpeg), and [loaded feed images at +90s](final-v4/screenshots/s90.jpeg). Source and replay tests are pinned by [v4 manifest](launch-package-v4/manifest.json); author commits `3e73c63629792d50e4569a5d8b845343b3b8c068` and `72be78567` supply the implementation and dynamic facts correction.
+
+## Startup delay evidence
+
+[Same-child creation timing and log counterexample](peer-review/successful-child-22035/outer-addendum/README.md) estimate child creation at approximately 44 seconds after the click using device uptime, measured CLK_TCK=100 and bounded command timestamps. Creation precedes the first sampled text feed; subsequent work cannot all be labeled rendering. The same HTML-title302/JSON exception appears in this successful child, so its presence alone is not a sufficient explanation for persistent white screen. Whole-log stability was rejected because the file grew; only the two identical 512KiB prefixes are compared.
