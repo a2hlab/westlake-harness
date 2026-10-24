@@ -312,12 +312,18 @@ class Window:
                     if r['verdict']!='feed':break
                     if bound is None:raise RuntimeError('feed without mapped candidate')
                     touch=r['touch_kind'];coords=r['touch_coordinates']  # validated by validate_review
+                    # T136 v9 alignment: the content-after review gets its own 60 s inside the 900 s operation budget
+                    # (recovery reserve untouched); with less than 60 s left no touch is sent.
+                    if time.monotonic()+60>self.start+900:raise RuntimeError('insufficient60s content review before recovery reserve')
                     self.ui(name+'-content',touch+' '+' '.join(map(str,coords))+(' 600' if touch=='swipe' else ''))
-                    after=self.screen(name+'-content-after');verified=self.review(after,deadline,context='content')
+                    after=self.screen(name+'-content-after');verified=self.review(after,min(time.monotonic()+60,self.start+900),context='content')
                     if verified['verdict']!='usable':raise RuntimeError('content not confirmed usable')
+                    # v9: re-check boot/host/root/main (pid, birth, uid) after usable; a legal descendant change is allowed.
+                    after_identity=self.identity(name+'-content-after-identity')
+                    if core_identity(after_identity)!=core_identity(bound):raise RuntimeError('core identity changed after content interaction')
                     self.result.setdefault('stage_touches',[]).append(dict(stage=name,stage_kind=kind,touch_kind=touch,touch_coordinates=coords,
                         feed_image_sha256=pic['image_sha256'],after_image_sha256=after['image_sha256'],changed_from_feed=True))
-                    return bound
+                    return after_identity
                 time.sleep(.2)
         raise RuntimeError('no confirmed usable feed by120s')
     def reboot(self,label):

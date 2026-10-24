@@ -54,6 +54,10 @@ Earlier drafts were diffed against v6; v7 already carries the lineage selector, 
    `result.json` pinned as `source_result_sha256` (orphan receipts refused). Same boot/host/appspawn root/object still required.
    Article detection uses the package prefix (`com.ss.android.article.news*` in the identity collector,
    `startswith` in admission/restore checks), so colon subprocesses never count as "nobody running".
+1d. **Content-after review aligned to T136 v9** (`execute_v9.py` `30cd6564…`): no content touch is sent when fewer
+   than 60 s remain in the 900 s operation budget; the content-after image gets its own 60 s review capped at
+   `start+900` (recovery reserve untouched); after `usable` the identity is re-read and boot/host/appspawn root/main
+   child (pid, birth, uid) must be unchanged, while a legal same-name descendant change is allowed.
 2. **Review schema before use, by context** (`validate_review(r, context, allowed_touch)`):
    `desktop` feed = Home only (no touch fields); `stage` feed needs `touch_kind` + `touch_coordinates`;
    clock/Recent always need `swipe[4]`; `content` usable needs `changed_from_feed: true`;
@@ -101,6 +105,6 @@ Budgets per window: 900 s stop new work, 1200 s close-out/recovery start, 1800 s
   stops the window (strict, same as v7).
 
 ## Tests
-`python3 tests/test_retain_dry_run.py` (63 cases, no device; 4 replay the real private T136 receipt and skip if it is absent). Selector:
+`python3 tests/test_retain_dry_run.py` (68 cases, no device; 4 replay the real private T136 receipt and skip if it is absent). Selector:
 `cargo test --test host_window_reentry_retain` (`host_window_reentry_retain_receipts`).
 Synthetic tests prove control flow only, not deployment, rollback or visual success.

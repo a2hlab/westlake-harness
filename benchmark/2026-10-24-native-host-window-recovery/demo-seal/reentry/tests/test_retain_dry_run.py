@@ -293,6 +293,44 @@ class StartupTransient(unittest.TestCase):
         finally: X.time = real
         self.assertEqual(binds, ['firstopen-s30'])
 
+class ContentAfterV9(unittest.TestCase):
+    """T136 v9 alignment: own 60 s content review inside the 900 s budget; core identity re-check after usable."""
+    def go(self, after_identity, start=0.0, answer_after=None):
+        clock = FakeClock(); real = X.time; X.time = clock; uis = []; deadlines = []
+        try:
+            with tempfile.TemporaryDirectory() as t:
+                w = bare_window(t); w.start = start
+                w.desktop = lambda l, d: [1, 1]; w.ui = lambda l, c: uis.append(l)
+                w.identity = lambda label: after_identity if label.endswith('content-after-identity') else ident()
+                w.bind = lambda l, e: (ident(), {}); w.screen = lambda l: dict(label=l, image_sha256='x')
+                def review(pic, deadline, wait=True, context='desktop', allowed_touch=None):
+                    if context == 'content': deadlines.append((deadline, clock.t)); return dict(verdict='usable', changed_from_feed=True)
+                    if answer_after is not None and clock.t - start <= answer_after: return None  # reviewer answers late
+                    return dict(verdict='feed', touch_kind='click', touch_coordinates=[1, 2])
+                w.review = review
+                try: out = w.stage('firstopen', X.CANDIDATE, kind='firstopen')
+                except RuntimeError as e: out = e
+                return out, uis, deadlines, w.result
+        finally: X.time = real
+    def test_late_frame_sends_no_touch(self):
+        out, uis, _, res = self.go(ident(), start=-748.0, answer_after=841.0)  # click at 748 s, feed answered after 841 s
+        self.assertRegex(str(out), 'insufficient60s'); self.assertNotIn('firstopen-content', uis); self.assertNotIn('stage_touches', res)
+    def test_content_review_has_own_60s_within_budget(self):
+        out, uis, deadlines, _ = self.go(ident())
+        self.assertIn('firstopen-content', uis); d, now = deadlines[0]; self.assertLessEqual(d, now + 60); self.assertGreater(d, now + 59)
+        out, uis, deadlines, _ = self.go(ident(), start=-748.0, answer_after=838.0)  # late but still >= 60 s left
+        self.assertIn('firstopen-content', uis); d, now = deadlines[0]; self.assertLessEqual(d, -748.0 + 900); self.assertLessEqual(d, now + 60)
+    def test_main_child_change_after_usable_rejected(self):
+        out, uis, _, res = self.go(ident(child=(310, 20)))
+        self.assertRegex(str(out), 'core identity changed after content interaction'); self.assertNotIn('stage_touches', res)
+    def test_host_or_boot_change_after_usable_rejected(self):
+        for changed in (ident(host=(101, 8)), ident(boot='B9')):
+            with self.subTest(changed['boot']):
+                self.assertRegex(str(self.go(changed)[0]), 'core identity changed')
+    def test_legal_descendant_change_after_usable_accepted(self):
+        after = ident(extra=[DESC]); out, _, _, res = self.go(after)
+        self.assertEqual(out, after); self.assertEqual(res['stage_touches'][0]['touch_kind'], 'click')
+
 class PhaseFlow(unittest.TestCase):
     def flow(self, phase, fail_stages=False, handoff=None, closeout='closeout_ok', restore=None, points=None, restored_obj=None):
         with tempfile.TemporaryDirectory() as t:

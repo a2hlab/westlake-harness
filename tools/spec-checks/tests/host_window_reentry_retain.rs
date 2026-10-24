@@ -16,6 +16,7 @@ assert "for attempt in (1,2,3):" in src and "time.monotonic()-t0>=20" in src and
 assert "p['parent']==1 and p['uid']==0" in src and src.index("if not named and allow_empty:return None,[]") < src.index("    parent=parent_root(identity)")
 assert "baseline_actual_mapping_verified=False,mapping_now='not_running'" in src and "if str(e)!=NO_EARLY_MAPPING:raise" in src
 assert "com.ss.android.article.news*|appspawn-x" in src and "p['name'].startswith(CHILD)" in src and "source['released'] is True" in src
+assert "insufficient60s content review before recovery reserve" in src and "core identity changed after content interaction" in src
 assert "-early-presence-" in src and "within90s early observation" in src and "raise RuntimeError('main child baseline not mapped')" in src
 assert "full_seal" not in src.replace("t4_full_seal='pending'", "")
 r = subprocess.run([sys.executable, os.path.join(d, "tests/test_retain_dry_run.py")], capture_output=True, text=True)
