@@ -9,7 +9,7 @@ severity: S2
 recurrence: 2
 fingerprint: verification/early-frame-premature-content-failure
 issue:
-cards: []
+cards: [EVO-0169]
 filed: 2026-10-25
 ---
 
