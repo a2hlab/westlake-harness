@@ -1,0 +1,85 @@
+{
+  "serial": "61b0657200000000000000000324012c",
+  "remote_commands": [
+    {
+      "command": "cat",
+      "targets": [
+        "/proc/sys/kernel/random/boot_id",
+        "/proc/uptime",
+        "/proc/PARENT/stat",
+        "/proc/PARENT/status",
+        "/proc/EXACT_CHILD/stat",
+        "/proc/EXACT_CHILD/status"
+      ]
+    },
+    {
+      "command": "readlink",
+      "targets": [
+        "/proc/PARENT/fd/1",
+        "/proc/PARENT/fd/2"
+      ]
+    },
+    {
+      "command": "ps",
+      "argv": [
+        "-A",
+        "-o",
+        "PID,PPID,UID,NAME"
+      ],
+      "output": "POSIX read/case validates numeric columns and emits header+exact target rows only; unrelated process rows are not retained"
+    },
+    {
+      "command": "stat",
+      "argv": [
+        "-c",
+        "%d %i %s %f"
+      ],
+      "targets": [
+        "fixed parent.log",
+        "fixed current-boot events.log"
+      ]
+    },
+    {
+      "command": "dd",
+      "arguments": "if=fixed log bs=1 skip=previous confirmed offset count=bounded delta; OR if=/proc/EXACT_CHILD/cmdline bs=1 count=28 for exact first name plus NUL; never of=",
+      "maximum_per_file": 65536
+    }
+  ],
+  "shell_helpers": [
+    "set -eu",
+    "per-command LC_ALL=C",
+    "printf",
+    "test -L/-f and numeric/identity comparisons",
+    "POSIX while read -r/case/for numeric validation and exact parent+UID+NAME selection",
+    "arithmetic"
+  ],
+  "fixed_logs": [
+    "/data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d/parent.log",
+    "/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261021-r3/boots/VALIDATED_UUID/events.log"
+  ],
+  "no_reads": [
+    "control scripts",
+    "env files",
+    "memory",
+    "unrelated logs"
+  ],
+  "no_actions": [
+    "UI",
+    "start/stop app",
+    "device signals",
+    "device writes",
+    "permissions",
+    "REA",
+    "debugger"
+  ],
+  "local_timeout_cleanup": "Only the Popen local HDC client is killed/reaped; no device process signaling command exists.",
+  "absent_tools_not_used": [
+    "awk",
+    "tr",
+    "ip",
+    "route",
+    "wpa_cli",
+    "ndc",
+    "wc"
+  ]
+}
