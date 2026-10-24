@@ -1,0 +1,11 @@
+# Input object path-sensitive code generation
+
+The original Input object is `5777e4302752f419a7f4a9d6da3e5676a89e5a6bbe4a8d1be81fcdc9c6b85f89`; the replay is `1d926540c4e257eb22f3a444b06117f05626e2d2a13d7a923a792efb6942babb`. This is **not only debug metadata**. One source-path string changes from 83 to 64 bytes, and `OHInputBridge::subscribeMmi(int)` has five fewer instructions (1628 to 1608 bytes).
+
+The source at line 5494 calls `EventHandler::PostTask` without a Caller. `event_handler.h:433–434` supplies `caller={}`; `inner_event.h:48–50` constructs its filename string from `__builtin_FILE()`. The focused disassembly shows allocation 96→80, the terminating NUL at 83→64, and correspondingly shorter string copies. `.rodata.cst16` changes its first pair from `{97,83}` to `{81,64}`. The only changed NUL-separated `.rodata.str1.1` entry is this source filename. Exact source hashes and line excerpts are in [source-excerpts.json](source-excerpts.json).
+
+The historical argv mapped a different source root to `/src`. The replay collapsed both historical roots under a single staged root and mapped that root to `/src`, inadvertently changing this call-site builtin. The minimum next attempt is an additional exact-source-file prefix map restoring the filename value from the archived argv, with a new output filename. The exact proposed argv is private at `$DELIVERY/.private/proposed-argv.json`; it has **not been executed**. Keep the complete `5777…` SHA requirement; do not patch the object or weaken the gate.
+
+Of 219 sections, 203 are byte-identical. Of 137 nonzero defined function bodies, 130 are byte-identical; only subscribeMmi changes size. Remaining instruction/relocation differences have not all been semantically normalized, so full-object equivalence is pending the controlled recompilation. No header logic difference is established by this focused audit. Stage's successful exact reproduction is separately recorded by the outer receipt.
+
+Only ordinary local ELF/source inspection was performed. Existing source-binding and staging files were not modified; no compile/link, VM, device, REA or binary editing was performed. Private inspection attempts and outer failed-SHA receipts remain preserved.
