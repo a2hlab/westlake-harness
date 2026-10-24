@@ -1118,3 +1118,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-24 T124时间边界：同次成功重入events把约44秒创建等待进一步分为spawn_started前约42秒、其后至child出生仅数秒（整数标签舍入方式未独立验证）；parent普通日志证明accept→fork→response成功顺序，但无时间戳，不能判请求早晚。HAP源以TRUNC替换最后事件快照且日志先于落盘，foreground被stage替换的源码事实不证明本次落盘成功或白屏根因；mtime和日志首次可见时间均不能冒充请求接收时刻。
 
 - 2026-10-24 HDC传输实证：同一22035/birth6535369的普通cat cmdline原始stdout仅名字，od显示其后实际有00；HDC shell不得假定保留NUL。日志/命令行观察用限长ASCII hex跨传输、本地严格解码校验长度；新版17例通过且真实只读单样本绑定成功，旧版/失败原件保留。普通UI helper的STOP前置检查不等于命令互斥，恢复需等待在途操作退出。
+
+- 2026-10-24 普通重入对照：61b Recent单卡划掉后host4958消失而child22035/birth6535369保留；后续独立窗桌面单击生成host10486/window62，t10/30/60/90全白。旧成功child日志parent32/session53仅证明创建时关联，不能直接证明重开后父关系；52个观察样本从点击结束10.98秒后开始，父/events零增长不等于无请求。三独立窗不可拼成连续实验，见 benchmark/2026-10-24-recents-close-desktop-reopen/。
