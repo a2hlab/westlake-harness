@@ -696,6 +696,10 @@ kind of work from where the corpus started
 | **[Owned lifecycle entry gap](benchmark/2026-10-22-toutiao-lifecycle-entry-gap/README.md)** | Six deployed script bindings resolve to tracked exact-byte sources; per-boot entry is not reentrant after guardian exit. Static gap only, no service implementation or white-screen fix. |
 | **[T46 guardian refusal diagnostics](benchmark/2026-10-22-toutiao-owned-guardian-diagnostics/README.md)** | Independent 11-case/22-execution replay retains identity decisions and stores refusal details exclusively. Offline candidate only; no device deployment or reopen acceptance. |
 | **[T47 reproducible diagnostic package](benchmark/2026-10-22-toutiao-diagnostic-package/README.md)** | Public nine-file historical input snapshot rebuilds six disabled diagnostic controls and six exact rollback files; independently checked. No deployment or white-screen fix. |
+| **`benchmark/2026-10-24-bcp-window-source-binding/`** | Exact deployed window class DEX binding; available Java is not a whole-class reproduction recipe. |
+| **`benchmark/2026-10-24-toutiao-window-reattach-review/`** | OH session destruction and client-owned render-node lifetime evidence; native recovery direction, pending device proof. |
+| **`benchmark/2026-10-24-native-host-window-recovery/record-reader/`** | Bounded production C++ reader with 81 passing assertions; preserves raw visibility event, no runtime recovery claim. |
+| **`benchmark/2026-10-24-wmc-build-preparation/`** | Exact source/object/link mapping, pinned toolchain staging and reproducible baseline build inputs. |
 
 ---
 
