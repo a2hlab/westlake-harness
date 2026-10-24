@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Offline bounded ordinary evidence index; no device/source/controller access."""
 from pathlib import Path
-import hashlib,json,re
-OUT=Path(__file__).resolve().parent;REPO=OUT.parents[2];WS=REPO.parent
+import hashlib,json,re,sys
+OUT=Path(__file__).resolve().parent;REPO=OUT.parents[2]
+sys.path.insert(0,str(REPO/"scripts/lab"))
+from lab_paths import workspaces
+WS=workspaces()
 H=Path.home()/'.local/share/westlake';V=WS/'westlake-harness-video/benchmark';M=WS/'westlake-harness'
 refs=[]
 def ref(p,lines,claim):
