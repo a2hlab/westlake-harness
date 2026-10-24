@@ -345,16 +345,35 @@ class Window:
                     # (recovery reserve untouched); with less than 60 s left no touch is sent.
                     if time.monotonic()+60>self.start+900:raise RuntimeError('insufficient60s content review before recovery reserve')
                     self.ui(name+'-content',touch+' '+' '.join(map(str,coords))+(' 600' if touch=='swipe' else ''))
-                    after=self.screen(name+'-content-after');verified=self.review(after,min(time.monotonic()+60,self.start+900),context='content')
-                    if verified['verdict']!='usable':raise RuntimeError('content not confirmed usable')
-                    # v9: re-check boot/host/root/main (pid, birth, uid) after usable; a legal descendant change is allowed.
-                    after_identity=self.identity(name+'-content-after-identity')
-                    if core_identity(after_identity)!=core_identity(bound):raise RuntimeError('core identity changed after content interaction')
+                    after,after_identity,frames=self.observe_content(name,bound,min(time.monotonic()+60,self.start+900))
                     self.result.setdefault('stage_touches',[]).append(dict(stage=name,stage_kind=kind,touch_kind=touch,touch_coordinates=coords,
-                        feed_image_sha256=pic['image_sha256'],after_image_sha256=after['image_sha256'],changed_from_feed=True))
+                        feed_image_sha256=pic['image_sha256'],after_image_sha256=after['image_sha256'],changed_from_feed=True,content_frames=frames))
                     return after_identity
                 time.sleep(.2)
         raise RuntimeError('no confirmed usable feed by120s')
+    def observe_content(self,name,bound,window_end):
+        # One touch was sent; observe its effect read-only inside the same 60 s window (capped at start+900): each frame is
+        # a new screenshot with its own label/hash and its own review. 'unknown' or 'feed' with changed_from_feed false
+        # only means "no change in this frame yet" and observation continues; any other verdict, a core identity change,
+        # a review timeout or the window end fails. Only an actually changed 'usable' frame passes. No log stands in.
+        frames=[];last=None
+        for k in range(1,9):
+            if last is not None:
+                wait=last+2.0-time.monotonic()
+                if wait>0:time.sleep(wait)
+            if time.monotonic()>=window_end-5:break
+            label=name+'-content-after'+('' if k==1 else '-'+str(k))
+            last=time.monotonic();after=self.screen(label)
+            verified=self.review(after,window_end,context='content')
+            frames.append(dict(label=label,image_sha256=after['image_sha256'],verdict=verified['verdict'],changed_from_feed=verified.get('changed_from_feed')))
+            # v9: boot/host/root/main (pid, birth, uid) re-checked after every frame; a legal descendant change is allowed.
+            after_identity=self.identity(label+'-identity')
+            if core_identity(after_identity)!=core_identity(bound):raise RuntimeError('core identity changed after content interaction')
+            if verified['verdict']=='usable':return after,after_identity,frames
+            if not (verified['verdict']=='unknown' or (verified['verdict']=='feed' and verified.get('changed_from_feed') is False)):
+                raise RuntimeError('content frame rejected: '+verified['verdict'])
+        self.result.setdefault('content_observations',[]).append(dict(stage=name,frames=frames))
+        raise RuntimeError('no changed usable content frame within60s')
     def reboot(self,label):
         self.held();old=self.identity(label+'-before')['boot']
         self.call(label,[HDC,'-t',SERIAL,'target','boot'])

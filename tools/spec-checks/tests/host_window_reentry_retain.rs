@@ -18,6 +18,7 @@ assert "baseline_actual_mapping_verified=False,mapping_now='not_running'" in src
 assert "com.ss.android.article.news*|appspawn-x" in src and "p['name'].startswith(CHILD)" in src and "source['released'] is True" in src
 assert "insufficient60s content review before recovery reserve" in src and "core identity changed after content interaction" in src
 assert "body.strip()==LAYOUT_TRANSIENT" in src and "CALL_FAIL_MARKERS" in src and "if timeout<2:" in src
+assert "def observe_content(" in src and "no changed usable content frame within60s" in src and src.count("self.ui(name+'-content'") == 1
 assert "-early-presence-" in src and "within90s early observation" in src and "raise RuntimeError('main child baseline not mapped')" in src
 assert "full_seal" not in src.replace("t4_full_seal='pending'", "")
 r = subprocess.run([sys.executable, os.path.join(d, "tests/test_retain_dry_run.py")], capture_output=True, text=True)

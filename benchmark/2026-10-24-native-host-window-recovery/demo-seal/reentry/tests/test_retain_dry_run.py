@@ -391,6 +391,57 @@ class LayoutRetryProduction(unittest.TestCase):
     def test_no_retry_when_budget_below_two_seconds(self):
         w, err, rc, run = self.go([self.TR, self.OK], budget_left=2.5); self.assertRegex(str(err), 'no retry budget left'); self.assertEqual(len(self.dumps(rc)), 1)
 
+class ContentMultiFrame(unittest.TestCase):
+    """One touch, then read-only frames inside the same 60 s window; only an actually changed usable frame passes."""
+    def go(self, verdicts, identities=None, start=0.0, review_cost=3.0):
+        clock = FakeClock(); real = X.time; X.time = clock; uis = []; shots = []; seq = iter(verdicts); ids = iter(identities or [])
+        try:
+            with tempfile.TemporaryDirectory() as t:
+                w = bare_window(t); w.start = start
+                w.desktop = lambda l, d: [1, 1]; w.ui = lambda l, c: uis.append(l)
+                w.identity = lambda label: next(ids, ident()) if label.startswith('firstopen-content-after') else ident()
+                w.bind = lambda l, e: (ident(), {})
+                def screen(l): shots.append((l, clock.t)); clock.t += 1.0; return dict(label=l, image_sha256='sha-' + l)
+                w.screen = screen
+                def review(pic, deadline, wait=True, context='desktop', allowed_touch=None):
+                    if context != 'content': return dict(verdict='feed', touch_kind='click', touch_coordinates=[387, 1540])
+                    v = next(seq, None)
+                    if v is None: clock.t = deadline; raise RuntimeError('visual review deadline (image-review timeout, not an application verdict)')
+                    clock.t += review_cost
+                    if clock.t > deadline: raise RuntimeError('visual review deadline (image-review timeout, not an application verdict)')
+                    return v
+                w.review = review
+                try: out = w.stage('firstopen', X.CANDIDATE, kind='firstopen')
+                except RuntimeError as e: out = e
+                return out, uis, shots, w.result
+        finally: X.time = real
+    NO = dict(verdict='unknown', changed_from_feed=False); SAME = dict(verdict='feed', changed_from_feed=False); OK = dict(verdict='usable', changed_from_feed=True)
+    def test_late_change_seen_on_third_frame_with_single_touch(self):
+        out, uis, shots, res = self.go([self.NO, self.SAME, self.OK])
+        self.assertEqual(out['boot'], 'B2'); self.assertEqual(uis.count('firstopen-content'), 1)
+        labels = [l for l, _ in shots if 'content-after' in l]; self.assertEqual(labels, ['firstopen-content-after', 'firstopen-content-after-2', 'firstopen-content-after-3'])
+        t = res['stage_touches'][0]; self.assertEqual(t['after_image_sha256'], 'sha-firstopen-content-after-3')
+        self.assertEqual([f['verdict'] for f in t['content_frames']], ['unknown', 'feed', 'usable'])
+    def test_frames_spaced_and_inside_60s_window(self):
+        out, uis, shots, res = self.go([self.NO] * 20)
+        self.assertRegex(str(out), 'within60s'); self.assertNotIn('stage_touches', res)
+        times = [tt for l, tt in shots if 'content-after' in l]
+        self.assertTrue(all(b - a >= 2.0 for a, b in zip(times, times[1:]))); self.assertLess(times[-1] - times[0], 60)
+        self.assertEqual(len(res['content_observations'][0]['frames']), len(times)); self.assertEqual(uis.count('firstopen-content'), 1)
+    def test_explicit_reject_fails_immediately(self):
+        out, uis, shots, res = self.go([self.NO, dict(verdict='host_white')])
+        self.assertRegex(str(out), 'content frame rejected: host_white'); self.assertEqual(len([l for l, _ in shots if 'content-after' in l]), 2)
+    def test_feed_with_change_claim_is_not_no_change(self):
+        out, _, _, _ = self.go([dict(verdict='feed', changed_from_feed=True)]); self.assertRegex(str(out), 'content frame rejected: feed')
+    def test_identity_drift_on_a_later_frame_fails(self):
+        out, _, _, _ = self.go([self.NO, self.OK], identities=[ident(), ident(child=(310, 20))]); self.assertRegex(str(out), 'core identity changed')
+    def test_review_timeout_fails(self):
+        out, _, _, res = self.go([self.NO]); self.assertRegex(str(out), 'visual review deadline'); self.assertNotIn('stage_touches', res)
+    def test_window_capped_by_operation_budget(self):
+        out, uis, shots, res = self.go([self.NO] * 20, start=-748.0)  # icon at 748 s (last allowed), touch ~753 s
+        times = [tt for l, tt in shots if 'content-after' in l]; self.assertTrue(times)
+        self.assertLessEqual(times[-1], -748.0 + 900); self.assertRegex(str(out), 'within60s')
+
 class PhaseFlow(unittest.TestCase):
     def flow(self, phase, fail_stages=False, handoff=None, closeout='closeout_ok', restore=None, points=None, restored_obj=None):
         with tempfile.TemporaryDirectory() as t:

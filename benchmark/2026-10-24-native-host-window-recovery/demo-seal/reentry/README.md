@@ -58,6 +58,13 @@ Earlier drafts were diffed against v6; v7 already carries the lineage selector, 
    than 60 s remain in the 900 s operation budget; the content-after image gets its own 60 s review capped at
    `start+900` (recovery reserve untouched); after `usable` the identity is re-read and boot/host/appspawn root/main
    child (pid, birth, uid) must be unchanged, while a legal same-name descendant change is allowed.
+1f. **Content-after multi-frame observation (tool only)**: one touch, then read-only frames inside the same 60 s window
+   (capped at `start+900`), at least 2 s apart, each with its own label/hash/review. `unknown` or `feed` with
+   `changed_from_feed=false` means no change in that frame yet; any other verdict, core identity drift after any frame,
+   a review timeout or the window end fails; only a changed `usable` frame passes. Basis: in ffd0d4 recreated the tap
+   was handled and ArticleInflowActivity resumed about 1 s after UP while the single 2 s frame fell inside the switch.
+   This does not establish that the cause is timing only; if the new activity's window was shown before a still-unchanged
+   frame, surface binding/top visibility must be compared next. Runtime, stages and two-boot criteria are unchanged.
 1e. **Bounded layout re-dump for one known UITest transient**: attempt 1 is the original 15 s dump. Only local rc0,
    empty stderr, none of the `call()` failure markers, remote rc1 and a body exactly equal to
    `DumpLayout failed:Get window nodes failed` may be re-dumped: at most 2 more attempts within 10 s after attempt 1
@@ -111,6 +118,6 @@ Budgets per window: 900 s stop new work, 1200 s close-out/recovery start, 1800 s
   stops the window (strict, same as v7).
 
 ## Tests
-`python3 tests/test_retain_dry_run.py` (74 cases, no device; 4 replay the real private T136 receipt and skip if it is absent). Selector:
+`python3 tests/test_retain_dry_run.py` (81 cases, no device; 4 replay the real private T136 receipt and skip if it is absent). Selector:
 `cargo test --test host_window_reentry_retain` (`host_window_reentry_retain_receipts`).
 Synthetic tests prove control flow only, not deployment, rollback or visual success.
