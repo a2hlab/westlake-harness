@@ -332,3 +332,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-25 octoscode模型切换：窄窗格菜单为空白时先临时zoom读取真实列表，不猜选项；/model选择后若显示restart required，正常退出并以原权限重启，核底栏实际model。profile名可仍为kimi而实际model为glm-5.3，不能只凭profile名判未切换；本轮已实核。
 
 - 2026-10-25 拒绝处理：分别记录模型响应拒绝、工具执行拒绝、设备命令失败和沙箱路径不可读；不得互相替代归因或外推全项目禁用。公开任务只要求动作摘要和工程证据，不索取内部推理；实际拒绝只停对应请求，不能改换工具规避；独立正常任务继续。
+
+- 2026-10-25 T132电源采证：普通UITest上滑后实读AWAKE/base30000且OverrideTimeout字段缺席；OH对应dump仅在override标志有效时输出该字段。base/state完整而override缺席应记unknown/未报告，在已授权临时值范围内重设并严格回读；不要把缺字段等同命令失败或猜10000。每次UITest后和图审等待前核有效值，finally精确恢复preimage。UI动作计数取实际命令rc/正文，不能放在后置检查之后递增而漏记已执行动作。

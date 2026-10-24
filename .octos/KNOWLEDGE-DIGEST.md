@@ -1127,3 +1127,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-25 T128：61b同boot现存child22035四Uid/Gid=20011206，窗口记录11级路径在root与child-root视图同dev/inode，mode位可遍历且enforce=0；root采518B经生产reader本机回放为Candidate(id62,stage4/HIDDEN)，Foreground=false。该时点未见DAC路径阻断、当前字节可解析，但不证明OH child亲自读取、前台点击时记录或候选恢复；不要把隐藏状态旁证当白屏根因。见native-host-window-recovery/device-validation/access-preflight-01/。
 
 - 2026-10-25 拒绝范围纠偏：旧CC reasoning_extraction仅证实响应被拒，具体触发句未定位，不证设备命令被拒；撤销“所有后续部署先等支持恢复”的统一前置。按具体请求判断，保留原拒绝/禁止规避式等价重试及锁/回滚/实测门；撤销误判不等于拒绝解除或白屏修复。以HANDOFF-outer-2026-10-25与refusal-scope-correction为当前说明。
+
+- 2026-10-25 T132：61b普通桌面单击后窗口62记录从stage4变2，19次采样(+0.476至+90.006s)均为2，host/child PID与birth未变，s5/s90目读仍白；同字节经生产reader本机回放Foreground=true。不能再归为未写前台记录，但不证明child已读/候选恢复或持续状态；见toutiao-foreground-record-t132。
