@@ -321,3 +321,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-23 T120：check_frozen.py无参数只验登记结构，0 checked不可称内容核验；对登记源码用--git并记实际checked数，包变更路径与冻结项取交集。控制脚本组包同时核SHA和mode，复制后0644不会自动变成members声明0550/0440，安装须逐件chmod并回读，尤其screen-gate。
 
 - 2026-10-24 T123 UI观察：上板窗前备齐并测试实际driver（包含非凭据解锁、最终图审消费、后继操作与cleanup）；先记录完整入口SHA，不以inert命令清单/选择器测试代替。单worker保留原T0；最终图SHA应在解锁后绑定，合法回执在原期限内消费才继续，失败仍恢复电源两字段并释自持锁；run_id/命令标签独占创建，旧run只读。61b T107/T123基线为base30000/override10000，不能混成10000/10000；只-o改变和恢复override，回读两字段。
+
+- 2026-10-24 普通最近任务入口：对应OH6.1.0.31源MMI KEYCODE_RECENT=10011（不是SystemUI内部枚举3），61b一次 `uitest uiInput keyEvent 10011` 后截图实证进入Recent，头条卡片可见；单卡关闭/重开尚未验证，底部垃圾桶是全清勿代替单卡。证据 benchmark/2026-10-24-recent-key-ui/；按新截图/布局选卡，不用旧坐标。

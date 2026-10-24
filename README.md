@@ -664,6 +664,8 @@ kind of work from where the corpus started
 | **[benchmark/2026-10-24-t121-refusal-audit](benchmark/2026-10-24-t121-refusal-audit/)** | T121 visible service error audit and unsent support draft; exact trigger remains unknown. |
 | **`benchmark/2026-10-24-ordinary-log-suffix/`** | T122: complete historical failure logs bound by unchanged file identity and exact old prefixes; new HTML-to-JSON exception is a lead, not a demonstrated white-screen cause. Offline identity checker and preserved read-only collection receipts. |
 | **`benchmark/2026-10-24-ordinary-host-timeline/`** | Current 61b host callback evidence with stable identity; bounded read-only capture and preserved timing uncertainty. |
+| **`benchmark/2026-10-24-recent-key-static/`** | OH 6.1.0.31 public Recent key definition and UITest injection path, with source commits and hashes. |
+| **`benchmark/2026-10-24-recent-key-ui/`** | One public Recent key visibly opened real task cards on 61b; no card dismissal or relaunch, with power and lock restoration receipts. |
 | **`benchmark/2026-10-24-host-window-event-publication/`** | Bound HAP source publishes lifecycle logs and replaces a last-event snapshot; no direct child launch or causal explanation of the pre-spawn delay is established. |
 | **`benchmark/2026-10-24-existing-demo-reentry/`** | T123: one ordinary desktop click on existing 61b restored text feed by the +60s sample and loaded images by +90s; earlier white samples retained. Reusable UI recorder fixes and exact evidence; no runtime patch or seal. |
 | **`benchmark/2026-10-24-local-json-publication-review/`** | Independent Claude review of atomic local JSON publication: 9 offline cases, including 16 concurrent writers; independently reproduced. |

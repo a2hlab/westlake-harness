@@ -1116,3 +1116,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-24 T123成功对照：同boot正常桌面一次点击，s10/s30白屏无child，s60文字feed/s90图片加载；实测CLK_TCK100+birth/uptime命令时界把child创建估为点击后43.95–44.62秒，后续16秒不能全称绘制。成功child22035也有与T122失败child同栈的HTML标题302→JSON异常（前缀3131–3136），异常出现本身不充分解释持续白屏；日志增长时只声明重复采集的512KiB前缀相同，不称整文件稳定。
 
 - 2026-10-24 T124时间边界：同次成功重入events把约44秒创建等待进一步分为spawn_started前约42秒、其后至child出生仅数秒（整数标签舍入方式未独立验证）；parent普通日志证明accept→fork→response成功顺序，但无时间戳，不能判请求早晚。HAP源以TRUNC替换最后事件快照且日志先于落盘，foreground被stage替换的源码事实不证明本次落盘成功或白屏根因；mtime和日志首次可见时间均不能冒充请求接收时刻。
+
+- 2026-10-24 HDC传输实证：同一22035/birth6535369的普通cat cmdline原始stdout仅名字，od显示其后实际有00；HDC shell不得假定保留NUL。日志/命令行观察用限长ASCII hex跨传输、本地严格解码校验长度；新版17例通过且真实只读单样本绑定成功，旧版/失败原件保留。普通UI helper的STOP前置检查不等于命令互斥，恢复需等待在途操作退出。
