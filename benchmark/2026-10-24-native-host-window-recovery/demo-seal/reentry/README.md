@@ -1,6 +1,6 @@
-# T141 reentry retain entry (offline, not executed)
+# T141 reentry retain entry: two software boots accepted
 
-Status: **code + dry-run tests only. No device command was run, nothing deployed, nothing pushed.**
+Status: **candidate retained on 61b after two independently reviewed software boots.** The accepted result is `retained_reentry_validated_av_pending`, not a full audio/video or physical-power seal. Actual run summaries, original images, receipts and the outer signoff are in `benchmark/2026-10-25-61b-reentry-delivery/`. Historical plan/receipt fields remain unchanged.
 The entry is handed to the single device writer, who runs it under a separate outer receipt per phase.
 
 Base: **`execute_v7.py`** (sha `0658440f…`, outer-verified 14 checks; `steps_v7.json` `22386f2b…`).
@@ -36,7 +36,7 @@ Earlier drafts were diffed against v6; v7 already carries the lineage selector, 
    only the legal descendant set changed it takes a complete fresh read-only sample, at most 3 rounds within 20 s,
    and accepts only a round with full before==after identity and every descendant's maps verified. Core change,
    wrong SHA/inode/metadata and unknown lineage still stop immediately. Rounds are recorded in `binding.json resamples`.
-   Final evidence is not relaxed. The peer's exact patch is pending; replace this block with it when synced.
+   Final evidence is not relaxed; the executed entry and actual per-frame binding receipts are pinned in the delivery package.
 1c. **Honest restore when the old baseline does not start (`restored_idle_exact_object`)**: per the current t3 spec
    (`e797dbbd…`, line 11), if the restore stage ends with exactly "no actual baseline mapping within90s early
    observation" the window may still close: under its own lock two identity points 5 s apart with no article process
@@ -97,7 +97,7 @@ Earlier drafts were diffed against v6; v7 already carries the lineage selector, 
 
 `speaker_audio`, `video_audio_acceptance`, `t4_full_seal` stay `pending`. This is not a full seal; t4 unchanged.
 
-## Writer plan
+## Initial writer plan (historical; see executed plan below)
 1. Place `.private/t141-retain-input/candidate.so` (`3291f76d…`) and `rollback.so` (`b0e5602a…`).
 2. `idle_exception` is pinned to v7 window 2688cd `baseline-early-17-binding.json` (`457d7b4b…`, object 66352/560578).
    If the v7 08 window leaves a newer restored binding, the outer repins it in `steps_retain.json` (steps SHA only).
@@ -108,12 +108,12 @@ Earlier drafts were diffed against v6; v7 already carries the lineage selector, 
    receipt adds boot1_handoff_sha256 (+ boot1_closeout_signoff_image_sha256 if boot1 close-out was pending).
 Budgets per window: 900 s stop new work, 1200 s close-out/recovery start, 1800 s release.
 
-## Input gaps (reported, not guessed)
+## Inputs required for a new execution window
 - `idle_exception` may need a repin after the v7 08 window; when the peer publishes its real restore receipt SHA,
   repin `source`, `source_sha256` and `source_kind=restored_idle_exact_object` together (steps SHA only).
 - The two `.so` inputs are not in this repo; the writer supplies them.
 - `select_main` and the recovery early poll are v7 verbatim; `bind` is v7 plus the bounded resampling loop
-  (offline implementation of the peer's announced rule; exact peer patch to be synced).
+  (the executed implementation is pinned by SHA in the delivery signoff).
 - Residual race not covered by the rule: a descendant exiting during its own maps read is a remote read failure and
   stops the window (strict, same as v7).
 
@@ -121,3 +121,7 @@ Budgets per window: 900 s stop new work, 1200 s close-out/recovery start, 1800 s
 `python3 tests/test_retain_dry_run.py` (81 cases, no device; 4 replay the real private T136 receipt and skip if it is absent). Selector:
 `cargo test --test host_window_reentry_retain` (`host_window_reentry_retain_receipts`).
 Synthetic tests prove control flow only, not deployment, rollback or visual success.
+
+## Executed plan and current deployment
+
+The current `steps_retain.json` is the exact SHA6614eafe plan executed in successful boot1 b8eafe and boot2 e42601. It pins an earlier restored baseline as historical admission input; that baseline is no longer the deployed candidate. Source, input hashes and outer receipts are preserved for replay/audit, not permission to blindly rerun an old plan. `final-signoff.json` in the delivery directory binds the retained object, OpenHarmony version and rollback basis. The native candidate and observation entry were unchanged between the two accepted boots.
