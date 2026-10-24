@@ -767,7 +767,9 @@ void SessionStageAdapter::callBridgeVoidMethod(
         return;
     }
     const std::string name(methodName), sig(signature);
-    recoveryGate_->submit([this, name, sig, values] { callBridgeValues(name, sig, values); });
+    if (!recoveryGate_->submit(name, [this, name, sig, values] { callBridgeValues(name, sig, values); }))
+        ALOGE("[HOST-SESSION] callback buffer rejected unsupported method=%s signature=%s",
+              methodName, signature);
 }
 
 void SessionStageAdapter::callBridgeValues(

@@ -2,6 +2,7 @@
 #include "host_window_record_reader.h"
 #include <cstdint>
 #include <atomic>
+#include <algorithm>
 #include <functional>
 #include <map>
 #include <memory>
@@ -17,7 +18,20 @@ struct CallbackGate {
     std::recursive_mutex mutex;
     bool enabled = true;
     bool buffering = false, overflow = false;
-    std::vector<std::function<void()>> pending;
+    struct Pending { std::string method; std::function<void()> call; };
+    std::vector<Pending> pending;
+    static bool knownMethod(const std::string& method) {
+        // Fixed production primitive-callback set: bounded independently of frequency.
+        static const char* const methods[] = {
+            "onSetActive", "onNotifySessionForeground", "onNotifySessionBackground",
+            "onNotifyDestroy", "onNotifyWindowVisibility", "onNotifyForegroundInteractiveStatus",
+            "onUpdateRect", "onUpdateGlobalDisplayRectFromServer", "onUpdateWindowMode",
+            "onUpdateFocus", "onUpdateAvoidArea", "onOccupiedAreaRect", "onHandleBackEvent",
+            "onUpdateDensity", "onUpdateOrientation", "onUpdateDisplayId"
+        };
+        for (const auto* name : methods) if (method == name) return true;
+        return false;
+    }
     void close() {
         std::lock_guard<std::recursive_mutex> l(mutex);
         enabled = false; buffering = false; pending.clear();
@@ -26,12 +40,17 @@ struct CallbackGate {
         std::lock_guard<std::recursive_mutex> l(mutex);
         enabled = false; buffering = true; overflow = false; pending.clear();
     }
-    void submit(std::function<void()> callback) {
+    bool submit(const std::string& method, std::function<void()> callback) {
         std::lock_guard<std::recursive_mutex> l(mutex);
-        if (enabled) { callback(); return; }
-        if (!buffering || overflow) return; // Retired endpoints never replay.
-        if (pending.size() == 64) { overflow = true; pending.clear(); return; }
-        pending.push_back(std::move(callback));
+        if (!knownMethod(method)) return false; // Caller logs the unsupported name.
+        if (enabled) { callback(); return true; }
+        if (!buffering || overflow) return true; // Retired endpoints never replay.
+        // Erase the previous occurrence, then append: order is LAST arrival,
+        // never map-key order. 65+ UpdateRect/visibility events remain one entry.
+        pending.erase(std::remove_if(pending.begin(), pending.end(),
+            [&](const Pending& p) { return p.method == method; }), pending.end());
+        pending.push_back(Pending{method, std::move(callback)});
+        return true;
     }
     bool activate() {
         std::lock_guard<std::recursive_mutex> l(mutex);
@@ -39,7 +58,7 @@ struct CallbackGate {
         if (enabled) return true;
         auto callbacks = std::move(pending);
         buffering = false; enabled = true;
-        for (auto& callback : callbacks) callback();
+        for (auto& callback : callbacks) callback.call();
         return true;
     }
 };

@@ -1,0 +1,771 @@
+--- a/sources/api-implementations/bridge-d4fa-source-snapshot/ability38/framework/window/jni/oh_window_manager_client.cpp
++++ b/benchmark/2026-10-24-native-host-window-recovery/session-recovery/candidate/oh_window_manager_client.cpp
+@@ -43,6 +43,7 @@
+ #include <set>
+ #include <map>
+ #include <thread>
++#include <chrono>
+ #include <string>
+ #include <vector>
+ #include <algorithm>
+@@ -140,6 +141,7 @@
+ static constexpr int32_t SCENE_SESSION_MANAGER_ID = 4606;
+ 
+ namespace oh_adapter {
++#include "wmc_recovery_state.inc"
+ 
+ // §3.1.4.1 — Android LayoutParams.type → OH WindowType.
+ //
+@@ -172,6 +174,9 @@
+ // interface token, reply is int32 count + that many MainWindowInfo parcelables + int32 errCode.
+ static int32_t wl_query_ability_main_window_id(const OHOS::sptr<OHOS::IRemoteObject>& proxy)
+ {
++    // Only a successfully committed recovery may replace the original positive cache.
++    const int32_t committedParent = westlake::recovery::ParentCache::instance().committed();
++    if (committedParent > 0) return committedParent;
+     static int32_t wl_cached = -1;          // -1 = not asked yet, 0 = asked and not found
+     if (wl_cached > 0) { return wl_cached; }
+     // §340b: SSM's GetAllMainWindowInfo answers count=0 for us (it reports the recents/topN main
+@@ -1845,6 +1850,7 @@
+                 fprintf(stderr, "[WESTLAKE-WMC] §566 tap/text side-channels started (ungated)\n");
+                 fflush(stderr);
+             }
++            bool initialForegroundOk = false;
+             if (v7err == 0 && sessionObject != nullptr) {
+                 // WESTLAKE §338: SHOW the session we just created.
+                 // §337 got CreateAndConnectSpecificSession to SUCCEED (persistentId 488/489, real
+@@ -1870,6 +1876,7 @@
+                                   fdata.WriteString("");                // identityToken
+                     int32_t ferr = fwrote ? sessionObject->SendRequest(1, fdata, freply, foption) : -1;
+                     int32_t fret = (ferr == 0) ? freply.ReadInt32() : -1;
++                    initialForegroundOk = ferr == 0 && fret == 0;
+                     fprintf(stderr,
+                             "[WESTLAKE-WMC] §338 Foreground(persistentId=%d) wrote=%d err=%d ret=%d\n",
+                             persistentId, fwrote ? 1 : 0, ferr, fret);
+@@ -1999,6 +2006,22 @@
+                     entry.isMainWindow   = !asSubWindow;
+                     entry.parentWindowId = subParentWinId;
+                     entry.abilityName    = abilityName;
++                    // Admit only this exact app's successful initial specific session.
++                    // Reader credentials are the running child, never a privileged observer.
++                    if (bundleName == "com.ss.android.article.news" && initialForegroundOk &&
++                        wl_parentId > 0 && persistentId > 0 && getuid() != 0 &&
++                        getuid() == geteuid() && getgid() == getegid()) {
++                        auto recipe = recoveryCopyProperty(wl_propSptr);
++                        if (recipe && sessionStage->recoveryReady() &&
++                            westlake::recovery::Routes::instance().install(persistentId, persistentId)) {
++                            auto recovery = std::make_shared<RecoveryState>();
++                            recovery->recipe = recipe;
++                            recovery->windowNode = surfaceNode;
++                            recovery->coordinator = std::make_shared<westlake::recovery::Coordinator>(
++                                westlake::recovery::Binding{persistentId, persistentId, wl_parentId, 0});
++                            recoveryStates()[persistentId] = recovery;
++                        }
++                    }
+                     sessions_[persistentId] = entry;
+                     // §392: record this as the foreground session even though it is registered as a
+                     // SUB window (§337 has to ask for APP_SUB_WINDOW for SSM to accept us at all).
+@@ -2090,6 +2113,10 @@
+                         fflush(stderr);
+                     }).detach();
+                 }
++                {
++                    std::lock_guard<std::recursive_mutex> guard(sessionMutex_);
++                    if (recoveryStates().count(persistentId)) startRecordObserver();
++                }
+                 oh_wm_set_last_session(persistentId);
+                 // Use SceneBoard RequestFocusStatus, as the native Window API does.
+                 requestFocusForSession(persistentId);
+@@ -2380,16 +2407,24 @@
+     OHOS::sptr<OHOS::Rosen::ISession> sessionProxy;
+     OHOS::sptr<OHOS::IRemoteObject> sessionRemote;
+     std::shared_ptr<OHOS::Rosen::RSSurfaceNode> contentNode;
++    uint32_t actualId = sessionId;
++    OHOS::sptr<SessionStageAdapter> retiredStage;
+     {
+         std::lock_guard<std::recursive_mutex> lock(sessionMutex_);
+         auto it = sessions_.find(sessionId);
+         if (it != sessions_.end()) {
++            actualId = it->second.windowId;
++            retiredStage = it->second.stageAdapter;
++            westlake::recovery::Routes::instance().erase(sessionId);
++            recoveryStates().erase(sessionId);
+             sessionProxy  = it->second.sessionProxy;
+             sessionRemote = it->second.sessionRemote;
+             contentNode   = it->second.surfaceNode;
+             sessions_.erase(it);
+         }
+     }
++
++    if (retiredStage) retiredStage->recoveryGate()->close();
+ 
+     // WESTLAKE §538 — take the nodes OUT OF THE RS TREE, do not merely drop the refs.
+     // Releasing the last shared_ptr is not enough on its own and is not immediate; RS keeps
+@@ -2432,7 +2467,7 @@
+         OHOS::MessageParcel data, reply;
+         OHOS::MessageOption option;
+         const bool wrote = data.WriteInterfaceToken(u"OHOS.ISceneSessionManager") &&
+-                           data.WriteInt32(sessionId);
++                           data.WriteInt32(actualId);
+         const auto code = OHOS::Rosen::ISceneSessionManager::SceneSessionManagerMessage::
+             TRANS_ID_DESTROY_AND_DISCONNECT_SPECIFIC_SESSION;
+         const int32_t err = wrote && sceneProxy_ ?
+@@ -2482,6 +2517,8 @@
+             LOGW("hideWindow: session %{public}d not found", sessionId);
+             return -1;
+         }
++        auto recovery = recoveryStates().find(sessionId);
++        if (recovery != recoveryStates().end()) ++recovery->second->revision;
+         if (!it->second.wmsShown) {
+             // Already hidden — no-op, save the IPC.
+             return 0;
+@@ -2556,6 +2593,8 @@
+             LOGW("showWindow: session %{public}d not found", sessionId);
+             return -1;
+         }
++        auto recovery = recoveryStates().find(sessionId);
++        if (recovery != recoveryStates().end()) ++recovery->second->revision;
+         alreadyShown = it->second.wmsShown;
+         property = it->second.windowProperty;
+         remote = it->second.sessionRemote;
+@@ -2618,7 +2657,7 @@
+         // Match WindowSessionImpl::RequestFocus -> RequestFocusStatus.
+         // ISession::RequestFocus is system-only and returns WS_ERROR_NOT_SYSTEM_APP.
+         const bool wrote = data.WriteInterfaceToken(u"OHOS.ISceneSessionManager") &&
+-                           data.WriteInt32(sessionId) && data.WriteBool(true);
++                           data.WriteInt32(static_cast<int32_t>(windowId)) && data.WriteBool(true);
+         ipc = wrote && sceneProxy_ ? sceneProxy_->SendRequest(static_cast<uint32_t>(
+             OHOS::Rosen::ISceneSessionManager::SceneSessionManagerMessage::TRANS_ID_REQUEST_FOCUS),
+             data, reply, opt) : -1;
+@@ -3344,4 +3383,6 @@
+     return aospAnw;
+ }
+ 
++#include "wmc_recovery_impl.inc"
++
+ }  // namespace oh_adapter
+--- a/sources/api-implementations/bridge-d4fa-source-snapshot/ability38/framework/window/jni/oh_window_manager_client.h
++++ b/benchmark/2026-10-24-native-host-window-recovery/session-recovery/candidate/oh_window_manager_client.h
+@@ -23,6 +23,9 @@
+ #include <memory>
+ #include <string>
+ #include <mutex>
++#include <thread>
++#include <atomic>
++#include "session_recovery.h"
+ #include "iremote_object.h"
+ #include "session_interface.h"
+ #include "refbase.h"        // OHOS::sptr<>
+@@ -235,7 +238,11 @@
+ 
+ private:
+     OHWindowManagerClient() = default;
+-    ~OHWindowManagerClient() = default;
++    ~OHWindowManagerClient();
++    struct RecoveryState;
++    void startRecordObserver();
++    void observeHostRecord(int32_t logical);
++    static std::map<int32_t, std::shared_ptr<RecoveryState>>& recoveryStates();
+ 
+     bool connected_ = false;
+     OHOS::sptr<OHOS::IRemoteObject> ssmProxy_ = nullptr;  // SA 4606 -- actually IMockSessionManager
+@@ -246,7 +253,7 @@
+ 
+     // Track active sessions
+     struct SessionEntry {
+-        int32_t sessionId;
++        int32_t sessionId; // Stable Android logical identity.
+         int64_t surfaceNodeId;
+         OHOS::sptr<OHOS::Rosen::ISession> sessionProxy;  // Per-window ISession for operations
+         // WESTLAKE §536: the RAW ISession remote returned by the V7
+--- a/sources/api-implementations/bridge-d4fa-source-snapshot/ability38/framework/window/jni/oh_input_bridge.cpp
++++ b/benchmark/2026-10-24-native-host-window-recovery/session-recovery/candidate/oh_input_bridge.cpp
+@@ -13,6 +13,7 @@
+  *                     downTime, eventTime, pointerProperties, pointerCoords
+  */
+ #include "oh_input_bridge.h"
++#include "session_recovery.h"
+ 
+ #include <android/log.h>
+ #include <sys/socket.h>
+@@ -4956,7 +4957,7 @@
+     void OnInputEvent(std::shared_ptr<OHOS::MMI::KeyEvent> event) const override {
+         if (!event) return;
+         auto& bridge = OHInputBridge::getInstance();
+-        const int sid = event->GetAgentWindowId();
++        const int sid = westlake::recovery::Routes::instance().logical(event->GetAgentWindowId());
+         const int code = ohKeyCodeToAndroid(event->GetKeyCode());
+         const int ohAction = event->GetKeyAction();
+         if (!bridge.isKnownSession(sid) || code < 0 || (ohAction != 2 && ohAction != 3)) {
+@@ -4975,7 +4976,7 @@
+     void OnInputEvent(std::shared_ptr<OHOS::MMI::PointerEvent> event) const override {
+         if (!event) return;
+         auto& bridge = OHInputBridge::getInstance();
+-        const int sid = event->GetAgentWindowId();
++        const int sid = westlake::recovery::Routes::instance().logical(event->GetAgentWindowId());
+         if (!bridge.isKnownSession(sid)) {
+             fprintf(stderr, "[INPUT34] drop unknown agentWindowId=%d event=%d\n", sid, event->GetId());
+             event->MarkProcessed(); return;
+--- a/sources/api-implementations/bridge-d4fa-source-snapshot/ability38/framework/window/jni/session_stage_adapter.h
++++ b/benchmark/2026-10-24-native-host-window-recovery/session-recovery/candidate/session_stage_adapter.h
+@@ -24,6 +24,7 @@
+ #include <jni.h>
+ #include <string>
+ #include <mutex>
++#include "session_recovery.h"
+ 
+ #include "session/container/include/zidl/session_stage_stub.h"
+ #include "ws_common.h"
+@@ -46,6 +47,11 @@
+      */
+     SessionStageAdapter(JavaVM* jvm, jobject androidWindow);
+     ~SessionStageAdapter() override;
++    // A fresh endpoint shares the Android target, not the old callback identity.
++    OHOS::sptr<SessionStageAdapter> recoveryEndpoint();
++    std::shared_ptr<westlake::recovery::CallbackGate> recoveryGate() const { return recoveryGate_; }
++    bool activateRecoveryCallbacks();
++    bool recoveryReady() const { return bridgeObj_ && bridgeClass_; }
+ 
+     // ================================================================
+     // Category 1: Session Lifecycle
+@@ -308,6 +314,10 @@
+     WMError UpdateWindowModeForUITest(int32_t updateMode) override;
+ 
+ private:
++    void callBridgeValues(const std::string& method, const std::string& signature,
++                          const std::vector<jvalue>& values);
++    std::shared_ptr<westlake::recovery::CallbackGate> recoveryGate_ =
++        std::make_shared<westlake::recovery::CallbackGate>();
+     // Obtain JNIEnv for the current thread, attaching to JVM if needed.
+     JNIEnv* getJNIEnv(bool& needsDetach);
+ 
+--- a/sources/api-implementations/bridge-d4fa-source-snapshot/base/westlake/framework/window/jni/session_stage_adapter.cpp
++++ b/benchmark/2026-10-24-native-host-window-recovery/session-recovery/candidate/session_stage_adapter.cpp
+@@ -1,4 +1,4 @@
+-﻿/*
++/*
+  * session_stage_adapter.cpp
+  *
+  * Implementation of SessionStageAdapter.
+@@ -88,6 +88,22 @@
+     ALOGI("SessionStageAdapter initialized successfully");
+ }
+ 
++OHOS::sptr<SessionStageAdapter> SessionStageAdapter::recoveryEndpoint()
++{
++    std::lock_guard<std::mutex> lock(jniMutex_);
++    OHOS::sptr<SessionStageAdapter> next = new SessionStageAdapter(jvm_, androidWindow_);
++    next->recoveryGate()->beginBuffering(); // Preserve actual callbacks until committed/foreground.
++    return next;
++}
++
++bool SessionStageAdapter::activateRecoveryCallbacks()
++{
++    // Same order as callback entry: JNI serialization, then endpoint gate.
++    // The caller must not hold WMC sessionMutex_ while invoking Java.
++    std::lock_guard<std::mutex> lock(jniMutex_);
++    return recoveryGate_->activate();
++}
++
+ SessionStageAdapter::~SessionStageAdapter()
+ {
+     ALOGI("SessionStageAdapter destroyed");
+@@ -730,6 +746,37 @@
+ void SessionStageAdapter::callBridgeVoidMethod(
+     const char* methodName, const char* signature, ...)
+ {
++    // All current bridge callbacks use primitive I/Z/J arguments. Copy values,
++    // never a va_list or a borrowed JNI local reference, for deferred replay.
++    std::vector<jvalue> values;
++    va_list args; va_start(args, signature);
++    bool supported = true;
++    for (const char* type = signature + 1; *type && *type != ')'; ++type) {
++        jvalue value{};
++        if (*type == 'I') value.i = va_arg(args, int);
++        else if (*type == 'Z') value.z = static_cast<jboolean>(va_arg(args, int));
++        else if (*type == 'J') value.j = va_arg(args, jlong);
++        else { supported = false; break; }
++        values.push_back(value);
++    }
++    va_end(args);
++    if (!supported) {
++        std::lock_guard<std::recursive_mutex> lock(recoveryGate_->mutex);
++        recoveryGate_->overflow = true;
++        ALOGE("Unsupported deferred callback signature %s", signature);
++        return;
++    }
++    const std::string name(methodName), sig(signature);
++    if (!recoveryGate_->submit(name, [this, name, sig, values] { callBridgeValues(name, sig, values); }))
++        ALOGE("[HOST-SESSION] callback buffer rejected unsupported method=%s signature=%s",
++              methodName, signature);
++}
++
++void SessionStageAdapter::callBridgeValues(
++    const std::string& name, const std::string& sig, const std::vector<jvalue>& values)
++{
++    const char* methodName = name.c_str();
++    const char* signature = sig.c_str();
+     if (!bridgeObj_ || !bridgeClass_) {
+         ALOGW("callBridgeVoidMethod(%s): bridge not initialized", methodName);
+         return;
+@@ -750,10 +797,7 @@
+         return;
+     }
+ 
+-    va_list args;
+-    va_start(args, signature);
+-    env->CallVoidMethodV(bridgeObj_, method, args);
+-    va_end(args);
++    env->CallVoidMethodA(bridgeObj_, method, values.data());
+ 
+     if (env->ExceptionCheck()) {
+         ALOGE("callBridgeVoidMethod(%s): Java exception occurred", methodName);
+--- /dev/null
++++ b/benchmark/2026-10-24-native-host-window-recovery/session-recovery/candidate/session_recovery.cpp
+@@ -0,0 +1,89 @@
++#include "session_recovery.h"
++namespace westlake::recovery {
++bool Foreground(const host_window::Candidate& c) {
++    return c.source_event == host_window::SourceEvent::WindowReady ||
++        (c.source_event == host_window::SourceEvent::StageEvent && c.stage_event &&
++         (*c.stage_event == 1 || *c.stage_event == 2));
++}
++std::optional<Observation> ReadObservation(const std::string& path, uid_t uid, gid_t gid) {
++    auto result = host_window::ReadWindowRecord(path, uid, gid);
++    if (result.status != host_window::Status::Candidate || !result.candidate) return {};
++    return Observation{*result.candidate};
++}
++Outcome Coordinator::poll(uint64_t now, const std::function<std::optional<Observation>()>& read, Port& p) {
++    std::unique_lock<std::mutex> transaction(transaction_, std::try_to_lock);
++    if (!transaction.owns_lock()) return Outcome::InFlight;
++    if (stopped_) return Outcome::StoppedUnknown;
++    if (attempted_ && (now < last_poll_ || now - last_poll_ < 1000)) return Outcome::Throttled;
++    attempted_ = true; last_poll_ = now;
++    auto o = read();
++    if (!o || !Foreground(o->candidate) || o->candidate.window_id <= 0 || o->candidate.window_id == binding_.parent)
++        return Outcome::Idle;
++    const auto& identity = o->candidate.file;
++    for (const auto& seen : seen_)
++        if (host_window::detail::SameIdentity(seen, identity)) return Outcome::Idle;
++    // Stop instead of allowing unbounded per-generation attempts or memory growth.
++    if (seen_.size() == 128) { stopped_ = true; return Outcome::StoppedUnknown; }
++    auto old = p.parent(binding_.parent);
++    if (old.status == Reply::Unknown) { stopped_ = true; return Outcome::StoppedUnknown; }
++    if (old.status != Reply::Missing) return Outcome::Rejected;
++    auto candidate = p.parent(o->candidate.window_id);
++    if (candidate.status == Reply::Unknown) { stopped_ = true; return Outcome::StoppedUnknown; }
++    if (candidate.status != Reply::Ok || candidate.main_id != o->candidate.window_id) return Outcome::Rejected;
++    auto unchanged = [&] {
++        auto current = read();
++        return current && Foreground(current->candidate) && current->candidate.window_id == o->candidate.window_id &&
++            host_window::detail::SameIdentity(current->candidate.file, identity);
++    };
++    if (!unchanged() || !p.current()) return Outcome::Rejected;
++    // No old callback may race publication. Original rendering resources stay owned.
++    seen_.push_back(identity); // Only consume a generation immediately before side effects.
++    p.quiesceOldCallbacks();
++    auto created = p.create(o->candidate.window_id, binding_.generation + 1);
++    if (created.status == Reply::Unknown) { stopped_ = true; return Outcome::StoppedUnknown; }
++    if (created.status != Reply::Ok || created.actual_id <= 0) return Outcome::Failed;
++    auto cleanup = [&] {
++        if (p.discard(created.actual_id) != Reply::Ok) {
++            stopped_ = true; return Outcome::StoppedUnknown;
++        }
++        return Outcome::Failed;
++    };
++    if (!unchanged() || !p.current()) return cleanup();
++    auto connected = p.connect(created.actual_id);
++    if (connected == Reply::Unknown) {
++        // Remote result is ambiguous: keep endpoint/resources, stop all later creates.
++        stopped_ = true; return Outcome::StoppedUnknown;
++    }
++    if (connected != Reply::Ok || !unchanged() || !p.current()) return cleanup();
++    Binding next{binding_.logical, created.actual_id, o->candidate.window_id, binding_.generation + 1};
++    if (!p.publish(binding_, next)) return cleanup();
++    binding_ = next;
++    return Outcome::Committed;
++}
++ParentCache& ParentCache::instance() { static ParentCache cache; return cache; }
++Routes& Routes::instance() { static Routes table; return table; }
++bool Routes::install(int32_t l, int32_t a) {
++    std::lock_guard<std::mutex> g(mutex_);
++    if (l <= 0 || a <= 0 || retired_.count(a) || by_actual_.count(a)) return false;
++    by_actual_[a] = l; return true;
++}
++bool Routes::replace(int32_t l, int32_t old, int32_t next) {
++    std::lock_guard<std::mutex> g(mutex_);
++    auto it = by_actual_.find(old);
++    if (it == by_actual_.end() || it->second != l || next <= 0 || next == old ||
++        by_actual_.count(next) || retired_.count(next)) return false;
++    by_actual_.erase(it); retired_.insert(old); by_actual_[next] = l; return true;
++}
++void Routes::erase(int32_t logical) {
++    std::lock_guard<std::mutex> g(mutex_);
++    for (auto it=by_actual_.begin(); it!=by_actual_.end();) {
++        if (it->second == logical) { retired_.insert(it->first); it=by_actual_.erase(it); }
++        else ++it;
++    }
++}
++int32_t Routes::logical(int32_t actual) const {
++    std::lock_guard<std::mutex> g(mutex_);
++    if (retired_.count(actual)) return -1;
++    auto it=by_actual_.find(actual); return it==by_actual_.end() ? actual : it->second;
++}
++} // namespace westlake::recovery
+--- /dev/null
++++ b/benchmark/2026-10-24-native-host-window-recovery/session-recovery/candidate/session_recovery.h
+@@ -0,0 +1,125 @@
++#pragma once
++#include "host_window_record_reader.h"
++#include <cstdint>
++#include <atomic>
++#include <algorithm>
++#include <functional>
++#include <map>
++#include <memory>
++#include <mutex>
++#include <set>
++#include <string>
++#include <vector>
++
++namespace westlake::recovery {
++// A gate belongs to one immutable callback endpoint, never to a reusable actual ID.
++// Closing waits for already admitted callbacks to finish before publication.
++struct CallbackGate {
++    std::recursive_mutex mutex;
++    bool enabled = true;
++    bool buffering = false, overflow = false;
++    struct Pending { std::string method; std::function<void()> call; };
++    std::vector<Pending> pending;
++    static bool knownMethod(const std::string& method) {
++        // Fixed production primitive-callback set: bounded independently of frequency.
++        static const char* const methods[] = {
++            "onSetActive", "onNotifySessionForeground", "onNotifySessionBackground",
++            "onNotifyDestroy", "onNotifyWindowVisibility", "onNotifyForegroundInteractiveStatus",
++            "onUpdateRect", "onUpdateGlobalDisplayRectFromServer", "onUpdateWindowMode",
++            "onUpdateFocus", "onUpdateAvoidArea", "onOccupiedAreaRect", "onHandleBackEvent",
++            "onUpdateDensity", "onUpdateOrientation", "onUpdateDisplayId"
++        };
++        for (const auto* name : methods) if (method == name) return true;
++        return false;
++    }
++    void close() {
++        std::lock_guard<std::recursive_mutex> l(mutex);
++        enabled = false; buffering = false; pending.clear();
++    }
++    void beginBuffering() {
++        std::lock_guard<std::recursive_mutex> l(mutex);
++        enabled = false; buffering = true; overflow = false; pending.clear();
++    }
++    bool submit(const std::string& method, std::function<void()> callback) {
++        std::lock_guard<std::recursive_mutex> l(mutex);
++        if (!knownMethod(method)) return false; // Caller logs the unsupported name.
++        if (enabled) { callback(); return true; }
++        if (!buffering || overflow) return true; // Retired endpoints never replay.
++        // Erase the previous occurrence, then append: order is LAST arrival,
++        // never map-key order. 65+ UpdateRect/visibility events remain one entry.
++        pending.erase(std::remove_if(pending.begin(), pending.end(),
++            [&](const Pending& p) { return p.method == method; }), pending.end());
++        pending.push_back(Pending{method, std::move(callback)});
++        return true;
++    }
++    bool activate() {
++        std::lock_guard<std::recursive_mutex> l(mutex);
++        if (overflow || (!buffering && !enabled)) return false;
++        if (enabled) return true;
++        auto callbacks = std::move(pending);
++        buffering = false; enabled = true;
++        for (auto& callback : callbacks) callback.call();
++        return true;
++    }
++};
++struct Observation {
++    host_window::Candidate candidate;
++
++};
++bool Foreground(const host_window::Candidate& candidate);
++std::optional<Observation> ReadObservation(const std::string& path, uid_t uid, gid_t gid);
++enum class Reply { Ok, Missing, Rejected, Unknown };
++struct ParentReply { Reply status; int32_t main_id; };
++struct Created { Reply status; int32_t actual_id; };
++struct Binding { int32_t logical, actual, parent; uint64_t generation = 0; };
++
++// No ownership authentication is represented here. Candidate trust is t1's
++// same-application private record; ParentReply only establishes main-window kind.
++struct Port {
++    virtual ~Port() = default;
++    virtual bool current() const = 0;
++    virtual ParentReply parent(int32_t id) = 0;
++    virtual Created create(int32_t parent, uint64_t generation) = 0;
++    virtual Reply connect(int32_t actual) = 0;
++    virtual Reply discard(int32_t actual) = 0;
++    virtual void quiesceOldCallbacks() = 0;
++    virtual bool publish(const Binding& previous, const Binding& next) = 0;
++};
++enum class Outcome { Idle, Throttled, InFlight, Rejected, Failed, StoppedUnknown, Committed };
++class Coordinator {
++public:
++    explicit Coordinator(Binding b) : binding_(b) {}
++    Outcome poll(uint64_t now_ms, const std::function<std::optional<Observation>()>& read, Port& port);
++    Binding binding() const { return binding_; } // caller serializes lifetime/access
++private:
++    Binding binding_;
++    std::mutex transaction_;
++    bool attempted_ = false, stopped_ = false;
++    uint64_t last_poll_ = 0;
++    std::vector<host_window::FileIdentity> seen_;
++};
++
++class ParentCache {
++public:
++    static ParentCache& instance();
++    int32_t committed() const { return parent_.load(std::memory_order_acquire); }
++    void publish(int32_t verifiedParent) { parent_.store(verifiedParent, std::memory_order_release); }
++private:
++    std::atomic<int32_t> parent_{0};
++};
++
++// Input callers pass through this table BEFORE existing channel lookups.
++// Untouched non-recovery sessions retain their old ID. Retired IDs never fall back.
++class Routes {
++public:
++    static Routes& instance();
++    bool install(int32_t logical, int32_t actual);
++    bool replace(int32_t logical, int32_t old_actual, int32_t next_actual);
++    void erase(int32_t logical);
++    int32_t logical(int32_t actual) const;
++private:
++    mutable std::mutex mutex_;
++    std::map<int32_t,int32_t> by_actual_;
++    std::set<int32_t> retired_;
++};
++} // namespace westlake::recovery
+--- /dev/null
++++ b/benchmark/2026-10-24-native-host-window-recovery/session-recovery/candidate/wmc_recovery_impl.inc
+@@ -0,0 +1,188 @@
++// Included inside oh_adapter, after the ordinary WMC definitions.
++OHWindowManagerClient::~OHWindowManagerClient()
++{
++    recordObserverLifetime().stop.store(true);
++    if (recordObserverLifetime().thread.joinable()) recordObserverLifetime().thread.join();
++}
++void OHWindowManagerClient::startRecordObserver()
++{
++    bool expected = false;
++    if (!recordObserverLifetime().started.compare_exchange_strong(expected, true)) return;
++    recordObserverLifetime().thread = std::thread([this] {
++        while (!recordObserverLifetime().stop.load()) {
++            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
++            if (recordObserverLifetime().stop.load()) break;
++            std::vector<int32_t> logical;
++            { std::lock_guard<std::recursive_mutex> g(sessionMutex_);
++              for (const auto& entry : sessions_) if (recoveryStates().count(entry.first)) logical.push_back(entry.first); }
++            for (auto id : logical) observeHostRecord(id);
++        }
++    });
++}
++void OHWindowManagerClient::observeHostRecord(int32_t logical)
++{
++    using namespace westlake::recovery;
++    SessionEntry snapshot;
++    std::shared_ptr<RecoveryState> state;
++    uint64_t revision;
++    OHOS::sptr<OHOS::IRemoteObject> scene;
++    {
++        std::lock_guard<std::recursive_mutex> g(sessionMutex_);
++        auto it = sessions_.find(logical);
++        auto recovery = recoveryStates().find(logical);
++        if (it == sessions_.end() || recovery == recoveryStates().end()) return;
++        state = recovery->second; revision = state->revision;
++        snapshot = it->second; scene = sceneProxy_;
++    }
++    if (!scene || getuid() == 0 || getuid() != geteuid() || getgid() != getegid()) return;
++    struct SessionPort final : Port {
++        OHWindowManagerClient& owner;
++        SessionEntry snapshot;
++        std::shared_ptr<RecoveryState> state;
++        OHOS::sptr<OHOS::IRemoteObject> scene;
++        uint64_t revision;
++        SessionPort(OHWindowManagerClient& o, SessionEntry s, std::shared_ptr<RecoveryState> recovery,
++                    uint64_t version, OHOS::sptr<OHOS::IRemoteObject> remote)
++            : owner(o), snapshot(s), state(recovery), scene(remote), revision(version) {}
++        bool current() const override {
++            std::lock_guard<std::recursive_mutex> g(owner.sessionMutex_);
++            auto it = owner.sessions_.find(snapshot.sessionId);
++            return it != owner.sessions_.end() && owner.recoveryStates().count(snapshot.sessionId) &&
++                owner.recoveryStates().at(snapshot.sessionId) == state &&
++                it->second.windowId == snapshot.windowId &&
++                state->revision == revision;
++        }
++        ParentReply parent(int32_t id) override {
++            OHOS::MessageParcel d, r;
++            OHOS::MessageOption opt(OHOS::MessageOption::TF_SYNC, 1);
++            if (!d.WriteInterfaceToken(u"OHOS.ISceneSessionManager") || !d.WriteInt32(id))
++                return {Reply::Rejected, -1};
++            const auto code = OHOS::Rosen::ISceneSessionManager::SceneSessionManagerMessage::
++                TRANS_ID_GET_PARENT_MAIN_WINDOW_ID;
++            const auto ipc = scene->SendRequest(static_cast<uint32_t>(code), d, r, opt);
++            int32_t main = -1, rc = -1;
++            if (ipc || !r.ReadInt32(main) || !r.ReadInt32(rc)) return {Reply::Unknown, -1};
++            if (rc == static_cast<int32_t>(OHOS::Rosen::WMError::WM_ERROR_NULLPTR))
++                return {Reply::Missing, -1};
++            return {rc == 0 ? Reply::Ok : Reply::Rejected, main};
++        }
++        void quiesceOldCallbacks() override { snapshot.stageAdapter->recoveryGate()->close(); }
++        Created create(int32_t parent, uint64_t) override {
++            state->pendingProperty = recoveryCopyProperty(state->recipe);
++            state->pendingStage = snapshot.stageAdapter->recoveryEndpoint();
++            if (!state->pendingProperty || !state->pendingStage->recoveryReady()) return {Reply::Rejected, 0};
++            auto property = state->pendingProperty;
++            property->SetParentId(parent); property->SetParentPersistentId(parent);
++            OHOS::MessageParcel d, r;
++            OHOS::MessageOption opt(OHOS::MessageOption::TF_SYNC, 1);
++            if (!d.WriteInterfaceToken(u"OHOS.ISceneSessionManager") ||
++                !d.WriteRemoteObject(state->pendingStage->AsObject()) ||
++                !d.WriteRemoteObject(snapshot.eventChannel->AsObject()) ||
++                !state->windowNode->Marshalling(d) || !d.WriteStrongParcelable(property))
++                return {Reply::Rejected, 0};
++            const auto ipc = scene->SendRequest(static_cast<uint32_t>(
++                OHOS::Rosen::ISceneSessionManager::SceneSessionManagerMessage::
++                    TRANS_ID_CREATE_AND_CONNECT_SPECIFIC_SESSION), d, r, opt);
++            // Failed IPC is ambiguous even if a server may already have created a session.
++            if (ipc || !r.ReadInt32(state->pendingActual)) return {Reply::Unknown, 0};
++            state->pendingRemote = r.ReadRemoteObject();
++            OHOS::sptr<OHOS::Rosen::SystemSessionConfig> config =
++                r.ReadParcelable<OHOS::Rosen::SystemSessionConfig>();
++            uint32_t level = 0, type = 0; uint64_t display = 0; int32_t rc = -1;
++            if (!state->pendingRemote || !config || !r.ReadUint32(level) || !r.ReadUint64(display) ||
++                !r.ReadUint32(type) || !r.ReadInt32(rc) || state->pendingActual <= 0)
++                return {Reply::Unknown, 0};
++            property->SetSubWindowLevel(level); property->SetDisplayId(display);
++            if (rc != 0) return {Reply::Unknown, 0};
++            return {Reply::Ok, state->pendingActual};
++        }
++        Reply call(uint32_t code, bool foreground) {
++            OHOS::MessageParcel d, r;
++            OHOS::MessageOption opt(OHOS::MessageOption::TF_SYNC, 1);
++            bool wrote = d.WriteInterfaceToken(u"OHOS.ISession");
++            if (foreground) wrote = wrote && d.WriteBool(true) &&
++                d.WriteStrongParcelable(state->pendingProperty) && d.WriteBool(true) && d.WriteString("");
++            if (!wrote) return Reply::Rejected;
++            auto ipc = state->pendingRemote->SendRequest(code, d, r, opt);
++            int32_t rc = -1;
++            if (ipc || !r.ReadInt32(rc)) return Reply::Unknown;
++            return rc == 0 ? Reply::Ok : Reply::Rejected;
++        }
++        Reply connect(int32_t) override {
++            auto result = call(1, true); // ISession Foreground, existing production parcel shape.
++            if (result != Reply::Ok) return result;
++            return call(102, false); // ISession RaiseToAppTop.
++        }
++        Reply discard(int32_t actual) override {
++            OHOS::MessageParcel d, r;
++            OHOS::MessageOption opt(OHOS::MessageOption::TF_SYNC, 1);
++            if (!d.WriteInterfaceToken(u"OHOS.ISceneSessionManager") || !d.WriteInt32(actual))
++                return Reply::Rejected;
++            auto ipc = scene->SendRequest(static_cast<uint32_t>(
++                OHOS::Rosen::ISceneSessionManager::SceneSessionManagerMessage::
++                    TRANS_ID_DESTROY_AND_DISCONNECT_SPECIFIC_SESSION), d, r, opt);
++            int32_t rc = -1;
++            if (ipc || !r.ReadInt32(rc)) return Reply::Unknown;
++            if (rc != 0) return Reply::Rejected;
++            state->pendingRemote = nullptr; state->pendingStage = nullptr; state->pendingProperty = nullptr;
++            return Reply::Ok;
++        }
++        bool publish(const Binding& old, const Binding& next) override {
++            auto gate = state->pendingStage->recoveryGate();
++            std::lock_guard<std::recursive_mutex> epoch(gate->mutex);
++            if (gate->overflow || !gate->buffering) return false;
++            std::lock_guard<std::recursive_mutex> g(owner.sessionMutex_);
++            auto it = owner.sessions_.find(old.logical);
++            if (it == owner.sessions_.end() || !owner.recoveryStates().count(old.logical) ||
++                owner.recoveryStates().at(old.logical) != state ||
++                it->second.windowId != static_cast<uint32_t>(old.actual) ||
++                state->revision != revision) return false;
++            if (!Routes::instance().replace(old.logical, old.actual, next.actual)) return false;
++            auto& entry = it->second;
++            entry.sessionRemote = state->pendingRemote;
++            entry.stageAdapter = state->pendingStage;
++            entry.windowId = static_cast<uint32_t>(next.actual);
++            ++state->revision;
++            ParentCache::instance().publish(next.parent); // Subsequent Activity/dialog creates.
++            // Other logical children refer to actual parent identities for remote operations.
++            for (auto& child : owner.sessions_) {
++                if (child.second.parentWindowId == static_cast<uint32_t>(old.actual)) {
++                    child.second.parentWindowId = next.actual;
++                    if (child.second.windowProperty) child.second.windowProperty->SetParentId(next.actual);
++                }
++            }
++            // Logical session, Java SurfaceControl, both nodes and producer/native window untouched.
++            // Keep buffering until the post-publication foreground record check.
++            state->pendingRemote = nullptr; state->pendingStage = nullptr; state->pendingProperty = nullptr;
++            return true;
++        }
++    } port(*this, snapshot, state, revision, scene);
++    const auto now = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
++        std::chrono::steady_clock::now().time_since_epoch()).count());
++    const auto read = [] {
++        return ReadObservation("/data/app/el2/100/base/org.westlake.imehost/haps/entry/files/window-state.json",
++                               getuid(), getgid());
++    };
++    const auto outcome = state->coordinator->poll(now, read, port);
++    if (outcome != Outcome::Idle && outcome != Outcome::Throttled)
++        fprintf(stderr, "[HOST-SESSION] logical=%d outcome=%d\n", logical, static_cast<int>(outcome));
++    // Replay only observed new-endpoint callbacks, not synthesized visibility.
++    // If the record became hidden after commit, keep buffering until a later
++    // visible same-parent record; normal same-host polling creates no session.
++    auto visible = read();
++    OHOS::sptr<SessionStageAdapter> currentStage;
++    if (visible && Foreground(visible->candidate) &&
++        visible->candidate.window_id == state->coordinator->binding().parent) {
++        { std::lock_guard<std::recursive_mutex> g(sessionMutex_);
++          auto it = sessions_.find(logical);
++          if (it != sessions_.end() && recoveryStates().count(logical) && recoveryStates().at(logical) == state &&
++              it->second.windowId == static_cast<uint32_t>(state->coordinator->binding().actual))
++              currentStage = it->second.stageAdapter; }
++        if (currentStage) {
++            bool wasBuffering;
++            { auto gate = currentStage->recoveryGate();
++              std::lock_guard<std::recursive_mutex> epoch(gate->mutex); wasBuffering = gate->buffering; }
++            if (wasBuffering && currentStage->activateRecoveryCallbacks()) requestFocusForSession(logical);
++        }
++    }
++}
+--- /dev/null
++++ b/benchmark/2026-10-24-native-host-window-recovery/session-recovery/candidate/wmc_recovery_state.inc
+@@ -0,0 +1,35 @@
++// Included inside oh_adapter in the production WMC translation unit.
++struct OHWindowManagerClient::RecoveryState {
++    std::shared_ptr<westlake::recovery::Coordinator> coordinator;
++    std::shared_ptr<OHOS::Rosen::RSSurfaceNode> windowNode;
++    OHOS::sptr<OHOS::Rosen::WindowSessionProperty> recipe;
++    // Retain ambiguous transaction endpoints. Never publish or repeatedly recreate.
++    OHOS::sptr<SessionStageAdapter> pendingStage;
++    OHOS::sptr<OHOS::IRemoteObject> pendingRemote;
++    OHOS::sptr<OHOS::Rosen::WindowSessionProperty> pendingProperty;
++    int32_t pendingActual = 0;
++    uint64_t revision = 0; // Side table: preserve SessionEntry ABI for Focus34 policy.
++};
++static OHOS::sptr<OHOS::Rosen::WindowSessionProperty> recoveryCopyProperty(
++    const OHOS::sptr<OHOS::Rosen::WindowSessionProperty>& source)
++{
++    OHOS::MessageParcel copy;
++    if (!source || !copy.WriteStrongParcelable(source)) return nullptr;
++    return copy.ReadStrongParcelable<OHOS::Rosen::WindowSessionProperty>();
++}
++
++std::map<int32_t, std::shared_ptr<OHWindowManagerClient::RecoveryState>>&
++OHWindowManagerClient::recoveryStates()
++{
++    static auto* table = new std::map<int32_t, std::shared_ptr<RecoveryState>>;
++    return *table; // Protected by the existing sessionMutex_; no class layout change.
++}
++struct RecordObserverLifetime {
++    std::atomic<bool> started{false}, stop{false};
++    std::thread thread;
++};
++static RecordObserverLifetime& recordObserverLifetime()
++{
++    static auto* lifetime = new RecordObserverLifetime;
++    return *lifetime; // Explicitly joined by WMC destructor.
++}

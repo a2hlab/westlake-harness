@@ -1,0 +1,129 @@
+--- snapshot01/candidate/session_recovery.h
++++ review02/candidate/session_recovery.h
+@@ -2,6 +2,7 @@
+ #include "host_window_record_reader.h"
+ #include <cstdint>
+ #include <atomic>
++#include <algorithm>
+ #include <functional>
+ #include <map>
+ #include <memory>
+@@ -17,7 +18,20 @@
+     std::recursive_mutex mutex;
+     bool enabled = true;
+     bool buffering = false, overflow = false;
+-    std::vector<std::function<void()>> pending;
++    struct Pending { std::string method; std::function<void()> call; };
++    std::vector<Pending> pending;
++    static bool knownMethod(const std::string& method) {
++        // Fixed production primitive-callback set: bounded independently of frequency.
++        static const char* const methods[] = {
++            "onSetActive", "onNotifySessionForeground", "onNotifySessionBackground",
++            "onNotifyDestroy", "onNotifyWindowVisibility", "onNotifyForegroundInteractiveStatus",
++            "onUpdateRect", "onUpdateGlobalDisplayRectFromServer", "onUpdateWindowMode",
++            "onUpdateFocus", "onUpdateAvoidArea", "onOccupiedAreaRect", "onHandleBackEvent",
++            "onUpdateDensity", "onUpdateOrientation", "onUpdateDisplayId"
++        };
++        for (const auto* name : methods) if (method == name) return true;
++        return false;
++    }
+     void close() {
+         std::lock_guard<std::recursive_mutex> l(mutex);
+         enabled = false; buffering = false; pending.clear();
+@@ -26,12 +40,17 @@
+         std::lock_guard<std::recursive_mutex> l(mutex);
+         enabled = false; buffering = true; overflow = false; pending.clear();
+     }
+-    void submit(std::function<void()> callback) {
++    bool submit(const std::string& method, std::function<void()> callback) {
+         std::lock_guard<std::recursive_mutex> l(mutex);
+-        if (enabled) { callback(); return; }
+-        if (!buffering || overflow) return; // Retired endpoints never replay.
+-        if (pending.size() == 64) { overflow = true; pending.clear(); return; }
+-        pending.push_back(std::move(callback));
++        if (!knownMethod(method)) return false; // Caller logs the unsupported name.
++        if (enabled) { callback(); return true; }
++        if (!buffering || overflow) return true; // Retired endpoints never replay.
++        // Erase the previous occurrence, then append: order is LAST arrival,
++        // never map-key order. 65+ UpdateRect/visibility events remain one entry.
++        pending.erase(std::remove_if(pending.begin(), pending.end(),
++            [&](const Pending& p) { return p.method == method; }), pending.end());
++        pending.push_back(Pending{method, std::move(callback)});
++        return true;
+     }
+     bool activate() {
+         std::lock_guard<std::recursive_mutex> l(mutex);
+@@ -39,7 +58,7 @@
+         if (enabled) return true;
+         auto callbacks = std::move(pending);
+         buffering = false; enabled = true;
+-        for (auto& callback : callbacks) callback();
++        for (auto& callback : callbacks) callback.call();
+         return true;
+     }
+ };
+--- snapshot01/candidate/session_stage_adapter.cpp
++++ review02/candidate/session_stage_adapter.cpp
+@@ -767,7 +767,9 @@
+         return;
+     }
+     const std::string name(methodName), sig(signature);
+-    recoveryGate_->submit([this, name, sig, values] { callBridgeValues(name, sig, values); });
++    if (!recoveryGate_->submit(name, [this, name, sig, values] { callBridgeValues(name, sig, values); }))
++        ALOGE("[HOST-SESSION] callback buffer rejected unsupported method=%s signature=%s",
++              methodName, signature);
+ }
+ 
+ void SessionStageAdapter::callBridgeValues(
+--- snapshot01/tests/session_recovery_test.cpp
++++ review02/tests/session_recovery_test.cpp
+@@ -124,7 +124,7 @@
+     // callbacks arrive before publication while the real gate buffers them.
+     {Coordinator live({53,53,32,0});TestPort p;CallbackGate gate;gate.beginBuffering();
+      bool appVisible=false;int width=0;
+-     p.onConnect=[&]{gate.submit([&]{appVisible=true;});gate.submit([&]{width=1200;});
++     p.onConnect=[&]{gate.submit("onNotifySessionForeground", [&]{appVisible=true;});gate.submit("onUpdateRect", [&]{width=1200;});
+                     CHECK(!appVisible&&width==0&&p.publishes==0);};
+      CHECK(live.poll(1000,read,p)==Outcome::Committed);
+      CHECK(!appVisible&&width==0&&p.publishes==1);
+@@ -133,14 +133,35 @@
+     // The same production buffering primitive used by SessionStageAdapter must
+     // deliver them only after publication, in original order, never synthesize true.
+     {CallbackGate gate;gate.beginBuffering();bool visible=false;int rect=0;std::vector<int> order;
+-     gate.submit([&]{visible=true;order.push_back(1);});
+-     gate.submit([&]{rect=1200;order.push_back(2);});
++     gate.submit("onNotifySessionForeground", [&]{visible=true;order.push_back(1);});
++     gate.submit("onUpdateRect", [&]{rect=1200;order.push_back(2);});
+      CHECK(!visible&&rect==0);CHECK(gate.pending.size()==2);
+      CHECK(gate.activate());CHECK(visible&&rect==1200);CHECK((order==std::vector<int>{1,2}));
+      CHECK(gate.activate());CHECK(order.size()==2);
+-     gate.close();gate.submit([&]{visible=false;});CHECK(visible);CHECK(!gate.activate());}
+-    {CallbackGate gate;gate.beginBuffering();int callbacks=0;
+-     for(int i=0;i<65;++i)gate.submit([&]{++callbacks;});CHECK(!gate.activate());CHECK(callbacks==0);}
++     gate.close();gate.submit("onNotifySessionBackground", [&]{visible=false;});CHECK(visible);CHECK(!gate.activate());}
++    // C1: more than64 same-class events while backgrounded do not latch failure.
++    {CallbackGate gate;gate.beginBuffering();int callbacks=0,lastWidth=0;
++     for(int i=0;i<1000;++i) CHECK(gate.submit("onUpdateRect",[&,i]{++callbacks;lastWidth=i;}));
++     CHECK(gate.pending.size()==1);CHECK(!gate.overflow);CHECK(callbacks==0);
++     CHECK(gate.activate());CHECK(callbacks==1&&lastWidth==999);}
++    // Last-occurrence ordering across methods, not lexical order or first insertion.
++    {CallbackGate gate;gate.beginBuffering();bool visible=false;std::vector<int> order;
++     for(int i=0;i<100;++i) {
++         CHECK(gate.submit("onNotifySessionForeground",[&]{visible=true;order.push_back(1);}));
++         CHECK(gate.submit("onNotifySessionBackground",[&]{visible=false;order.push_back(2);}));
++     }
++     CHECK(gate.pending.size()==2);CHECK(gate.activate());CHECK(!visible);
++     CHECK((order==std::vector<int>{1,2}));
++     gate.beginBuffering();order.clear();
++     CHECK(gate.submit("onNotifySessionBackground",[&]{visible=false;order.push_back(2);}));
++     CHECK(gate.submit("onNotifySessionForeground",[&]{visible=true;order.push_back(1);}));
++     CHECK(gate.activate());CHECK(visible);CHECK((order==std::vector<int>{2,1}));
++     CHECK(!gate.submit("unsupportedFutureCallback",[]{}));}
++    // C1 on the production Coordinator connect/publish route, with a delayed activation.
++    {Coordinator live({53,53,32,0});TestPort p;CallbackGate gate;gate.beginBuffering();int renderedWidth=0;
++     p.onConnect=[&]{for(int i=1;i<=100;++i)gate.submit("onUpdateRect",[&,i]{renderedWidth=i;});};
++     CHECK(live.poll(1000,read,p)==Outcome::Committed);CHECK(renderedWidth==0);
++     CHECK(gate.activate());CHECK(renderedWidth==100);}
+     // Gate close must drain an admitted callback, not just compare a generation once.
+     {CallbackGate gate;std::atomic<bool> entered{false}, release{false}, closed{false};
+      std::thread callback([&]{std::lock_guard<std::recursive_mutex> g(gate.mutex);entered=true;
