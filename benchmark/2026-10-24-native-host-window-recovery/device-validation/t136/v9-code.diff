@@ -1,0 +1,32 @@
+--- execute_v8.py
++++ execute_v9.py
+@@ -294,11 +294,14 @@
+                     if bound is None:raise RuntimeError('feed without mapped candidate')
+                     kind=r.get('touch_kind');coords=r.get('touch_coordinates');self.coords(coords,2 if kind=='click' else 4)
+                     if kind not in ('click','swipe'):raise RuntimeError('missing ordinary content verification')
++                    if time.monotonic()+60>self.start+900:raise RuntimeError('insufficient60s content review before recovery reserve')
+                     self.ui(name+'-content',kind+' '+' '.join(map(str,coords))+(' 600' if kind=='swipe' else ''))
+-                    after=self.screen(name+'-content-after');verified=self.review(after,deadline)
++                    after=self.screen(name+'-content-after');verified=self.review(after,min(time.monotonic()+60,self.start+900))
+                     if verified['verdict']!='usable':raise RuntimeError('content not confirmed usable')
+-                    return bound
+-                time.sleep(.2)
++                    after_identity=self.identity(name+'-content-after-identity')
++                    if core_identity(after_identity)!=core_identity(bound):raise RuntimeError('core identity changed after content interaction')
++                    return after_identity
++                time.sleep(2)
+         raise RuntimeError('no confirmed usable feed by120s')
+     def reboot(self,label):
+         self.held();old=self.identity(label+'-before')['boot']
+@@ -378,9 +381,9 @@
+ 
+ def main():
+     ap=argparse.ArgumentParser();ap.add_argument('--outer-receipt',type=Path,required=True);a=ap.parse_args()
+-    plan=json.loads((HERE/'steps_v8.json').read_text());receipt=json.loads(a.outer_receipt.read_text())
++    plan=json.loads((HERE/'steps_v9.json').read_text());receipt=json.loads(a.outer_receipt.read_text())
+     assert receipt.get('decision')=='approve_execution' and receipt.get('serial')==SERIAL
+-    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps_v8.json')
++    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps_v9.json')
+     assert receipt.get('candidate_sha256')==CANDIDATE and receipt.get('rollback_sha256')==BASELINE
+     assert receipt.get('idle_source_sha256')==IDLE_SOURCE_SHA and digest(IDLE_SOURCE)==IDLE_SOURCE_SHA
+     for name,expected in [('candidate.so',CANDIDATE),('rollback.so',BASELINE)]:assert digest(INPUT/name)==expected

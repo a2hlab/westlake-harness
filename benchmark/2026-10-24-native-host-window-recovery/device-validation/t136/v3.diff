@@ -1,0 +1,82 @@
+--- execute.py (preserved)
++++ execute_v3.py
+@@ -129,21 +129,38 @@
+             time.sleep(.2)
+         raise RuntimeError('visual review deadline')
+     def desktop(self,label,deadline):
+-        pic=self.screen(label);r=self.review(pic,deadline)
+-        if r['verdict']=='clock_no_credentials':
+-            xy=r['swipe'];self.coords(xy,4);self.ui(label+'-unlock','swipe '+' '.join(map(str,xy))+' 600');time.sleep(1.5)
+-            pic=self.screen(label+'-unlocked');r=self.review(pic,deadline)
+-        if r['verdict'] in ('host_white','feed'):
+-            self.ui(label+'-home','keyEvent Home');pic=self.screen(label+'-desktop');r=self.review(pic,deadline)
+-        if r['verdict']!='desktop':raise RuntimeError('no confirmed desktop')
+-        nodes=[]
+-        def walk(n):
+-            a=n.get('attributes',{})
+-            if a.get('id')=='AppIconCommonView_org.westlake.imehost.EntryAbility' and all(a.get(k)=='true' for k in ('visible','enabled','clickable')):nodes.append(a)
+-            for c in n.get('children',[]):walk(c)
+-        walk(json.loads((self.run/(pic['label']+'.layout.json')).read_text()));assert len(nodes)==1
+-        v=list(map(int,re.findall(r'\d+',nodes[0]['bounds'])));assert len(v)==4
+-        return [(v[0]+v[2])//2,(v[1]+v[3])//2]
++        pic=self.screen(label)
++        for step in range(4):
++            r=self.review(pic,deadline)
++            if r['verdict']=='clock_no_credentials':
++                xy=r['swipe'];self.coords(xy,4);self.ui(label+'-unlock','swipe '+' '.join(map(str,xy))+' 600');time.sleep(1.5);pic=self.screen(label+'-unlocked')
++            elif r['verdict']=='usb_dialog':
++                # Review confirms the selected charge-only mode; tap only the fresh confirmation point.
++                xy=r['xy'];self.coords(xy,2);self.ui(label+'-usb-confirm','click '+' '.join(map(str,xy)));pic=self.screen(label+'-usb-dismissed')
++            elif r['verdict'] in ('host_white','feed'):
++                self.ui(label+'-home','keyEvent Home');pic=self.screen(label+'-desktop')
++            elif r['verdict']=='desktop':break
++            else:raise RuntimeError('no confirmed desktop; unknown/credentials prohibited')
++        else:raise RuntimeError('bounded desktop preparation incomplete')
++        for page in range(12):
++            if time.monotonic()>=deadline:raise RuntimeError('desktop preparation deadline')
++            tree=json.loads((self.run/(pic['label']+'.layout.json')).read_text());nodes=[];workspace=[]
++            def walk(n,launcher=False,visible=True):
++                at=n.get('attributes',{})
++                if at.get('bundleName'):launcher=at['bundleName']=='com.ohos.sceneboard'
++                visible=visible and at.get('visible') not in (False,'false') and at.get('enabled') not in (False,'false')
++                if str(at.get('id','')).startswith('SwiperPage_Grid_WorkSpace') and launcher and visible:workspace.append(at)
++                if at.get('id')=='AppIconCommonView_org.westlake.imehost.EntryAbility' and launcher and visible and all(at.get(k)=='true' for k in ('visible','enabled','clickable')):nodes.append(at)
++                for c in n.get('children',[]):walk(c,launcher,visible)
++            walk(tree);bounds=list(map(int,re.findall(r'\d+',tree['attributes']['bounds'])));assert len(bounds)==4
++            if len(nodes)==1:
++                v=list(map(int,re.findall(r'\d+',nodes[0]['bounds'])));assert len(v)==4 and bounds[0]<=v[0]<v[2]<=bounds[2] and bounds[1]<=v[1]<v[3]<=bounds[3]
++                print('TARGET_READY '+json.dumps(dict(pic,page=page)),flush=True)
++                if self.review(pic,deadline)['verdict']!='desktop':raise RuntimeError('target frame not confirmed desktop')
++                return [(v[0]+v[2])//2,(v[1]+v[3])//2]
++            if len(nodes)>1 or not workspace or page==11:raise RuntimeError('no unique target in12 desktop pages')
++            x1,y1,x2,y2=bounds;xy=[x1+(x2-x1)*4//5,(y1+y2)//2,x1+(x2-x1)//5,(y1+y2)//2]
++            self.ui(label+'-page-next-'+str(page),'swipe '+' '.join(map(str,xy))+' 600');time.sleep(.5);pic=self.screen(label+'-page-'+str(page+1))
+     def coords(self,xy,n):
+         assert isinstance(xy,list) and len(xy)==n and all(type(v) is int and 0<=v<=3000 for v in xy)
+     def stage(self,name,expected,old=None):
+@@ -185,8 +202,11 @@
+         while time.monotonic()<deadline:
+             time.sleep(2)
+             r,s,e=self.call(label+'-boot-poll',[HDC,'-t',SERIAL,'shell','cat /proc/sys/kernel/random/boot_id'],True)
+-            if r['local_rc']==0 and re.fullmatch(r'[0-9a-f-]{36}\s*',s) and s.strip()!=old:return s.strip()
+-        raise RuntimeError('new boot not observed within120s')
++            if r['local_rc']==0 and re.fullmatch(r'[0-9a-f-]{36}\s*',s) and s.strip()!=old:
++                new_boot=s.strip()
++                pr,ps,pe=self.call(label+'-power-service-poll',[HDC,'-t',SERIAL,'shell',"hidumper -s PowerManagerService -a '-a' | grep -E 'ScreenOffTime|Current State'"],True)
++                if pr['local_rc']==0 and not pe.strip() and re.search(r'Current State: \w+',ps) and re.search(r'ScreenOffTime: Timeout=\d+ms',ps):return new_boot
++        raise RuntimeError('new boot plus power service readiness not observed within120s')
+     def run_window(self):
+         r,s,e=self.call('held-before',['bash',str(NOTE),'held',SERIAL],True);assert r['local_rc']==1 and not s.strip() and not e.strip()
+         self.call('frozen',['python3',str(MAIN/'scripts/lab/check_frozen.py'),'--git',str(MAIN)])
+@@ -237,9 +257,9 @@
+ 
+ def main():
+     ap=argparse.ArgumentParser();ap.add_argument('--outer-receipt',type=Path,required=True);a=ap.parse_args()
+-    plan=json.loads((HERE/'steps.json').read_text());receipt=json.loads(a.outer_receipt.read_text())
++    plan=json.loads((HERE/'steps_v3.json').read_text());receipt=json.loads(a.outer_receipt.read_text())
+     assert receipt.get('decision')=='approve_execution' and receipt.get('serial')==SERIAL
+-    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps.json')
++    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps_v3.json')
+     assert receipt.get('candidate_sha256')==CANDIDATE and receipt.get('rollback_sha256')==BASELINE
+     for name,expected in [('candidate.so',CANDIDATE),('rollback.so',BASELINE)]:assert digest(INPUT/name)==expected
+     used=HERE/'.private'/('used-outer-receipt-'+digest(a.outer_receipt)+'.json');save(used,{'outer_receipt_sha256':digest(a.outer_receipt)})

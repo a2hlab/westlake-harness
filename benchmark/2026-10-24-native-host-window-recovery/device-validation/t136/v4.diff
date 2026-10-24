@@ -1,0 +1,69 @@
+--- execute_v3.py (preserved)
++++ execute_v4.py
+@@ -20,6 +20,8 @@
+ MAPPED='/data/local/tmp/asx/liboh_adapter_bridge.so'
+ UID=20011206
+ LABEL='u:object_r:appdat:s0'
++IDLE_SOURCE=HERE/'.private/execute-20261025-024115-2e76dc/baseline-s30-binding.json'
++IDLE_SOURCE_SHA='f02d00513be88456424e1b496bd714418a86471b235d486f3fa8da0370dcb7c3'
+ NOTE=MAIN/'scripts/lab/board_note.sh'
+ BOARD=MAIN/'.octos/boards/app-lighting.md'
+ LANE='codex-t136-native-validation'
+@@ -95,6 +97,27 @@
+         assert all(int(row[4])==obj['inode'] and tuple(int(x,16) for x in row[3].split(':'))==linux_device_pair(obj['dev']) for row in maps)
+         after=self.identity(label+'-identity-after');assert before==after
+         save(self.run/(label+'-binding.json'),dict(identity=after,object=obj));return after,obj
++    def admit(self,label):
++        before=self.identity(label+'-presence')
++        children=[x for x in before['processes'] if x['name']=='com.ss.android.article.news']
++        if len(children)==1:
++            bound,obj=self.bind(label,BASELINE)
++            self.result['mapping_now']='strict_current_mapping_verified'
++            return bound,obj
++        if len(children)!=0:raise RuntimeError('multiple children; idle exception prohibited')
++        assert digest(IDLE_SOURCE)==IDLE_SOURCE_SHA, 'idle source SHA mismatch'
++        source=json.loads(IDLE_SOURCE.read_text())
++        assert before['boot']==source['identity']['boot']=='3f0fa301-4b22-49d2-a3e4-423bca6f5450'
++        for name,pid,birth in [('org.westlake.imehost',6730,32457),('appspawn-x',6919,32718)]:
++            current=one(before,name);prior=one(source['identity'],name)
++            assert current==prior and (current['pid'],current['birth'])==(pid,birth), 'idle host/parent identity changed'
++        obj=self.object(label+'-idle-backing',TARGET)
++        assert obj==source['object'] and obj['sha256']==BASELINE and (obj['dev'],obj['inode'])==(66352,560578), 'idle backing differs from exact restored object'
++        after=self.identity(label+'-idle-identity-after');assert after==before, 'idle identity drift'
++        evidence=dict(identity=after,object=obj,mapping_now='not_running',exception='T136-idle-app-same-boot-restored-object',source=IDLE_SOURCE.name,source_run=IDLE_SOURCE.parent.name,source_sha256=IDLE_SOURCE_SHA,reason='No child exists; prior verified restored mapping is provenance, not current maps.')
++        save(self.run/(label+'-idle-admission.json'),evidence)
++        self.result['mapping_now']='not_running';self.result['admission_exception']=evidence['exception'];self.result['idle_source_sha256']=IDLE_SOURCE_SHA
++        return after,obj
+     def power(self,label):
+         s=self.shell(label,"hidumper -s PowerManagerService -a '-a' | grep -E 'ScreenOffTime|Current State'")
+         b=re.search(r'ScreenOffTime: Timeout=(\d+)ms',s);v=re.search(r'OverrideTimeout=(\d+)ms',s);state=re.search(r'Current State: (\w+)',s)
+@@ -210,13 +233,13 @@
+     def run_window(self):
+         r,s,e=self.call('held-before',['bash',str(NOTE),'held',SERIAL],True);assert r['local_rc']==1 and not s.strip() and not e.strip()
+         self.call('frozen',['python3',str(MAIN/'scripts/lab/check_frozen.py'),'--git',str(MAIN)])
+-        self.original,obj=self.bind('fresh',BASELINE);self.system_pre=self.object('system-before',SYSTEM);assert self.system_pre['sha256']==SYSTEM_SHA
++        self.original,obj=self.admit('fresh');self.system_pre=self.object('system-before',SYSTEM);assert self.system_pre['sha256']==SYSTEM_SHA
+         self.prepower=self.power('power-before');assert self.prepower['override'] is not None
+         self.start=time.monotonic()
+         try:
+             self.call('lock',['bash',str(NOTE),'lock',str(BOARD),SERIAL,LANE,'T136 candidate ordinary validation unconditional rollback max1800s'])
+             r,s,e=self.call('held-acquired',['bash',str(NOTE),'held',SERIAL]);self.owner=s.strip();assert self.owner.startswith(LANE+' ')
+-            self.held();again,original=self.bind('locked-fresh',BASELINE);assert again==self.original and original==obj
++            self.held();again,original=self.admit('locked-fresh');assert again==self.original and original==obj
+             self.backup=TARGET+'.'+self.run.name+'.baseline';temp=TARGET+'.'+self.run.name+'.candidate'
+             self.shell('backup','set -e; test ! -e '+q(self.backup)+'; test ! -e '+q(temp)+'; ln '+q(TARGET)+' '+q(self.backup))
+             assert self.object('backup-verify',self.backup)==obj
+@@ -257,10 +280,11 @@
+ 
+ def main():
+     ap=argparse.ArgumentParser();ap.add_argument('--outer-receipt',type=Path,required=True);a=ap.parse_args()
+-    plan=json.loads((HERE/'steps_v3.json').read_text());receipt=json.loads(a.outer_receipt.read_text())
++    plan=json.loads((HERE/'steps_v4.json').read_text());receipt=json.loads(a.outer_receipt.read_text())
+     assert receipt.get('decision')=='approve_execution' and receipt.get('serial')==SERIAL
+-    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps_v3.json')
++    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps_v4.json')
+     assert receipt.get('candidate_sha256')==CANDIDATE and receipt.get('rollback_sha256')==BASELINE
++    assert receipt.get('idle_source_sha256')==IDLE_SOURCE_SHA and digest(IDLE_SOURCE)==IDLE_SOURCE_SHA
+     for name,expected in [('candidate.so',CANDIDATE),('rollback.so',BASELINE)]:assert digest(INPUT/name)==expected
+     used=HERE/'.private'/('used-outer-receipt-'+digest(a.outer_receipt)+'.json');save(used,{'outer_receipt_sha256':digest(a.outer_receipt)})
+     w=Window();save(w.run/'outer-receipt.json',receipt);w.run_window()

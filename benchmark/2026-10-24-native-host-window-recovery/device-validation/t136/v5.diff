@@ -1,0 +1,78 @@
+--- execute_v4.py (preserved)
++++ execute_v5.py
+@@ -20,8 +20,8 @@
+ MAPPED='/data/local/tmp/asx/liboh_adapter_bridge.so'
+ UID=20011206
+ LABEL='u:object_r:appdat:s0'
+-IDLE_SOURCE=HERE/'.private/execute-20261025-024115-2e76dc/baseline-s30-binding.json'
+-IDLE_SOURCE_SHA='f02d00513be88456424e1b496bd714418a86471b235d486f3fa8da0370dcb7c3'
++IDLE_SOURCE=HERE/'.private/execute-20261025-025346-5209f4/baseline-s30-binding.json'
++IDLE_SOURCE_SHA='0a01dc123245a00abc10d0856a7181b183d4204db23777f62c899149f610f285'
+ NOTE=MAIN/'scripts/lab/board_note.sh'
+ BOARD=MAIN/'.octos/boards/app-lighting.md'
+ LANE='codex-t136-native-validation'
+@@ -107,10 +107,10 @@
+         if len(children)!=0:raise RuntimeError('multiple children; idle exception prohibited')
+         assert digest(IDLE_SOURCE)==IDLE_SOURCE_SHA, 'idle source SHA mismatch'
+         source=json.loads(IDLE_SOURCE.read_text())
+-        assert before['boot']==source['identity']['boot']=='3f0fa301-4b22-49d2-a3e4-423bca6f5450'
+-        for name,pid,birth in [('org.westlake.imehost',6730,32457),('appspawn-x',6919,32718)]:
++        assert before['boot']==source['identity']['boot'] and re.fullmatch(r'[0-9a-f-]{36}',before['boot'])
++        for name in ('org.westlake.imehost','appspawn-x'):
+             current=one(before,name);prior=one(source['identity'],name)
+-            assert current==prior and (current['pid'],current['birth'])==(pid,birth), 'idle host/parent identity changed'
++            assert current==prior, 'idle host/parent identity changed'
+         obj=self.object(label+'-idle-backing',TARGET)
+         assert obj==source['object'] and obj['sha256']==BASELINE and (obj['dev'],obj['inode'])==(66352,560578), 'idle backing differs from exact restored object'
+         after=self.identity(label+'-idle-identity-after');assert after==before, 'idle identity drift'
+@@ -221,15 +221,31 @@
+     def reboot(self,label):
+         self.held();old=self.identity(label+'-before')['boot']
+         self.call(label,[HDC,'-t',SERIAL,'target','boot'])
++        # Reuse demo_seal_61b.py wait_boot: new UUID plus exact boot.completed=true.
++        # Additionally require complete power fields and a successful parseable UITest dump.
+         deadline=time.monotonic()+120
+-        while time.monotonic()<deadline:
++        while time.monotonic()<deadline-15:
+             time.sleep(2)
+-            r,s,e=self.call(label+'-boot-poll',[HDC,'-t',SERIAL,'shell','cat /proc/sys/kernel/random/boot_id'],True)
+-            if r['local_rc']==0 and re.fullmatch(r'[0-9a-f-]{36}\s*',s) and s.strip()!=old:
+-                new_boot=s.strip()
+-                pr,ps,pe=self.call(label+'-power-service-poll',[HDC,'-t',SERIAL,'shell',"hidumper -s PowerManagerService -a '-a' | grep -E 'ScreenOffTime|Current State'"],True)
+-                if pr['local_rc']==0 and not pe.strip() and re.search(r'Current State: \w+',ps) and re.search(r'ScreenOffTime: Timeout=\d+ms',ps):return new_boot
+-        raise RuntimeError('new boot plus power service readiness not observed within120s')
++            r,s,e=self.call(label+'-boot-completion-poll',[HDC,'-t',SERIAL,'shell','cat /proc/sys/kernel/random/boot_id; param get bootevent.boot.completed'],True)
++            lines=s.strip().splitlines()
++            if r['local_rc']!=0 or e.strip() or len(lines)!=2 or not re.fullmatch(r'[0-9a-f-]{36}',lines[0]) or lines[0]==old or lines[1]!='true':continue
++            new_boot=lines[0]
++            if time.monotonic()>=deadline-15:break
++            pr,ps,pe=self.call(label+'-power-service-poll',[HDC,'-t',SERIAL,'shell',"hidumper -s PowerManagerService -a '-a' | grep -E 'ScreenOffTime|Current State'"],True)
++            if pr['local_rc']!=0 or pe.strip() or not re.search(r'Current State: \w+',ps) or not re.search(r'ScreenOffTime: Timeout=\d+ms',ps):continue
++            if time.monotonic()>=deadline-15:break
++            self.keepawake(label+'-boot-ui')
++            remote='/data/local/tmp/t136-'+self.run.name+'-'+label+'-ready-'+str(self.n)+'.json'
++            ur,us,ue=self.call(label+'-layout-readiness',[HDC,'-t',SERIAL,'shell','uitest dumpLayout -p '+q(remote)+'; r=$?; echo T136_UI_RC:$r'],True)
++            if ur['local_rc']!=0 or ue.strip() or not us.rstrip().endswith('T136_UI_RC:0'):continue
++            if time.monotonic()>=deadline-15:break
++            local=self.run/(label+'-ready-'+str(self.n)+'.json')
++            fr,fs,fe=self.call(label+'-layout-recv',[HDC,'-t',SERIAL,'file','recv',remote,str(local)],True)
++            if fr['local_rc']!=0 or fe.strip() or '[Fail]' in fs or not local.is_file():continue
++            try:tree=json.loads(local.read_text())
++            except (OSError,ValueError):continue
++            if isinstance(tree,dict) and tree:return new_boot
++        raise RuntimeError('newboot/boot.completed/power/parseable layout not ready within120s')
+     def run_window(self):
+         r,s,e=self.call('held-before',['bash',str(NOTE),'held',SERIAL],True);assert r['local_rc']==1 and not s.strip() and not e.strip()
+         self.call('frozen',['python3',str(MAIN/'scripts/lab/check_frozen.py'),'--git',str(MAIN)])
+@@ -280,9 +296,9 @@
+ 
+ def main():
+     ap=argparse.ArgumentParser();ap.add_argument('--outer-receipt',type=Path,required=True);a=ap.parse_args()
+-    plan=json.loads((HERE/'steps_v4.json').read_text());receipt=json.loads(a.outer_receipt.read_text())
++    plan=json.loads((HERE/'steps_v5.json').read_text());receipt=json.loads(a.outer_receipt.read_text())
+     assert receipt.get('decision')=='approve_execution' and receipt.get('serial')==SERIAL
+-    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps_v4.json')
++    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps_v5.json')
+     assert receipt.get('candidate_sha256')==CANDIDATE and receipt.get('rollback_sha256')==BASELINE
+     assert receipt.get('idle_source_sha256')==IDLE_SOURCE_SHA and digest(IDLE_SOURCE)==IDLE_SOURCE_SHA
+     for name,expected in [('candidate.so',CANDIDATE),('rollback.so',BASELINE)]:assert digest(INPUT/name)==expected

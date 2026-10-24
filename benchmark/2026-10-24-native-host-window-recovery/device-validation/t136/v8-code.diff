@@ -1,0 +1,129 @@
+--- execute_v7.py
++++ execute_v8.py
+@@ -20,8 +20,8 @@
+ MAPPED='/data/local/tmp/asx/liboh_adapter_bridge.so'
+ UID=20011206
+ LABEL='u:object_r:appdat:s0'
+-IDLE_SOURCE=HERE/'.private/execute-20261025-032931-2688cd/baseline-early-17-binding.json'
+-IDLE_SOURCE_SHA='457d7b4bb8590fa1b51763b3170724a3bf1463d136cdd4fed969dd6586738718'
++IDLE_SOURCE=HERE/'.private/execute-20261025-034802-6bb129/restored-idle-binding.json'
++IDLE_SOURCE_SHA='c1697eb76fe710437390236a931044eaf3ae62e2bb7fba5ebb4d6f901769daef'
+ NOTE=MAIN/'scripts/lab/board_note.sh'
+ BOARD=MAIN/'.octos/boards/app-lighting.md'
+ LANE='codex-t136-native-validation'
+@@ -46,10 +46,16 @@
+ def linux_device_pair(dev):
+     return (((dev>>8)&0xfff)|((dev>>32)&0xfffff000), (dev&0xff)|((dev>>12)&0xffffff00))
+ 
++def select_parent(identity):
++    roots=[p for p in identity['processes'] if p['name']=='appspawn-x' and p['parent']==1 and p['uid']==0]
++    if len(roots)!=1:raise RuntimeError('require exactly one appspawn root PPID1 UID0')
++    return roots[0]
++
++
+ def select_main(identity, allow_empty=False):
+-    parent=one(identity,'appspawn-x')
+     named=[p for p in identity['processes'] if p['name']=='com.ss.android.article.news']
+     if not named and allow_empty:return None,[]
++    parent=select_parent(identity)
+     direct=[p for p in named if p['parent']==parent['pid']]
+     if len(direct)!=1:raise RuntimeError('require exactly one appspawn direct main child')
+     main=direct[0]; bypid={p['pid']:p for p in named}; descendants=[]
+@@ -66,6 +72,15 @@
+     return main,descendants
+ 
+ 
++class DescendantSetChanged(RuntimeError):
++    pass
++
++
++def core_identity(identity):
++    main,_=select_main(identity)
++    return {'boot':identity['boot'],'host':one(identity,'org.westlake.imehost'),'parent':select_parent(identity),'main':main}
++
++
+ class Window:
+     def __init__(self):
+         self.run=HERE/'.private'/('execute-'+datetime.datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:6]);self.run.mkdir()
+@@ -75,10 +90,12 @@
+     def elapsed(self):return time.monotonic()-self.start if self.start is not None else 0
+     def call(self,label,argv,allow_failure=False):
+         if self.start is not None and self.elapsed()>=(1800 if self.recovery else 900):raise RuntimeError('window deadline')
+-        self.n+=1;d=self.run/(f'{self.n:04d}-'+label);d.mkdir();r=dict(argv=argv,start_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),start_monotonic=time.monotonic(),timeout_seconds=15)
++        binding_deadline=getattr(self,'binding_deadline',None);timeout=15 if binding_deadline is None else min(15,binding_deadline-time.monotonic())
++        if timeout<=0:raise RuntimeError('binding20s deadline')
++        self.n+=1;d=self.run/(f'{self.n:04d}-'+label);d.mkdir();r=dict(argv=argv,start_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),start_monotonic=time.monotonic(),timeout_seconds=timeout)
+         save(d/'command.json',r)
+         with (d/'stdout').open('wb') as o,(d/'stderr').open('wb') as e:
+-            try:r['local_rc']=subprocess.run(argv,stdout=o,stderr=e,timeout=15).returncode
++            try:r['local_rc']=subprocess.run(argv,stdout=o,stderr=e,timeout=timeout).returncode
+             except subprocess.TimeoutExpired:r['local_rc']=124
+         r.update(end_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),end_monotonic=time.monotonic(),stdout_sha256=digest(d/'stdout'),stderr_sha256=digest(d/'stderr'));save(d/'receipt.json',r)
+         s=(d/'stdout').read_text(errors='replace');e=(d/'stderr').read_text(errors='replace')
+@@ -103,8 +120,22 @@
+         lines=s.splitlines();vals=lines[0].split('|');assert len(vals)==7 and lines[1].startswith('-'), 'object must be regular file'
+         return dict(dev=int(vals[0]),inode=int(vals[1]),uid=int(vals[2]),gid=int(vals[3]),mode=vals[4],size=int(vals[5]),mtime=int(vals[6]),selinux=next(w for w in lines[1].split() if w.startswith('u:object_r:')),sha256=lines[2].split()[0])
+     def bind(self,label,expected):
++        previous=getattr(self,'binding_deadline',None);self.binding_deadline=time.monotonic()+20
++        try:
++            for attempt in range(1,4):
++                if time.monotonic()>=self.binding_deadline:raise RuntimeError('binding20s deadline')
++                stem=label+'-attempt'+str(attempt)
++                try:identity,obj=self._bind_once(stem,expected)
++                except DescendantSetChanged:
++                    if attempt==3:raise RuntimeError('legal descendant set unstable after3 attempts')
++                    continue
++                if time.monotonic()>self.binding_deadline:raise RuntimeError('binding20s deadline')
++                record=json.loads((self.run/(stem+'-binding.json')).read_text());record['successful_attempt']=attempt
++                save(self.run/(label+'-binding.json'),record);return identity,obj
++        finally:self.binding_deadline=previous
++    def _bind_once(self,label,expected):
+         before=self.identity(label+'-identity-before');child,descendants=select_main(before)
+-        host=one(before,'org.westlake.imehost');parent=one(before,'appspawn-x')
++        host=one(before,'org.westlake.imehost');parent=select_parent(before)
+         assert child['uid']==host['uid']==UID and child['parent']==parent['pid']
+         backing=self.object(label+'-backing',TARGET)
+         assert backing['sha256']==expected
+@@ -127,7 +158,11 @@
+             assert (obj['uid'],obj['gid'],obj['mode'],obj['selinux'])==(UID,UID,'644',LABEL)
+             assert all(int(row[4])==obj['inode'] and tuple(int(x,16) for x in row[3].split(':'))==linux_device_pair(obj['dev']) for row in maps)
+             objects.append({'role':role,'process':process,'mapping':'verified','object':obj})
+-        after=self.identity(label+'-identity-after');assert before==after,'full process identity changed during mapping bracket'
++        after=self.identity(label+'-identity-after')
++        if before!=after:
++            if core_identity(before)!=core_identity(after):raise RuntimeError('core identity changed during mapping bracket')
++            save(self.run/(label+'-descendant-race.json'),{'before':before,'after':after,'reason':'core unchanged; valid descendant collection changed; retry complete binding only'})
++            raise DescendantSetChanged('legal descendant collection changed')
+         save(self.run/(label+'-binding.json'),{'identity':after,'main_child':child,'same_name_descendants':descendants,'mappings':objects,'object':backing})
+         return after,backing
+     def admit(self,label):
+@@ -139,14 +174,15 @@
+             return bound,obj
+         assert digest(IDLE_SOURCE)==IDLE_SOURCE_SHA, 'idle source SHA mismatch'
+         source=json.loads(IDLE_SOURCE.read_text())
++        assert source['status']=='restored_idle_exact_object' and source['released'] is True and source['mapping_now']=='not_running' and source['baseline_actual_mapping_verified'] is False, 'idle source is not accepted exact-object restoration'
+         assert before['boot']==source['identity']['boot'] and re.fullmatch(r'[0-9a-f-]{36}',before['boot'])
+         for name in ('org.westlake.imehost','appspawn-x'):
+-            current=one(before,name);prior=one(source['identity'],name)
++            current=select_parent(before) if name=='appspawn-x' else one(before,name);prior=select_parent(source['identity']) if name=='appspawn-x' else one(source['identity'],name)
+             assert current==prior, 'idle host/parent identity changed'
+         obj=self.object(label+'-idle-backing',TARGET)
+         assert obj==source['object'] and obj['sha256']==BASELINE and (obj['dev'],obj['inode'])==(66352,560578), 'idle backing differs from exact restored object'
+         after=self.identity(label+'-idle-identity-after');assert after==before, 'idle identity drift'
+-        evidence=dict(identity=after,object=obj,mapping_now='not_running',exception='T136-idle-app-same-boot-restored-object',source=IDLE_SOURCE.name,source_run=IDLE_SOURCE.parent.name,source_sha256=IDLE_SOURCE_SHA,reason='No child exists; prior verified restored mapping is provenance, not current maps.')
++        evidence=dict(identity=after,object=obj,mapping_now='not_running',exception='T136-idle-app-same-boot-restored-object',source=IDLE_SOURCE.name,source_run=IDLE_SOURCE.parent.name,source_sha256=IDLE_SOURCE_SHA,source_kind='restored_idle_exact_object',baseline_actual_mapping_verified=False,reason='No child exists; source proves exact original-object restoration with stable roles, not current maps or application health.')
+         save(self.run/(label+'-idle-admission.json'),evidence)
+         self.result['mapping_now']='not_running';self.result['admission_exception']=evidence['exception'];self.result['idle_source_sha256']=IDLE_SOURCE_SHA
+         return after,obj
+@@ -342,9 +378,9 @@
+ 
+ def main():
+     ap=argparse.ArgumentParser();ap.add_argument('--outer-receipt',type=Path,required=True);a=ap.parse_args()
+-    plan=json.loads((HERE/'steps_v7.json').read_text());receipt=json.loads(a.outer_receipt.read_text())
++    plan=json.loads((HERE/'steps_v8.json').read_text());receipt=json.loads(a.outer_receipt.read_text())
+     assert receipt.get('decision')=='approve_execution' and receipt.get('serial')==SERIAL
+-    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps_v7.json')
++    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps_v8.json')
+     assert receipt.get('candidate_sha256')==CANDIDATE and receipt.get('rollback_sha256')==BASELINE
+     assert receipt.get('idle_source_sha256')==IDLE_SOURCE_SHA and digest(IDLE_SOURCE)==IDLE_SOURCE_SHA
+     for name,expected in [('candidate.so',CANDIDATE),('rollback.so',BASELINE)]:assert digest(INPUT/name)==expected

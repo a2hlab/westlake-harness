@@ -1,0 +1,49 @@
+--- execute_v5.py
++++ execute_v6.py
+@@ -20,8 +20,8 @@
+ MAPPED='/data/local/tmp/asx/liboh_adapter_bridge.so'
+ UID=20011206
+ LABEL='u:object_r:appdat:s0'
+-IDLE_SOURCE=HERE/'.private/execute-20261025-025346-5209f4/baseline-s30-binding.json'
+-IDLE_SOURCE_SHA='0a01dc123245a00abc10d0856a7181b183d4204db23777f62c899149f610f285'
++IDLE_SOURCE=HERE/'.private/execute-20261025-030926-e8956c/baseline-s30-binding.json'
++IDLE_SOURCE_SHA='dc28ceb4caed59b78c919db2ac5f08bf3ddbd3ccb061102a983df5d16182a1fe'
+ NOTE=MAIN/'scripts/lab/board_note.sh'
+ BOARD=MAIN/'.octos/boards/app-lighting.md'
+ LANE='codex-t136-native-validation'
+@@ -296,9 +296,9 @@
+ 
+ def main():
+     ap=argparse.ArgumentParser();ap.add_argument('--outer-receipt',type=Path,required=True);a=ap.parse_args()
+-    plan=json.loads((HERE/'steps_v5.json').read_text());receipt=json.loads(a.outer_receipt.read_text())
++    plan=json.loads((HERE/'steps_v6.json').read_text());receipt=json.loads(a.outer_receipt.read_text())
+     assert receipt.get('decision')=='approve_execution' and receipt.get('serial')==SERIAL
+-    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps_v5.json')
++    assert receipt.get('entry_sha256')==digest(Path(__file__)) and receipt.get('steps_sha256')==digest(HERE/'steps_v6.json')
+     assert receipt.get('candidate_sha256')==CANDIDATE and receipt.get('rollback_sha256')==BASELINE
+     assert receipt.get('idle_source_sha256')==IDLE_SOURCE_SHA and digest(IDLE_SOURCE)==IDLE_SOURCE_SHA
+     for name,expected in [('candidate.so',CANDIDATE),('rollback.so',BASELINE)]:assert digest(INPUT/name)==expected
+--- steps_v5.json
++++ steps_v6.json
+@@ -1,8 +1,8 @@
+ {
+   "task": "T136",
+-  "revision": "prepared-05-boot-completed-layout-ready-current-source",
++  "revision": "prepared-06-current-restored-idle-source-only",
+   "serial": "61b0657200000000000000000324012c",
+-  "entry": "execute_v5.py",
++  "entry": "execute_v6.py",
+   "execution_status": "not_executed_waiting_outer_receipt",
+   "candidate_sha256": "3291f76db0945f90b402ea61b14c3a912efbeecec9e0422af1a92fec95b8a819",
+   "rollback_sha256": "b0e5602a97133ebb1dca12972a8931a86528322685a211bb1a7a0a2185fefbd4",
+@@ -111,8 +111,8 @@
+   },
+   "idle_exception": {
+     "id": "T136-idle-app-same-boot-restored-object",
+-    "source": ".private/execute-20261025-025346-5209f4/baseline-s30-binding.json",
+-    "source_sha256": "0a01dc123245a00abc10d0856a7181b183d4204db23777f62c899149f610f285",
++    "source": ".private/execute-20261025-030926-e8956c/baseline-s30-binding.json",
++    "source_sha256": "dc28ceb4caed59b78c919db2ac5f08bf3ddbd3ccb061102a983df5d16182a1fe",
+     "contract_input": ".private/t136-native-validation-input/t3-native-window-validation-v4.spec.md",
+     "contract_sha256": "f690c5effc36d250683d70e3d64a1e70c1b1b0bb7ef14a0ad175edda25297171",
+     "predicate": "Exactly0 fresh children; boot and full host/parent identity equal pinned current restored binding; TARGET full stat/SHA/metadata equal that exact restored object; repeat under own lock. No hardcoded prior-run boot/PID.",
