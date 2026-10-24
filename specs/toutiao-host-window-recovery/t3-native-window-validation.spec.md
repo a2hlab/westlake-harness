@@ -8,6 +8,7 @@ tags: [native, window, validation, draft]
 ## 意图
 在61b一次可回滚短窗中验证已采认native候选的实际加载、正常桌面打开与最近任务关闭宿主后重开的信息流及触控。先核当前应用实际消费的单库payload、候选来源与精确回滚，再以新boot和新child的maps及SHA验生效；本契约的起草和lint不构成设备执行或候选签认。
 ## 已定决策
+- 2026-10-25 T136进程谱系澄清：本契约的主child指唯一appspawn-x直接派生的头条进程，不按同名进程总数计独立启动。保留完整原始进程表；同名后代须有可追至主child的无环PPID链与相同应用UID，其已映射bridge逐项核对象/SHA，主child必须实际映射。两个直接主child、未知谱系、身份变化或对象不符仍拒绝；before/after身份夹持、候选published inode校验和旧child重关联断言不减弱。依据：eafd14真实主child7331与其同名后代8080，旧名称唯一性检查在既有PPID断言之前误拒。
 - 2026-10-25 外环具名准入例外 `idle-app-same-boot-restored-object`：T136恢复窗已核baseline-s30的真实maps/process-root/backing，之后同boot子进程退出，不再要求故障应用先启动才允许普通单库维护。仅当当前child数量恰为0、boot与host/parent的PID/birth/UID均和这份已恢复收据一致、目标fresh stat全部字段及完整SHA与原收据对象一致时，允许以`mapping_now=not_running`准入；收据文件SHA须固定进外环执行签认，持锁后再次核同一条件。若存在1个child仍走原严格maps检查，超过1个或任何身份/对象漂移均拒绝。本例外只适用于部署前，绝不替代新候选新boot新child实际maps验证、截图验收、冻结门或精确回滚。依据：T136 execute-20261025-024115-2e76dc/baseline-s30-binding.json及execute-20261025-024653-611cef fresh身份原件；当前未运行不宣称当前已映射。
 - 前置为t2最终源码manifest、真实构建日志、库完整SHA与CC/外环采认回执一致；候选以最新snapshot02的3291f76db0945f90b402ea61b14c3a912efbeecec9e0422af1a92fec95b8a819和最终审查为准，未齐时保持candidate_pending，不把旧build01的158c1740填为新候选。执行前外环另固定单写者、实际计划SHA及恢复材料。
 - 仅61b0657200000000000000000324012c；写前fresh核设备、锁、boot、host/parent/child PID及birth/UID、maps、目标stat/SHA/标签、挂载来源、原电源/屏幕态与可恢复基线。旧child22035/b6535369仅是来源证据，不作为后继命令固定PID。
@@ -29,6 +30,11 @@ tags: [native, window, validation, draft]
 - 本次起草阶段设备或远程调用、部署脚本；后续未经外环固定执行计划的设备写入。
 - 其他两板、root系统bridge、其他runtime件、APK数据、HAP/Java/JAR、原冻结源、停止的控制器/执行器/配置及其等价重试、REA、hook、进程信号、权限和例外表修改、推送。
 ## 验收标准
+场景: 同名后代不冒充第二个独立启动
+  测试: host_window_native_validation_receipts
+  假设一个appspawn直接主child与同UID且可追溯的同名后代同时存在
+  当核完整进程谱系和逐进程实际映射及前后身份
+  那么选择唯一直接主child并保留全部后代证据且两个直接主child或未知谱系或对象不符仍拒绝
 场景: 已恢复同对象在应用退出后允许普通部署准入
   测试: host_window_native_validation_receipts
   假设实际已恢复映射收据被完整SHA固定且fresh child恰为0
