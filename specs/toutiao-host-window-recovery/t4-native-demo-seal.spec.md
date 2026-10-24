@@ -6,9 +6,9 @@ depends: [t3-native-window-validation]
 tags: [native, window, demo, human-review]
 ---
 ## 意图
-在t3真实短窗验证通过且已回滚闭窗、受支持方式恢复执行通道之后，验证61b普通软件重启后的头条首开与宿主重建，并最终保留已验证候选。两个独立软件boot的真实可操作画面和恢复依据才构成演示留板资格；离线测试和t3临时成功后回滚均不构成封板。
+在t3真实短窗验证通过且已回滚闭窗之后，验证61b普通软件重启后的头条首开与宿主重建，并最终保留已验证候选。两个独立软件boot的真实可操作画面和恢复依据才构成演示留板资格；离线测试和t3临时成功后回滚均不构成封板。
 ## 已定决策
-- 前置证据是t3实际候选加载和UI图审通过、精确基线回滚及闭窗回执，以及执行通道经受支持方式恢复的可核证据。CC的reasoning_extraction停止仍有效；支持发送、自动回复或请求人工复核都不是恢复，不改权限、不换模型或入口重试停止动作。
+- 前置证据是t3实际候选加载和UI图审通过、精确基线回滚及闭窗回执。历史CC拒绝及支持回复原件保留，不据此设置整个部署流程的额外恢复审批；具体请求的拒绝按project约束处理，撤销外推不等于该拒绝解除。
 - 仅61b0657200000000000000000324012c，由外环固定唯一持锁执行方与计划SHA。候选沿用通过t3的完整SHA及源码、真实构建、审查链；当前候选3291f76db0945f90b402ea61b14c3a912efbeecec9e0422af1a92fec95b8a819，若变更必须重新通过t3，不用旧158c构建或fixture替代。
 - 写前fresh核boot、host/parent/child的PID/birth/UID、目标maps dev/inode与process-root SHA、backing绝对路径及metadata、电源/屏幕设置、非目标指纹。仅更新t3已证的应用liboh_adapter_bridge.so payload；root系统8ab库不变。保存精确b0e5602a97133ebb1dca12972a8931a86528322685a211bb1a7a0a2185fefbd4回滚原字节、SHA、uid/gid/mode/标签与原子恢复步骤。冻结门既有红灯不得静默放宽。
 - 至少两个独立普通软件重启产生不同boot ID；每个boot重新核实际新child加载候选。启动流程覆盖payload则实验不成立并恢复，不改控制器应对、不反复换库。软件boot不得写为物理断电验证。
@@ -24,11 +24,11 @@ tags: [native, window, demo, human-review]
 ### 禁止
 - 修改project/t1/t2/t3及已冻结计划、运行时实现、其他板、HAP/JAR/APK数据、系统bridge、停止控制器/执行器/配置及等价重试、权限/例外表、REA、物理断电、推送。
 ## 验收标准
-场景: 前置或执行恢复证据缺失
+场景: 实测前置证据缺失
   测试: host_window_native_demo_seal_receipts
-  假设只有离线测试或支持自动回复或t3未实际通过并回滚闭窗
+  假设只有离线测试或t3未实际通过并回滚闭窗
   当评审留板准入
-  那么状态为blocked且不得启动设备窗口或将支持请求当执行恢复
+  那么留板资格保持pending_missing且不得跳过t3启动留板窗口或将离线材料当实测通过
 场景: 两个软件boot的普通UI验收
   审核: human
   测试: host_window_native_demo_seal_receipts

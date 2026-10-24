@@ -1125,3 +1125,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-24 验收收据检查：同SHA不等于同发布对象，activation须绑定发布dev/inode、UI须保持activation namespace；parent可为UID0，宿主新birth可重用PID；首开与加载观察必须共用同一点击回执，阶段区间不冒充单命令时界。规范化JSON+哈希只验内部一致性，不认证来源或图像含义；当前缺真实收据仍pending_missing，见native-host-window-recovery/device-validation/outer-review-02.json。
 
 - 2026-10-25 T128：61b同boot现存child22035四Uid/Gid=20011206，窗口记录11级路径在root与child-root视图同dev/inode，mode位可遍历且enforce=0；root采518B经生产reader本机回放为Candidate(id62,stage4/HIDDEN)，Foreground=false。该时点未见DAC路径阻断、当前字节可解析，但不证明OH child亲自读取、前台点击时记录或候选恢复；不要把隐藏状态旁证当白屏根因。见native-host-window-recovery/device-validation/access-preflight-01/。
+
+- 2026-10-25 拒绝范围纠偏：旧CC reasoning_extraction仅证实响应被拒，具体触发句未定位，不证设备命令被拒；撤销“所有后续部署先等支持恢复”的统一前置。按具体请求判断，保留原拒绝/禁止规避式等价重试及锁/回滚/实测门；撤销误判不等于拒绝解除或白屏修复。以HANDOFF-outer-2026-10-25与refusal-scope-correction为当前说明。

@@ -14,7 +14,7 @@ tags: [native, evidence, delivery, human-review]
 - API进度仅对本候选追加实测证据与限制，不把lint/fixture标成实测。两条历史derive-candidate.sh引用预期c2855d54而当前0862a334的红灯单列保留，不盲替SHA，不导出恢复该历史停止对象。当前renderer因旧引用拒绝时只更新候选JSON并明确HTML/CSV待更新，不能宣称全表全绿；该已知红灯不否定有实际证据的新候选状态。
 - 冻结规则仍需至少两个不同app过墙且其中至少一个t20截图亮；只有头条的两个boot不等于两个app。未满足规则不改frozen registry，不宣称公共API已冻结。
 - 源码、配方、收据索引、截图和API候选记录落实际master后，由有权外环按用户明示推送；核本地master和远端master同一交付commit及清单对象SHA。仅worktree文件、内环ACK或旧远端提交不算完成。此规划任务不自行推送或远程访问。
-- 原CC停止与支持链保留；最新product_bug_report_acknowledged仅为自动确认收到，execution_not_restored。只有后继真实受支持恢复证据可改变执行状态，不因交付文档修改就解除停止。
+- 原CC拒绝与支持链作为历史事实保留，具体触发内容未定位，不外推为整个项目或设备执行永久受阻。当前状态由具体操作与实测证据决定；删除错误外推不表示原拒绝解除、候选已部署或白屏已修复，明确拒绝的同一请求仍不换模型/入口重试。
 ## 边界
 ### 允许修改
 - benchmark/2026-10-24-native-host-window-recovery/evidence-delivery/**
@@ -49,11 +49,11 @@ tags: [native, evidence, delivery, human-review]
   假设最终设备已回滚基线或仅有本地commit或远端master对象不一致
   当核完成状态
   那么分别报告留板未完成或发布未完成且不以文档收件代替最终交付
-场景: 视觉与支持状态不升级
+场景: 视觉与实际执行状态不升级
   审核: human
   测试: host_window_native_evidence_delivery_receipts
-  假设图审缺失或候选音频无法观测或只引用旧版本实听或仅支持自动确认收到而无执行恢复证据
+  假设图审缺失或候选音频无法观测或只引用旧版本实听或当前具体操作有明确拒绝记录
   当核对交付结论与公开隐私字段
-  那么对应视觉或音频项保持pending_review或pending或执行保持blocked且不称全部行为保留并且公开材料不含邮箱邮件头或私人标识
+  那么对应视觉或音频项保持pending_review或pending或该具体操作保持blocked且不称全部行为保留并且公开材料不含邮箱邮件头或私人标识
 ## 排除范围
 本轮仅规划；选择器尚未实现为pending，不实现新checker，不重做设备实验或支持邮件。parse/lint、合成用例和归档SHA均不证明实机图像内容；不从软件boot推断物理断电可靠性。
