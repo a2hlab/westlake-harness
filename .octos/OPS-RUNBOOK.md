@@ -336,3 +336,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-25 T132电源采证：普通UITest上滑后实读AWAKE/base30000且OverrideTimeout字段缺席；OH对应dump仅在override标志有效时输出该字段。base/state完整而override缺席应记unknown/未报告，在已授权临时值范围内重设并严格回读；不要把缺字段等同命令失败或猜10000。每次UITest后和图审等待前核有效值，finally精确恢复preimage。UI动作计数取实际命令rc/正文，不能放在后置检查之后递增而漏记已执行动作。
 
 - 2026-10-25 用户指定故障接替顺序：CC → Codex → octoscode＋GLM。用于额度耗尽、已确认长时间断流、工具故障或普通工程任务无法完成；先确认原执行者及在途命令终态，保留源码/产物/原件与锁交接，再派下一车道，不并发写同板、不重复未知结果的写命令。明确的安全/内容拒绝不通过换模型、会话或入口规避；只停止对应请求，独立正常任务仍可按此顺序调度。REA继续仅交Codex或octoscode，不交CC。
+
+- 2026-10-25 T136正常库维护：新boot后有界等待PowerManager完整base/state，再进入普通解锁；按新截图确认USB仅充电弹窗，不改选项，按fresh布局最多12页定位精确EntryAbility。应用child恰0时只可用外环具名同boot/host/parent及精确已恢复对象例外部署，写前后均核stat/SHA，不拿历史maps假报当前映射；候选生效仍须实际新child maps。
