@@ -1,0 +1,18 @@
+# Ordinary recent-task close → desktop reopen — preparation only
+
+**No verified recent-task entry or card-dismissal precedent was found in the bounded T82/T104/T107/T123 records.** T82 `results.json → close_route.recents` says recents was not used because the gesture would have been guessed. Its different CLI close route is not a substitute. This card is conditional; no device was operated or controller written.
+
+**Outer-supplied expected identity, to refresh before execution:** serial `61b0657200000000000000000324012c`; boot `61aa5791-fd69-4bbb-a7b5-333b5d913c81`; host4958/birth10879; parent5129/birth11126; child22035/birth6535369. Closing a host task does **not** establish that the independent child exits.
+
+| Step | Action / evidence gate |
+|---|---|
+| Preflight | Outer selects the window. Recheck serial/boot/PID/birth and competing holders; acquire one exclusive lock and retain its tuple. Record both power fields. Reuse command timeouts and a fixed cleanup reserve; propose the existing 8-minute total/2-minute recovery limit. |
+| Enter recents | Save initial screenshot/layout. **Verified recents command or gesture: unknown.** Proceed only with an ordinary UI entry positively established by outer. No guessed keycode/swipe or internal launch/termination fallback. Otherwise stop before closing anything. |
+| Close one card | Save recents screenshot/layout. Identify exactly one visible actionable `org.westlake.imehost` task using exposed identity; a blank thumbnail/title alone is insufficient. Use one positively identified normal close control/dismissal. If ambiguous, stop. No clear-all, repeated dismissal or PID kill. |
+| Observe closure | Save screenshot/layout and ordinary boot/ps/birth receipts before reopening. Record card disappearance, host identity and child22035/birth6535369 presence separately. A single absent sample is not a precise exit event; window-ID reuse is not PID identity. Boot/parent change stops the window. |
+| Reopen once | After outer confirms closure evidence and the ordinary desktop route, use verified Home if needed; locate the unique current `AppIconCommonView_org.westlake.imehost.EntryAbility` and click once using fresh coordinates. Capture actual 10/30/60/90/120s images/identities within budget; accepted feed ends further UI. Same child PID **and birth** supports reuse; a different identity supports a new child, not its cause. |
+| Failure / cleanup | Keep unique raw argv/stdout/stderr/rc/timestamps and images. A failed action on confirmed ordinary UI may return via one Home while identity/owned lock remain valid and active time remains. No extra UI on credentials, uncertain identity or unconfirmed initial screen; preserve accepted feed. Restore saved override with verified `-o`, compare **both** power fields, release only the owned lock, retain final held rc1/empty. No UI in recovery reserve. |
+
+**Known reusable UI primitives:** T123 archived `home.json`, layout/screenshot receipts and `click-once.json` validate Home and fresh-layout icon clicking—not recents. UITest may change override; restore the measured preimage. Screenshots outrank stale lock-tree flags.
+
+**Sources:** T82 `../westlake-harness-video/benchmark/2026-10-23-host-window-recreate-demo/results.json` (`close_route`); archived `host-window-recreate-demo-20261023/raw/00/aahelp.stdout` (CLI syntax only); T104/T107 ordinary UI reports; T123 private `run-20261024-110541-e2b1c729` Home/click/power/unlock receipts. Private roots are under `$HOME/.local/share/westlake/`. No stopped implementation/configuration read, no promised child exit, no fix claim.
