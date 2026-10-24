@@ -1,0 +1,141 @@
+{
+ "schema": "t126-oc-path-review-v2",
+ "date": "2026-10-24",
+ "lane": "octoscode own-worktree static review",
+ "status": "COMPLETE_STATIC",
+ "inputs": {
+  "package": ".private/t126-review02-input/ (outer-materialized; 14/14 SHA-256 verified this lane against input-manifest.json; source_commit 5970ec078c1fcc8b0e9904f0b9f9da07939d45f2 outer-supplied, not independently verified)",
+  "candidate_files": "9 candidate sources + README/results/review02-manifest/t1-dependency, fixed review02",
+  "no_main_tree_reads": true,
+  "no_device": true,
+  "no_REA": true,
+  "no_candidate_edits": true
+ },
+ "prior_blocked_report": "Initial blocked report preserved locally only (outside public deliverables) under $PRIVATE/t126-review02-input/blocked-originals/ — not linked in landing-paths (avoids stale links and user-path disclosure).",
+ "questions": {
+  "Q1_stale_parent_permanently_skips_recovery": {
+   "answer": "NO for a merely stale/absent old parent; YES only on ambiguous IPC (see F1)",
+   "evidence": [
+    {
+     "file": "candidate/session_recovery.cpp",
+     "line": 30,
+     "fact": "old parent reply Rejected (incl. still-valid parent) -> Outcome::Rejected, NOT stopped; later polls re-evaluate normally (static fact)"
+    },
+    {
+     "file": "candidate/session_recovery.cpp",
+     "line": 28,
+     "fact": "old parent reply Unknown (IPC failure/unreadable reply) -> stopped_=true, permanent for this logical session"
+    }
+   ],
+   "runtime_note": "Whether SSM actually returns WM_ERROR_NULLPTR (mapped to Missing, wmc_recovery_impl.inc:66) for a dead parent is runtime-unverified here"
+  },
+  "Q2_failed_or_unknown_IPC_blocks_later_legal_new_host": {
+   "answer": "Blocks the SAME logical session permanently; does NOT block other sessions (see F1)",
+   "evidence": [
+    {
+     "file": "candidate/session_recovery.cpp",
+     "lines": [
+      28,
+      31,
+      43,
+      47,
+      55
+     ],
+     "fact": "every Reply::Unknown branch (parent/create/cleanup-discard/connect) sets stopped_=true -> all later poll() calls return StoppedUnknown (L16) for this Coordinator"
+    },
+    {
+     "file": "candidate/oh_window_manager_client.cpp",
+     "lines": [
+      2020,
+      2022
+     ],
+     "fact": "one Coordinator instance per logical session (created at admission); stopped_ therefore scopes to that session only; a new session gets a fresh Coordinator"
+    },
+    {
+     "file": "candidate/session_recovery.cpp",
+     "line": 26,
+     "fact": "128-identity exhaustion also sets stopped_ permanently"
+    }
+   ],
+   "runtime_note": "Whether a one-off IPC timeout occurs in practice (and thus permanently disables recovery for that session until process restart) is runtime-unverified"
+  },
+  "Q3_post_commit_focus_input_stale_ids": {
+   "answer": "NO stale-ID use found on the reviewed paths",
+   "evidence": [
+    {
+     "file": "candidate/wmc_recovery_impl.inc",
+     "line": 144,
+     "fact": "publish() sets entry.windowId = next.actual under sessionMutex_ before ParentCache publish (L149)"
+    },
+    {
+     "file": "candidate/oh_window_manager_client.cpp",
+     "lines": [
+      2642,
+      2644
+     ],
+     "fact": "requestFocusForSession reads windowId from sessions_ under sessionMutex_ -> focus always uses the currently committed actual ID"
+    },
+    {
+     "file": "candidate/session_recovery.cpp",
+     "lines": [
+      70,
+      75,
+      86
+     ],
+     "fact": "Routes::replace retires old actual; Routes::logical returns -1 for retired actual IDs -> retired IDs never fall back"
+    },
+    {
+     "file": "candidate/oh_input_bridge.cpp",
+     "lines": [
+      4960,
+      4979
+     ],
+     "fact": "both MMI entries translate GetAgentWindowId() through Routes::logical(); retired old actual -> -1 -> dropped by isKnownSession; unrecovered sessions' actual==logical so untranslated IDs pass through unchanged"
+    }
+   ]
+  }
+ },
+ "findings": [
+  {
+   "id": "F1",
+   "title": "Per-Coordinator permanent recovery stop on any ambiguous IPC result (no retry, no reset within that Coordinator's lifetime)",
+   "kind": "static source fact; runtime impact unverified",
+   "severity": "review-worthy; candidate status is controlled-review, not admission",
+   "evidence": [
+    "candidate/session_recovery.cpp:16 — if (stopped_) return Outcome::StoppedUnknown (terminal latch)",
+    "candidate/session_recovery.cpp:28,31,43,47,55 — all five Reply::Unknown branches set stopped_=true (parent probe, candidate probe, create, discard-during-cleanup, connect)",
+    "candidate/session_recovery.cpp:26 — seen_ 128-identity bound also latches stopped_",
+    "candidate/wmc_recovery_impl.inc:63-67 — SessionPort::parent maps any IPC error or unreadable reply to Reply::Unknown",
+    "candidate/wmc_recovery_impl.inc:82,88,93 — SessionPort::create maps IPC failure, unreadable parcelables, and even a nonzero server rc to Reply::Unknown",
+    "candidate/session_recovery.cpp:55 — connect() Unknown latches stop with comment 'stop all later creates'",
+    "no code path resets stopped_ (grep: only assignments to true; header session_recovery.h:97 declares the field)",
+    "no code path resets stopped_ (grep: only assignments to true; declaration at session_recovery.h:97)"
+   ],
+   "interpretation": "A single ambiguous IPC (e.g. one SendRequest failure or timeout on the TF_SYNC,1 channel) permanently disables host-window recovery for that Coordinator instance — i.e. for the lifetime of that Coordinator, until the logical session is destroyed/re-created. This partially implements the spec's explicit anti-duplicate policy for unknown create results; there is no on-device trigger evidence. Outer verdict: confirmed static limitation / to-be-verified runtime risk, NOT the current white-screen root cause; no candidate modification started.",
+   "actionable": "None. Outer has ruled this a confirmed static limitation / pending runtime risk; do NOT propose unlatching unknown-create results generically (that policy is contractual). No candidate change."
+  },
+  {
+   "id": "F2",
+   "title": "No other actionable defect within the three review questions",
+   "kind": "negative result",
+   "evidence": [
+    "Q1 non-Unknown stale-parent path re-polls normally (session_recovery.cpp:30)",
+    "Q3 focus/input/commit paths all read post-publish state (wmc_recovery_impl.inc:142,149; oh_window_manager_client.cpp:2642; oh_input_bridge.cpp:4960,4979; session_recovery.cpp:75,86)"
+   ]
+  }
+ ],
+ "limits": [
+  "static review only; cross_compiles in session-recovery/results.json reference historical snapshot01 objects (candidate_inputs_current=false) — build currency of review02 bytes is not re-verified here (not part of the three questions)",
+  "runtime behavior on device unverified",
+  "source_commit identity outer-supplied"
+ ],
+ "writes": {
+  "device_calls": 0,
+  "builds": 0,
+  "candidate_edits": 0,
+  "git_commits": 0,
+  "permission_changes": 0,
+  "REA": 0
+ },
+ "outer_ruling": "Outer re-verified by reading Coordinator and WMC code: Unknown permanently latches the current Coordinator only; it does not affect other sessions or new processes. Judged confirmed static limitation / to-be-verified risk, not current white-screen root cause; no candidate modification."
+}
