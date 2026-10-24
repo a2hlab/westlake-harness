@@ -1,6 +1,8 @@
 # Current observations beside the API source/build atlas
 
-The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **50 observations with 1293 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
+The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. The current JSON records **65 observations**, leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
+
+**2026-10-24 publication state:** JSON contains one new native host-window recovery candidate with26 independently verified source/build/evidence references. It is built offline and awaits device validation; it is not frozen. HTML, CSV and `results.json` retain their last64-row render. Regeneration currently rejects two pre-existing references to the historical `derive-candidate.sh` SHA; the original64-row input fails the same check. Do not mistake these retained views for the current65-row JSON or change historical hashes merely to pass the gate. See the [candidate and reference audit](../2026-10-24-native-host-window-recovery/candidate-api-draft/append-01/README.md).
 
 Open the [current observations](index.html), [JSON](observations.json) or [CSV](observations.csv), alongside the [complete historical source/build atlas](../2026-10-14-api-source-delivery/views/index.html).
 
