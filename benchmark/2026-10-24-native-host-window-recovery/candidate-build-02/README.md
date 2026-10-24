@@ -1,0 +1,13 @@
+# Snapshot02 build receipt addendum
+
+Snapshot01 `158c174067853fd357c1ab2d7dd6a4374684f08d22712bde62018aac8e6a7822` predates the C1 callback-coalescing correction and is **not the deployment target**. This addendum binds review02 manifest `f156d990caff276ce456027098d23fa0e9558530adaaf26319c2e0af5a4b220c` to the actual snapshot02 output **`3291f76db0945f90b402ea61b14c3a912efbeecec9e0422af1a92fec95b8a819`**.
+
+The outer/root executor compiled five objects with the original Linux toolchain, then linked the complete bridge with the Mac linker. All six terminal receipts have rc0; recorded execution spans **2026-10-24 13:50:36.520181–13:50:58.600597 +08:00**. This analysis lane only read the existing files and recomputed hashes; it ran no compiler, linker or device command.
+
+- All **13 source pins** match snapshot02 bytes; all nine candidate files match review02. The two changed source files are `session_recovery.h` and `session_stage_adapter.cpp`. Five output objects and the complete linked library independently match their recorded SHA256; the link argv contains each of those five objects exactly once.
+- [recipe-delta.json](recipe-delta.json) pins the shared [build01 recipe](../candidate-build-01/recipe.sanitized.json), preserves the actual indexed before/after argument arrays and both raw argv hashes, and records cwd/environment/transport. Compile argument counts are WMC388, Input391, stage388, core388, reader388; link126. Reapplying each delta exactly reconstructs the recorded snapshot02 argv. Shared baseline inputs/SDK/toolchain closure remain in build01; this increment does not bundle them.
+- [raw-index.json](raw-index.json) pins **57 existing snapshot files**, including source, argv, stdout/stderr, transport, receipts, dependency files and outputs. Raw files remain private under `$HOME/.local/share/westlake/native-host-recovery-build-20261024/snapshot-02/`. Nonempty compiler stderr is retained; rc0 is not presented as empty diagnostics.
+
+[results.json](results.json) contains the six actual receipts and artifact identities. Recheck existing bytes only with `python3 benchmark/2026-10-24-native-host-window-recovery/candidate-build-02/collect.py` from the repository; the script resolves workspaces through `lab_paths` and never executes the recorded commands. Public paths use aliases; raw byte hashes refer to unchanged originals.
+
+This is build evidence only. CC C1 review, main Rust acceptance and runtime recovery are separate. No feed, white-screen fix, API freeze or seal is claimed. Candidate files and old snapshots were not modified. Exact delivery: [landing-paths.txt](landing-paths.txt).
