@@ -1,0 +1,41 @@
+{
+ "schema": "t128b-access-source-review-final",
+ "date": "2026-10-25",
+ "lane": "octoscode (GLM5.3) conditional analysis + observed-metadata and observed-record cross-check",
+ "scope": "t3 PRE-evidence: the production reader's admission conditions evaluated against (a) reader source, (b) sanitized observed 61b metadata, (c) the root-captured 518-byte window record. NOT a child credential read, NOT candidate deployment, NOT t3 execution; no white-screen claim.",
+ "inputs": {
+  "reader_source": ".private/t128-access-input/ (4/4 SHA-256 verified; source_commit c08199dffc outer-supplied)",
+  "observed_metadata": ".private/t128-observed-snapshot-01/ (12/12 SHA-256 verified; boot 61aa5791, child 22035 birth 6535369, uid/gid 20011206 x4, CapEff 0, SELinux child normal_hap, enforce 0 at capture)",
+  "observed_record": ".private/t128-observed-record-01/ (2/2 SHA-256 verified; root-side capture of the 518-byte window-state.json body; private analysis only, body not republished here)"
+ },
+ "final_conditions": [
+  {
+   "id": "C1",
+   "condition": "File reachable and admissible under the child's DAC identity",
+   "offline_verdict": "SATISFIED at metadata level: regular file, mode 0660 (no S_IWOTH), uid/gid 20011206 matching the child's four-field identity, size 518 <= 8192, every parent directory traversable for uid 20011206 (755/771/711/700/755/770 chain), CapEff 0. Reader gates: host_window_record_reader.cpp:106-118.",
+   "runtime_unknown": "the child's own open() at a future poll instant (root stat bypasses DAC; not provable from metadata).",
+   "selinux_fact": "enforce=0 observed at capture time — no SELinux access denial was being enforced at that moment. Limit only: a future enforce transition is out of scope of this capture; no permission was changed and no child read is claimed."
+  },
+  {
+   "id": "C2",
+   "condition": "Namespace path identity and stable read",
+   "offline_verdict": "SATISFIED at metadata level: direct path and /proc/22035/root/... resolve to identical dev 66352 / inode 438987 / uid / gid / mode / size; child in its own mount namespace (mnt 4026533005); no final-component symlink divergence (stat -L both prefixes identical).",
+   "runtime_unknown": "whether the producer's replacement cadence passes the reader's in-child before/after/lstat StableRead triple at a future poll (host_window_record_reader.cpp:100-105,128-131)."
+  },
+  {
+   "id": "C3",
+   "condition": "Record body admissible to the parser and the recovery admission gates",
+   "offline_verdict": "PARSE-ADMISSIBLE, NOT FOREGROUND. The captured 518-byte body passes every byte-level reader gate offline: no NUL, JSON depth 5 (<=16), no duplicate keys, event='stage-event' (allowed), details object present, window object present, window.id=62 integer in 1..INT32_MAX (host_window_record_reader.cpp:64-90). Therefore ReadWindowRecord on these exact bytes returns Status::Candidate with stage_event=4.",
+   "recovery_gate_consequence": "The T126 admission Foreground gate (session_recovery.cpp:7-10: window-ready OR stage in {1,2}) REJECTS stage 4: this record would leave the coordinator at Outcome::Idle — no recovery attempt, by design. This is a deterministic offline conclusion about the current bytes, not a runtime observation.",
+   "runtime_unknown": "which record version (event/stage/id) exists at the child's next poll; the observed body is one instant's value (id 62, imehost0 window)."
+  }
+ ],
+ "cross_lanes": "Codex is separately running a production-reader byte replay on these bytes; outer will merge verdicts. This lane's replay is the offline parse-gate analysis above.",
+ "pending": [
+  "child-side actual read success at future poll (C1/C2 runtime halves)",
+  "Codex replay verdict merge",
+  "a foreground-qualifying record (window-ready or stage 1/2) — none observed in this capture"
+ ],
+ "not_claimed": ["child read succeeded", "white screen fixed", "t3 admission", "MAC bypass", "credential change", "candidate modification"],
+ "writes": {"device_calls": 0, "builds": 0, "candidate_edits": 0, "permission_changes": 0, "REA": 0, "git_commits": 0}
+}
