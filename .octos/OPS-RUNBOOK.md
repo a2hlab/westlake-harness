@@ -326,3 +326,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 
 - 2026-10-24 普通Recent单卡关闭已实测：按当前截图居中唯一今日头条卡并上划，宿主退出但article child可能保留；重开必须同时绑新host与旧child身份和真实截图，不能以宿主启动成功当feed恢复。桌面Home可能切回不含图标的第一页，按新布局逐页查找，不将当前页缺图标当应用缺失。三个独立窗口原件见 benchmark/2026-10-24-recents-close-desktop-reopen/。
 - 2026-10-24 WMC基线复现：原-MMD未记录系统头，完整SDK必须另保留；固定SDK的libcxx-ohos 792文件填到原-isystem目录后，原Linux编译argv输出精确f91b354f对象，再原Mac链接输出精确b0e5602a桥接库。保留第一次memory缺头rc1、修正清单、原始stdout/stderr与每步SHA；这证明该WMC重编链，不代表所有桥接对象全源重编，更不代表白屏修好。recipe见 benchmark/2026-10-24-wmc-build-preparation/，原始执行在$HOME/.local/share/westlake/wmc-baseline-build-20261024/。
+
+- 2026-10-24 内环派单输入预检：隔离车道未必可读相邻主仓。普通源码复核先把授权范围内的必要源码、契约和来源清单复制到该车道本树，逐件核 SHA 后再派单；不靠放宽权限解决，也不复制停止对象。T126 初次因缺本树输入退出，补14件后重开；working/done仍须核工具执行与真实交件。
