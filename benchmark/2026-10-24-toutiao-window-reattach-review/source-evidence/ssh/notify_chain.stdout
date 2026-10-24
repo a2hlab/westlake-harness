@@ -1,0 +1,117 @@
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/session.cpp:1776,1815
+1776: WSError Session::Disconnect(bool isFromClient, const std::string& identityToken)
+1777: {
+1778:     auto state = GetSessionState();
+1779:     TLOGI(WmsLogTag::WMS_LIFE, "[id: %{public}d] Disconnect session, state: %{public}u", GetPersistentId(), state);
+1780:     isActive_ = false;
+1781:     isStarting_ = false;
+1782:     bufferAvailable_ = false;
+1783:     isNeedSyncSessionRect_ = true;
+1784:     if (mainHandler_) {
+1785:         std::shared_ptr<RSSurfaceNode> surfaceNode;
+1786:         std::shared_ptr<RSSurfaceNode> shadowSurfaceNode;
+1787:         {
+1788:             std::lock_guard<std::mutex> lock(surfaceNodeMutex_);
+1789:             surfaceNode_.swap(surfaceNode);
+1790:             shadowSurfaceNode.swap(shadowSurfaceNode_);
+1791:         }
+1792:         mainHandler_->PostTask([surfaceNode = std::move(surfaceNode),
+1793:                                 shadowSurfaceNode = std::move(shadowSurfaceNode)]() mutable {
+1794:             surfaceNode.reset();
+1795:             shadowSurfaceNode.reset();
+1796:         });
+1797:     }
+1798:     UpdateSessionState(SessionState::STATE_BACKGROUND);
+1799:     UpdateSessionState(SessionState::STATE_DISCONNECT);
+1800:     NotifyDisconnect();
+1801:     if (visibilityChangedDetectFunc_) {
+1802:         visibilityChangedDetectFunc_(GetCallingPid(), isVisible_.load(), false);
+1803:     }
+1804:     // If session is disconnect, clear it's outline if need.
+1805:     OutlineStyleParams defaultParams;
+1806:     UpdateSessionOutline(false, defaultParams);
+1807:     return WSError::WS_OK;
+1808: }
+1809: 
+1810: WSError Session::Show(sptr<WindowSessionProperty> property)
+1811: {
+1812:     TLOGD(WmsLogTag::WMS_LIFE, "Show session, id: %{public}d", GetPersistentId());
+1813:     return WSError::WS_OK;
+1814: }
+1815: 
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/session.cpp:2488,2495
+2488: WSError Session::NotifyDestroy()
+2489: {
+2490:     if (!sessionStage_) {
+2491:         return WSError::WS_ERROR_NULLPTR;
+2492:     }
+2493:     return sessionStage_->NotifyDestroy();
+2494: }
+2495: 
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/scene_session.cpp:740,800
+740: WSError SceneSession::Disconnect(bool isFromClient, const std::string& identityToken)
+741: {
+742:     if (isFromClient && SessionHelper::IsMainWindow(GetWindowType())) {
+743:         if (!CheckPidIfMatched() || !CheckIdentityTokenIfMatched(identityToken)) {
+744:             TLOGW(WmsLogTag::WMS_LIFE, "check failed");
+745:             return WSError::WS_OK;
+746:         }
+747:     }
+748: 
+749:     return DisconnectTask(isFromClient, true);
+750: }
+751: 
+752: WSError SceneSession::DisconnectTask(bool isFromClient, bool isSaveSnapshot)
+753: {
+754:     auto needSaveSnapshot = !isPersistentImageFit_.load();
+755:     PostTask([weakThis = wptr(this), isFromClient, isSaveSnapshot, needSaveSnapshot, where = __func__]()
+756:         THREAD_SAFETY_GUARD(SCENE_GUARD) {
+757:         auto session = weakThis.promote();
+758:         if (!session) {
+759:             TLOGNE(WmsLogTag::WMS_LIFE, "%{public}s session is null", where);
+760:             return WSError::WS_ERROR_DESTROYED_OBJECT;
+761:         }
+762:         auto isMainWindow = SessionHelper::IsMainWindow(session->GetWindowType());
+763:         if (isMainWindow) {
+764:             TLOGNI(WmsLogTag::WMS_LIFE, "%{public}s Notify scene session id: %{public}d paused", where,
+765:                 session->GetPersistentId());
+766:             session->UpdateLifecyclePausedInner();
+767:         }
+768:         if (session->sessionInfo_.isPrelaunch_) {
+769:             TLOGNI(WmsLogTag::WMS_LIFE, "%{public}s Remove prelaunch session id: %{public}d", where,
+770:                 session->GetPersistentId());
+771:             session->sessionInfo_.isPrelaunch_ = false;
+772:             session->sessionInfo_.frameNum_ = 0;
+773:         }
+774:         if (isFromClient) {
+775:             TLOGNI(WmsLogTag::WMS_LIFE, "%{public}s Client need notify destroy session, id: %{public}d",
+776:                 where, session->GetPersistentId());
+777:             session->SetSessionState(SessionState::STATE_DISCONNECT);
+778:             return WSError::WS_OK;
+779:         }
+780:         session->SetSnapshotPrivacyMode(session->GetIsPrivacyMode());
+781:         auto state = session->GetSessionState();
+782:         if ((session->needSnapshot_ || (state == SessionState::STATE_ACTIVE && isMainWindow)) &&
+783:             isSaveSnapshot && needSaveSnapshot) {
+784:             session->SaveSnapshot(false);
+785:         }
+786:         session->Session::Disconnect(isFromClient);
+787:         session->isTerminating_ = false;
+788:         if (session->specificCallback_ != nullptr) {
+789:             session->specificCallback_->onHandleSecureSessionShouldHide_(session);
+790:             session->isEnableGestureBack_ = true;
+791:             session->UpdateGestureBackEnabled();
+792:             session->isEnableGestureBackHadSet_ = false;
+793:         }
+794:         return WSError::WS_OK;
+795:     }, __func__);
+796:     return WSError::WS_OK;
+797: }
+798: 
+799: WSError SceneSession::UpdateActiveStatus(bool isActive)
+800: {
+=== callers of NotifyDestroy() under window_scene (non-test)
+/opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:4061:            dialog->NotifyDestroy();
+/opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:5654:        sceneSession->NotifyDestroy();
+/opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:11516:            sceneSession->NotifyDestroy();
+/opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/session.cpp:2493:    return sessionStage_->NotifyDestroy();

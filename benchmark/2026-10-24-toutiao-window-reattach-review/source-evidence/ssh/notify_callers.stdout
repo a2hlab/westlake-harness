@@ -1,0 +1,66 @@
+--- enclosing functions (nearest preceding definition)
+4061 in 4040: WSError SceneSessionManager::DestroyDialogWithMainWindow(const sptr<SceneSession>& sceneSession)
+5654 in 5645: void SceneSessionManager::DestroyUIServiceExtensionSubWindow(const sptr<SceneSession>& sceneSession)
+11516 in 11492: WSError SceneSessionManager::BindDialogSessionTarget(uint64_t persistentId, sptr<IRemoteObject> targetToken)
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:5640,5660
+5640:     };
+5641: 
+5642:     return taskScheduler_->PostSyncTask(task, "DestroyAndDisConnect:PID:" + std::to_string(persistentId));
+5643: }
+5644: 
+5645: void SceneSessionManager::DestroyUIServiceExtensionSubWindow(const sptr<SceneSession>& sceneSession)
+5646: {
+5647:     if (!sceneSession) {
+5648:         TLOGE(WmsLogTag::WMS_SUB, "sceneSession is null");
+5649:         return;
+5650:     }
+5651:     auto sessionProperty = sceneSession->GetSessionProperty();
+5652:     if (sessionProperty->GetIsUIExtFirstSubWindow() &&
+5653:         !sessionProperty->GetIsUIExtensionAbilityProcess()) {
+5654:         sceneSession->NotifyDestroy();
+5655:         int32_t errCode = AAFwk::AbilityManagerClient::GetInstance()->
+5656:             TerminateUIServiceExtensionAbility(sceneSession->GetAbilityToken());
+5657:         TLOGI(WmsLogTag::WMS_SUB,"TerminateUIServiceExtensionAbility id:%{public}d errCode:%{public}d",
+5658:             sceneSession->GetPersistentId(), errCode);
+5659:     }
+5660: }
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:11500,11522
+11500:         return WSError::WS_ERROR_NULLPTR;
+11501:     }
+11502: 
+11503:     auto task = [this, persistentId, targetToken]() {
+11504:         auto sceneSession = GetSceneSession(static_cast<int32_t>(persistentId));
+11505:         if (sceneSession == nullptr) {
+11506:             TLOGNE(WmsLogTag::WMS_DIALOG, "Session is nullptr, persistentId:%{public}" PRIu64, persistentId);
+11507:             return WSError::WS_ERROR_NULLPTR;
+11508:         }
+11509:         if (sceneSession->GetWindowType() != WindowType::WINDOW_TYPE_DIALOG) {
+11510:             TLOGNE(WmsLogTag::WMS_DIALOG, "Session is not dialog, type:%{public}u", sceneSession->GetWindowType());
+11511:             return WSError::WS_OK;
+11512:         }
+11513:         sceneSession->dialogTargetToken_ = targetToken;
+11514:         sptr<SceneSession> parentSession = FindMainWindowWithToken(targetToken);
+11515:         if (parentSession == nullptr) {
+11516:             sceneSession->NotifyDestroy();
+11517:             return WSError::WS_ERROR_INVALID_PARAM;
+11518:         }
+11519:         sptr<WindowSessionProperty> parentProperty = parentSession->GetSessionProperty();
+11520:         sptr<WindowSessionProperty> property = sceneSession->GetSessionProperty();
+11521:         auto displayId = parentProperty->GetDisplayId();
+11522:         property->SetDisplayId(displayId);
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/session.cpp:627,641
+627: void Session::NotifyDisconnect()
+628: {
+629:     auto lifecycleListeners = GetListeners<ILifecycleListener>();
+630:     for (auto& listener : lifecycleListeners) {
+631:         if (auto listenerPtr = listener.lock()) {
+632:             listenerPtr->OnDisconnect();
+633:         }
+634:     }
+635: }
+636: 
+637: void Session::NotifyLayoutFinished()
+638: {
+639:     auto lifecycleListeners = GetListeners<ILifecycleListener>();
+640:     for (auto& listener : lifecycleListeners) {
+641:         if (auto listenerPtr = listener.lock()) {

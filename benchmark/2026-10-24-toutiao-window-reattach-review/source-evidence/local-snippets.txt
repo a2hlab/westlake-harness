@@ -1,0 +1,132 @@
+# Local source snippets (repo HEAD 9335690750df2aaf07e98134889a158ff46c1fa4); format path:line: text
+=== benchmark/2026-10-20-toutiao-launcher-page/sources/baseline/EntryAbility.js:1-36
+1: // Standalone stage-mode host. Never load ART or a second OHOS runtime here.
+2: const UIAbility = globalThis.requireNapi('app.ability.UIAbility');
+3: const hilog = globalThis.requireNapi('hilog');
+4: const fs = globalThis.requireNapi('file.fs');
+5: const TAG = 'WL_IME_HOST';
+6: class EntryAbility extends UIAbility {
+7:     record(event, details) {
+8:         const value = JSON.stringify({event: event, time: Date.now(), details: details});
+9:         hilog.info(0, TAG, '%{public}s', value);
+10:         try {
+11:             const file = fs.openSync(this.context.filesDir + '/window-state.json',
+12:                 fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY | fs.OpenMode.TRUNC);
+13:             try { fs.writeSync(file.fd, value); } finally { fs.closeSync(file); }
+14:         } catch (error) {
+15:             hilog.error(0, TAG, 'record failed %{public}s', String(error));
+16:         }
+17:     }
+18:     onCreate() { this.record('created', {}); }
+19:     onWindowStageCreate(stage) {
+20:         this.stage = stage;
+21:         stage.on('windowStageEvent', event => this.record('stage-event', {
+22:             event: event, window: stage.getMainWindowSync().getWindowProperties()
+23:         }));
+24:         stage.loadContent('pages/Index', error => {
+25:             if (error && error.code) { this.record('load-error', error); return; }
+26:             this.mainWindow = stage.getMainWindowSync();
+27:             this.mainWindow.setWindowBackgroundColor('#fff4f6f8');
+28:             this.record('window-ready', this.mainWindow.getWindowProperties());
+29:         });
+30:     }
+31:     onForeground() { this.record('foreground', {}); }
+32:     onBackground() { this.record('background', {}); }
+33:     onWindowStageDestroy() { this.record('window-destroyed', {}); this.stage = undefined; }
+34:     onDestroy() { this.record('destroyed', {}); }
+35: }
+36: globalThis.exports.default = EntryAbility;
+=== benchmark/2026-10-20-toutiao-launcher-page/sources/candidate/Index.js:11-17
+11:     initialRender() {
+12:         this.observeComponentCreation2(() => {
+13:             Column.create({space: 20}); Column.width('100%'); Column.height('100%');
+14:             Column.backgroundColor('#fff4f6f8'); Column.padding(30);
+15:         }, Column);
+16:         Column.pop();
+17:     }
+=== sources/api-implementations/bridge-d4fa-source-snapshot/base/westlake/framework/window/jni/oh_window_manager_client.cpp:171-224
+171: static int32_t wl_query_ability_main_window_id(const OHOS::sptr<OHOS::IRemoteObject>& proxy)
+172: {
+173:     static int32_t wl_cached = -1;          // -1 = not asked yet, 0 = asked and not found
+174:     if (wl_cached > 0) { return wl_cached; }
+175:     // §340b: SSM's GetAllMainWindowInfo answers count=0 for us (it reports the recents/topN main
+176:     // windows, which our ability is not in), so allow the launcher to inject the id it can read
+177:     // straight out of the WMS dump.  This proves the mechanism; a programmatic query can replace it.
+178:     const char* wl_envParent = getenv("WL_PARENT_ID");
+179:     if (wl_envParent != nullptr && *wl_envParent != '\0') {
+180:         const int32_t wl_pid = atoi(wl_envParent);
+181:         if (wl_pid > 0) {
+182:             wl_cached = wl_pid;
+183:             fprintf(stderr, "[WESTLAKE-WMC] §340b parentId from WL_PARENT_ID=%d\n", wl_pid);
+184:             fflush(stderr);
+185:             return wl_cached;
+186:         }
+187:     }
+188:     if (proxy == nullptr) { return 0; }
+189: 
+190:     OHOS::MessageParcel d;
+191:     OHOS::MessageParcel r;
+192:     OHOS::MessageOption o;
+193:     if (!d.WriteInterfaceToken(u"OHOS.ISceneSessionManager")) { return 0; }
+194:     const int32_t err = proxy->SendRequest(56, d, r, o);
+195:     if (err != 0) {
+196:         fprintf(stderr, "[WESTLAKE-WMC] §340 GetAllMainWindowInfo err=%d\n", err);
+197:         fflush(stderr);
+198:         return 0;
+199:     }
+200:     const int32_t n = r.ReadInt32();
+201:     const int32_t me = static_cast<int32_t>(getpid());
+202:     int32_t found = 0;
+203:     if (n > 0 && n < 256) {
+204:         for (int32_t i = 0; i < n; ++i) {
+205:             OHOS::sptr<OHOS::Rosen::MainWindowInfo> info =
+206:                 r.ReadParcelable<OHOS::Rosen::MainWindowInfo>();
+207:             if (info == nullptr) { break; }
+208:             fprintf(stderr, "[WESTLAKE-WMC] §340   main[%d] pid=%d id=%d bundle=%s\n",
+209:                     i, info->pid_, info->persistentId_, info->bundleName_.c_str());
+210:             // Our own pid wins outright; otherwise remember any window of our bundle (the ability may
+211:             // be hosted by a differently-named process).
+212:             if (info->persistentId_ > 0 &&
+213:                 (info->pid_ == me ||
+214:                  (found == 0 && info->bundleName_.find("ashutoshgngwr") != std::string::npos))) {
+215:                 found = info->persistentId_;
+216:                 if (info->pid_ == me) { break; }
+217:             }
+218:         }
+219:     }
+220:     fprintf(stderr, "[WESTLAKE-WMC] §340 ability main window: count=%d mypid=%d -> parentId=%d\n",
+221:             n, me, found);
+222:     fflush(stderr);
+223:     if (found > 0) { wl_cached = found; }
+224:     return found;
+=== sources/api-implementations/bridge-d4fa-source-snapshot/base/westlake/framework/window/jni/oh_window_manager_client.cpp:1706-1710
+1706:         const int32_t wl_parentId = wl_query_ability_main_window_id(sceneProxy_);
+1707:         if (wl_parentId > 0) {
+1708:             wl_prop->SetParentId(wl_parentId);
+1709:             wl_prop->SetParentPersistentId(wl_parentId);
+1710:         }
+=== sources/api-implementations/bridge-d4fa-source-snapshot/ability38/framework/window/jni/oh_window_manager_client.cpp:173-175
+173: static int32_t wl_query_ability_main_window_id(const OHOS::sptr<OHOS::IRemoteObject>& proxy)
+174: {
+175:     static int32_t wl_cached = -1;          // -1 = not asked yet, 0 = asked and not found
+=== sources/api-implementations/bridge-d4fa-source-snapshot/ability38/framework/window/jni/oh_window_manager_client.cpp:1787-1791
+1787:         const int32_t wl_parentId = wl_query_ability_main_window_id(sceneProxy_);
+1788:         if (wl_parentId > 0) {
+1789:             wl_prop->SetParentId(wl_parentId);
+1790:             wl_prop->SetParentPersistentId(wl_parentId);
+1791:         }
+=== sources/api-implementations/source-build-host/westlake-java/framework/window/java/SessionStageBridge.java:98-109
+98:     /**
+99:      * [PARTIAL] NotifyDestroy -> (handled via Activity lifecycle)
+100:      *
+101:      * OH notifies session destruction.
+102:      * Android handles window removal through Activity.onDestroy -> ViewRootImpl.die().
+103:      * Impact: LOW - Destruction is handled at activity lifecycle level.
+104:      */
+105:     public void onNotifyDestroy() {
+106:         if (mIWindow != null) OhInsetsBridge.remove(mIWindow);
+107:         logPartial("NotifyDestroy",
+108:                 "Android handles via Activity.onDestroy, not IWindow");
+109:     }
+=== benchmark/2026-10-20-toutiao-launcher-page/README.md:7-7
+7: Actual signed candidate: **`b18978b875098bc66f1ee78e471ef64c7899978bf46052502c41801f168e9ff0`**, 54,215 bytes. Signed payload difference is exactly `ets/pages/Index.abc`; all other eight members, including `.pages.info`, resources, icons, module and EntryAbility, are identical. The original and candidate extracted certificate chains and profile files are identical. The profile is the pinned public OpenHarmony development release profile with `apl=normal`, unchanged ACLs/permissions, bundle, versionCode2 and API20. These checks do not prove an installation or visual acceptance.

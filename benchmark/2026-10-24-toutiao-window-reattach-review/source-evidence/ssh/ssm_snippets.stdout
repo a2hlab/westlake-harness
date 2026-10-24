@@ -1,0 +1,189 @@
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:1932,1940
+1932: sptr<SceneSession> SceneSessionManager::GetSceneSession(int32_t persistentId)
+1933: {
+1934:     std::shared_lock<std::shared_mutex> lock(sceneSessionMapMutex_);
+1935:     if (auto it = sceneSessionMap_.find(persistentId); it != sceneSessionMap_.end()) {
+1936:         return it->second;
+1937:     }
+1938:     TLOGD(WmsLogTag::DEFAULT, "Not found scene session with id: %{public}d", persistentId);
+1939:     return nullptr;
+1940: }
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:4081,4094
+4081: void SceneSessionManager::DestroySubSession(const sptr<SceneSession>& sceneSession)
+4082: {
+4083:     if (sceneSession == nullptr) {
+4084:         TLOGW(WmsLogTag::WMS_SUB, "sceneSession is nullptr");
+4085:         return;
+4086:     }
+4087:     for (const auto& subSession : sceneSession->GetSubSession()) {
+4088:         if (subSession != nullptr) {
+4089:             const auto persistentId = subSession->GetPersistentId();
+4090:             TLOGI(WmsLogTag::WMS_SUB, "id: %{public}d", persistentId);
+4091:             DestroyAndDisconnectSpecificSessionInner(persistentId);
+4092:         }
+4093:     }
+4094: }
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:4204,4235
+4204: WSError SceneSessionManager::RequestSceneSessionDestruction(const sptr<SceneSession>& sceneSession,
+4205:     bool needRemoveSession, bool isSaveSnapshot, bool isForceClean, bool isUserRequestedExit,
+4206:     LifeCycleChangeReason reason)
+4207: {
+4208:     taskScheduler_->PostSyncTask([this, sceneSession, needRemoveSession] {
+4209:         if (sceneSession == nullptr) {
+4210:             TLOGNE(WmsLogTag::WMS_LIFE, "Destruct session is nullptr.");
+4211:             return WSError::WS_ERROR_NULLPTR;
+4212:         }
+4213:         sceneSession->isRemoving_ = needRemoveSession;
+4214:         return WSError::WS_OK;
+4215:     }, "MarkRemovingBeforeDestruction");
+4216:     auto task = [this, weakSceneSession = wptr(sceneSession), needRemoveSession, isSaveSnapshot, isForceClean,
+4217:                  isUserRequestedExit, reason]() THREAD_SAFETY_GUARD(SCENE_GUARD) {
+4218:         auto sceneSession = weakSceneSession.promote();
+4219:         if (sceneSession == nullptr) {
+4220:             TLOGNE(WmsLogTag::WMS_MAIN, "Destruct session is nullptr");
+4221:             return WSError::WS_ERROR_NULLPTR;
+4222:         }
+4223:         auto persistentId = sceneSession->GetPersistentId();
+4224:         TLOGNI(WmsLogTag::WMS_MAIN, "[id: %{public}d] Destruct session, remove:%{public}d isSaveSnapshot:%{public}d "
+4225:             "isForceClean:%{public}d isUserRequestedExit:%{public}d", persistentId, needRemoveSession, isSaveSnapshot,
+4226:             isForceClean, isUserRequestedExit);
+4227:         RequestSessionUnfocus(persistentId, FocusChangeReason::SCB_SESSION_REQUEST_UNFOCUS);
+4228:         avoidAreaListenerSessionSet_.erase(persistentId);
+4229:         screenshotListenerSessionSet_.erase(persistentId);
+4230:         screenshotAppEventListenerSessionSet_.erase(persistentId);
+4231:         RemoveSessionFromBlackList(sceneSession);
+4232:         DestroyDialogWithMainWindow(sceneSession);
+4233:         DestroyToastSession(sceneSession);
+4234:         DestroySubSession(sceneSession); // destroy sub session by destruction
+4235:         HITRACE_METER_FMT(HITRACE_TAG_WINDOW_MANAGER, "ssm:RequestSceneSessionDestruction (%" PRIu32" )", persistentId);
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:5539,5585
+5539: WSError SceneSessionManager::DestroyAndDisconnectSpecificSessionInner(const int32_t persistentId)
+5540: {
+5541:     auto sceneSession = GetSceneSession(persistentId);
+5542:     if (sceneSession == nullptr) {
+5543:         return WSError::WS_ERROR_NULLPTR;
+5544:     }
+5545:     auto ret = sceneSession->UpdateActiveStatus(false);
+5546:     RemoveSessionFromBlackList(sceneSession);
+5547:     WindowDestroyNotifyVisibility(sceneSession);
+5548:     auto windowType = sceneSession->GetWindowType();
+5549:     if (windowType == WindowType::WINDOW_TYPE_DIALOG) {
+5550:         auto parentSession = GetSceneSession(sceneSession->GetParentPersistentId());
+5551:         if (parentSession == nullptr) {
+5552:             TLOGE(WmsLogTag::WMS_DIALOG, "Dialog not bind parent");
+5553:         } else {
+5554:             parentSession->RemoveDialogToParentSession(sceneSession);
+5555:             parentSession->UnregisterNotifySurfaceBoundsChangeFunc(persistentId);
+5556:         }
+5557:     } else if (windowType == WindowType::WINDOW_TYPE_TOAST) {
+5558:         auto parentSession = GetSceneSession(sceneSession->GetParentPersistentId());
+5559:         if (parentSession != nullptr) {
+5560:             TLOGD(WmsLogTag::WMS_TOAST, "Find parentSession, id: %{public}d", persistentId);
+5561:             parentSession->RemoveToastSession(persistentId);
+5562:         } else {
+5563:             TLOGW(WmsLogTag::WMS_TOAST, "ParentSession is nullptr, id: %{public}d", persistentId);
+5564:         }
+5565:     } else if (windowType == WindowType::WINDOW_TYPE_FLOAT) {
+5566:         DestroySubSession(sceneSession);
+5567:     }
+5568:     ret = sceneSession->Disconnect();
+5569:     sceneSession->ClearSpecificSessionCbMap();
+5570:     if (SessionHelper::IsSubWindow(sceneSession->GetWindowType())) {
+5571:         DestroySubSession(sceneSession);
+5572:         auto parentSession = GetSceneSession(sceneSession->GetParentPersistentId());
+5573:         if (parentSession != nullptr) {
+5574:             TLOGD(WmsLogTag::WMS_SUB, "Find parentSession, id: %{public}d", persistentId);
+5575:             parentSession->RemoveSubSession(sceneSession->GetPersistentId());
+5576:             parentSession->UnregisterNotifySurfaceBoundsChangeFunc(persistentId);
+5577:         } else {
+5578:             TLOGW(WmsLogTag::WMS_SUB, "ParentSession is nullptr, id: %{public}d", persistentId);
+5579:         }
+5580:         DestroyUIServiceExtensionSubWindow(sceneSession);
+5581:     }
+5582:     {
+5583:         std::unique_lock<std::shared_mutex> lock(sceneSessionMapMutex_);
+5584:         EraseSceneSessionAndMarkDirtyLocked(persistentId);
+5585:         systemTopSceneSessionMap_.erase(persistentId);
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:7386,7399
+7386: static bool IsValidDigitString(const std::string& windowIdStr)
+7387: {
+7388:     if (windowIdStr.empty()) {
+7389:         return false;
+7390:     }
+7391:     for (char ch : windowIdStr) {
+7392:         if (ch >= '0' && ch <= '9') {
+7393:             continue;
+7394:         }
+7395:         TLOGE(WmsLogTag::DEFAULT, "invalid window id");
+7396:         return false;
+7397:     }
+7398:     return true;
+7399: }
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:7840,7845
+7840: WSError SceneSessionManager::GetSpecifiedSessionDumpInfo(std::string& dumpInfo, const std::vector<std::string>& params,
+7841:     const std::string& strId)
+7842: {
+7843:     uint64_t persistentId = std::stoull(strId);
+7844:     auto session = GetSceneSession(persistentId);
+7845:     if (session == nullptr) {
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:7932,7948
+7932: WSError SceneSessionManager::GetSessionDumpInfo(const std::vector<std::string>& params, std::string& dumpInfo)
+7933: {
+7934:     if (!(SessionPermission::IsSACalling() || SessionPermission::IsStartByHdcd())) {
+7935:         TLOGE(WmsLogTag::DEFAULT, "GetSessionDumpInfo permission denied!");
+7936:         return WSError::WS_ERROR_INVALID_PERMISSION;
+7937:     }
+7938: 
+7939:     if (params.size() == 1 && params[0] == ARG_DUMP_ALL) { // 1: params num
+7940:         return GetAllSessionDumpInfo(dumpInfo);
+7941:     }
+7942:     if (params.size() == 1 && params[0] == ARG_DUMP_DETAIL) { // 1: params num
+7943:         return GetAllSessionDumpDetailInfo(dumpInfo);
+7944:     }
+7945:     if (params.size() >= 2 && params[0] == ARG_DUMP_WINDOW && IsValidDigitString(params[1])) { // 2: params num
+7946:         return GetSpecifiedSessionDumpInfo(dumpInfo, params, params[1]);
+7947:     }
+7948:     if (params.size() >= 2 && params[0] == ARG_DUMP_SCB) { // 2: params num
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:18975,19016
+18975: WMError SceneSessionManager::SetParentWindow(int32_t subWindowId, int32_t newParentWindowId)
+18976: {
+18977:     return taskScheduler_->PostSyncTask([this, subWindowId, newParentWindowId, where = __func__] {
+18978:         auto subSession = GetSceneSession(subWindowId);
+18979:         if (!subSession || !WindowHelper::IsSubWindow(subSession->GetWindowType())) {
+18980:             TLOGNE(WmsLogTag::WMS_SUB, "%{public}s subSession is nullptr or type invalid", where);
+18981:             return WMError::WM_ERROR_INVALID_WINDOW;
+18982:         }
+18983:         int32_t oldParentWindowId = subSession->GetParentPersistentId();
+18984:         auto oldParentSession = GetSceneSession(oldParentWindowId);
+18985:         if (oldParentSession == nullptr) {
+18986:             TLOGNE(WmsLogTag::WMS_SUB, "%{public}s oldParentSession is nullptr", where);
+18987:             return WMError::WM_ERROR_INVALID_PARENT;
+18988:         }
+18989:         auto oldWindowType = oldParentSession->GetWindowType();
+18990:         if (!WindowHelper::IsMainWindow(oldWindowType) && !WindowHelper::IsFloatOrSubWindow(oldWindowType)) {
+18991:             TLOGNE(WmsLogTag::WMS_SUB, "%{public}s oldParentSession window type invalid", where);
+18992:             return WMError::WM_ERROR_INVALID_PARENT;
+18993:         }
+18994:         auto newParentSession = GetSceneSession(newParentWindowId);
+18995:         if (newParentSession == nullptr) {
+18996:             TLOGNE(WmsLogTag::WMS_SUB, "%{public}s newParentSession is nullptr", where);
+18997:             return WMError::WM_ERROR_INVALID_PARENT;
+18998:         }
+18999:         TLOGND(WmsLogTag::WMS_SUB, "%{public}s subWindowId: %{public}d oldParentWindowId: %{public}d "
+19000:             "newParentWindowId: %{public}d", where, subWindowId, oldParentWindowId, newParentWindowId);
+19001:         auto newWindowType = newParentSession->GetWindowType();
+19002:         if (!WindowHelper::IsMainWindow(newWindowType) && !WindowHelper::IsFloatOrSubWindow(newWindowType)) {
+19003:             TLOGNE(WmsLogTag::WMS_SUB, "%{public}s newParentSession window type invalid", where);
+19004:             return WMError::WM_ERROR_INVALID_PARENT;
+19005:         }
+19006:         if (oldParentSession->GetCallingPid() != newParentSession->GetCallingPid()) {
+19007:             TLOGNE(WmsLogTag::WMS_SUB, "%{public}s callingPid not same", where);
+19008:             return WMError::WM_ERROR_INVALID_PARENT;
+19009:         }
+19010:         if (newParentSession->IsAncestorsSession(subWindowId)) {
+19011:             TLOGNE(WmsLogTag::WMS_SUB, "%{public}s newParentSession is subsession ancestor", where);
+19012:             return WMError::WM_ERROR_INVALID_PARENT;
+19013:         }
+19014:         return SetParentWindowInner(subSession, oldParentSession, newParentSession);
+19015:     });
+19016: }

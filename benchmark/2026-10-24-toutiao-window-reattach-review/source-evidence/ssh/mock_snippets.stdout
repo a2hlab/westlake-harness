@@ -1,0 +1,66 @@
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/wmserver/src/mock_session_manager_service.cpp:176,205
+176: int MockSessionManagerService::Dump(int fd, const std::vector<std::u16string>& args)
+177: {
+178:     TLOGD(WmsLogTag::DEFAULT, "dump begin fd: %{public}d", fd);
+179:     if (fd < 0) {
+180:         return -1;
+181:     }
+182:     (void) signal(SIGPIPE, SIG_IGN); // ignore SIGPIPE crash
+183:     std::vector<std::string> params;
+184:     for (auto& arg : args) {
+185:         params.emplace_back(Str16ToStr8(arg));
+186:     }
+187: 
+188:     std::string dumpInfo;
+189:     if (params.empty()) {
+190:         ShowHelpInfo(dumpInfo);
+191:     } else if (params.size() == 1 && params[0] == ARG_DUMP_HELP) { // 1: params num
+192:         ShowHelpInfo(dumpInfo);
+193:     } else {
+194:         int errCode = DumpSessionInfo(params, dumpInfo);
+195:         if (errCode != 0) {
+196:             ShowIllegalArgsInfo(dumpInfo);
+197:         }
+198:     }
+199:     int ret = write(fd, dumpInfo.c_str(), dumpInfo.length());
+200:     if (ret < 0) {
+201:         WLOGFE("write error");
+202:         return -1; // WMError::WM_ERROR_INVALID_OPERATION;
+203:     }
+204:     TLOGD(WmsLogTag::DEFAULT, "dump end");
+205:     return 0;
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/wmserver/src/mock_session_manager_service.cpp:688,691
+688: void MockSessionManagerService::ShowIllegalArgsInfo(std::string& dumpInfo)
+689: {
+690:     dumpInfo.append("The arguments are illegal and you can enter '-h' for help.");
+691: }
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/wmserver/src/mock_session_manager_service.cpp:717,745
+717: int MockSessionManagerService::DumpSessionInfo(const std::vector<std::string>& args, std::string& dumpInfo)
+718: {
+719:     if (args.empty()) {
+720:         return -1;  // WMError::WM_ERROR_INVALID_PARAM;
+721:     }
+722:     auto sessionManagerService = GetSessionManagerServiceInner(defaultWMSUserId_);
+723:     if (sessionManagerService == nullptr) {
+724:         WLOGFE("sessionManagerService is nullptr");
+725:         return -1;
+726:     }
+727:     if (!defaultSceneSessionManager_) {
+728:         WLOGFW("Get scene session manager ...");
+729:         GetSceneSessionManager();
+730:         if (!defaultSceneSessionManager_) {
+731:             WLOGFW("Get scene session manager proxy failed, nullptr");
+732:             return -1;
+733:         }
+734:     }
+735:     sptr<ISceneSessionManager> sceneSessionManagerProxy = iface_cast<ISceneSessionManager>(defaultSceneSessionManager_);
+736:     if (sceneSessionManagerProxy == nullptr) {
+737:         WLOGFW("sessionManagerServiceProxy is nullptr");
+738:         return -1;
+739:     }
+740:     WSError ret = sceneSessionManagerProxy->GetSessionDumpInfo(args, dumpInfo);
+741:     if (ret != WSError::WS_OK) {
+742:         WLOGFD("sessionManagerService set success!");
+743:         return -1;
+744:     }
+745:     return 0; // WMError::WM_OK;

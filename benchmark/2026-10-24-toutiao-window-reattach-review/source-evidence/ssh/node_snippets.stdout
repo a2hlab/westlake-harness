@@ -1,0 +1,258 @@
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp:4392,4520
+4392: WSError SceneSessionManager::CreateAndConnectSpecificSession(const sptr<ISessionStage>& sessionStage,
+4393:     const sptr<IWindowEventChannel>& eventChannel, const std::shared_ptr<RSSurfaceNode>& surfaceNode,
+4394:     sptr<WindowSessionProperty> property, int32_t& persistentId, sptr<ISession>& session,
+4395:     SystemSessionConfig& systemConfig, sptr<IRemoteObject> token)
+4396: {
+4397:     if (!CheckSystemWindowPermission(property) || !CheckModalSubWindowPermission(property)) {
+4398:         TLOGE(WmsLogTag::WMS_LIFE, "create system window or modal subwindow permission denied!");
+4399:         return WSError::WS_ERROR_NOT_SYSTEM_APP;
+4400:     }
+4401:     auto parentSession = GetSceneSession(property->GetParentPersistentId());
+4402:     if (parentSession) {
+4403:         auto parentProperty = parentSession->GetSessionProperty();
+4404:         if (parentProperty->GetSubWindowLevel() >= MAX_SUB_WINDOW_LEVEL &&
+4405:             !WindowHelper::IsToastSubWindow(property->GetWindowType(), property->GetWindowFlags())) {
+4406:             TLOGE(WmsLogTag::WMS_SUB, "sub window level exceeds limit");
+4407:             return WSError::WS_ERROR_INVALID_WINDOW;
+4408:         }
+4409:         property->SetSubWindowLevel(parentProperty->GetSubWindowLevel() + 1);
+4410:         if (parentSession->GetSessionInfo().isSystem_ && property->GetIsUIExtFirstSubWindow() &&
+4411:             systemConfig_.supportUIExtensionSubWindow_) {
+4412:             property->SetWindowType(WindowType::WINDOW_TYPE_SCB_SUB_WINDOW);
+4413:         }
+4414:     }
+4415:     auto initClientDisplayId = UpdateSpecificSessionClientDisplayId(property);
+4416:     bool shouldBlock = false;
+4417:     bool isSystemCalling = SessionPermission::IsSystemCalling();
+4418:     if (!isSystemCalling) {
+4419:         if (property->GetWindowType() == WindowType::WINDOW_TYPE_FLOAT && !systemConfig_.IsPcWindow()) {
+4420:             shouldBlock = property->IsFloatingWindowAppType() && shouldHideNonSecureFloatingWindows_.load();
+4421:         } else if (SessionHelper::IsNonSecureToUIExtension(property->GetWindowType()) && parentSession) {
+4422:             shouldBlock = parentSession->GetCombinedExtWindowFlags().hideNonSecureWindowsFlag;
+4423:         }
+4424:     }
+4425:     if (shouldBlock) {
+4426:         TLOGE(WmsLogTag::WMS_UIEXT, "create non-secure window permission denied!");
+4427:         return WSError::WS_ERROR_INVALID_OPERATION;
+4428:     }
+4429:     bool isPhoneOrPad = systemConfig_.IsPhoneWindow() || systemConfig_.IsPadWindow();
+4430:     if (!isPhoneOrPad && property->GetWindowType() == WindowType::WINDOW_TYPE_MUTISCREEN_COLLABORATION) {
+4431:         TLOGE(WmsLogTag::WMS_LIFE, "only phone or pad can create mutiScreen collaboration window");
+4432:         return WSError::WS_ERROR_INVALID_OPERATION;
+4433:     }
+4434: 
+4435:     if (property->GetWindowType() == WindowType::WINDOW_TYPE_APP_SUB_WINDOW && property->GetIsUIExtFirstSubWindow()) {
+4436:         WSError err = CheckSubSessionStartedByExtension(token, property);
+4437:         if (err != WSError::WS_OK) {
+4438:             return err;
+4439:         }
+4440:         SetExtensionSubSessionDisplayId(property, sessionStage);
+4441:     }
+4442:     // WINDOW_TYPE_SYSTEM_ALARM_WINDOW has been deprecated, will be deleted after 5 versions.
+4443:     if (property->GetWindowType() == WindowType::WINDOW_TYPE_SYSTEM_ALARM_WINDOW) {
+4444:         TLOGE(WmsLogTag::DEFAULT, "The alarm window has been deprecated!");
+4445:         return WSError::WS_ERROR_INVALID_WINDOW;
+4446:     }
+4447: 
+4448:     if (property->GetWindowType() == WindowType::WINDOW_TYPE_FB) {
+4449:         auto ret = IsFloatingBallValid(parentSession);
+4450:         if (ret != WSError::WS_OK) {
+4451:             return ret;
+4452:         }
+4453:     }
+4454: 
+4455:     TLOGI(WmsLogTag::WMS_LIFE, "create specific start, name:%{public}s, type:%{public}d, touchable:%{public}d",
+4456:         property->GetWindowName().c_str(), property->GetWindowType(), property->GetTouchable());
+4457: 
+4458:     // Get pid and uid before posting task.
+4459:     auto pid = IPCSkeleton::GetCallingRealPid();
+4460:     auto uid = IPCSkeleton::GetCallingUid();
+4461:     auto task = [this, sessionStage, eventChannel, surfaceNode, property, &persistentId, &session, &systemConfig, token,
+4462:                  pid, uid, isSystemCalling, initClientDisplayId]() {
+4463:         if (property == nullptr) {
+4464:             TLOGNE(WmsLogTag::WMS_LIFE, "property is nullptr");
+4465:             return WSError::WS_ERROR_NULLPTR;
+4466:         }
+4467:         if (property->GetWindowType() == WindowType::WINDOW_TYPE_PIP && !IsEnablePiPCreate(property)) {
+4468:             TLOGNE(WmsLogTag::WMS_PIP, "pip window is not enable to create.");
+4469:             return WSError::WS_DO_NOTHING;
+4470:         }
+4471:         const auto type = property->GetWindowType();
+4472:         // create specific session
+4473:         SessionInfo info;
+4474:         info.windowType_ = static_cast<uint32_t>(type);
+4475:         info.bundleName_ = property->GetSessionInfo().bundleName_;
+4476:         info.abilityName_ = property->GetSessionInfo().abilityName_;
+4477:         info.moduleName_ = property->GetSessionInfo().moduleName_;
+4478:         info.screenId_ = property->GetDisplayId();
+4479: 
+4480:         if (CheckAndNotifyPiPForbidden(*property, type) != WSError::WS_OK) {
+4481:             TLOGNE(WmsLogTag::WMS_PIP, "forbid pip");
+4482:             return WSError::WS_ERROR_INVALID_PERMISSION;
+4483:         }
+4484:         ClosePipWindowIfExist(type);
+4485:         sptr<SceneSession> newSession = RequestSceneSession(info, property);
+4486:         if (newSession == nullptr) {
+4487:             TLOGNE(WmsLogTag::WMS_LIFE, "session is nullptr");
+4488:             return WSError::WS_ERROR_NULLPTR;
+4489:         }
+4490:         newSession->SetClientDisplayId(initClientDisplayId);
+4491:         property->SetSystemCalling(isSystemCalling);
+4492:         auto errCode = newSession->ConnectInner(
+4493:             sessionStage, eventChannel, surfaceNode, systemConfig_, property, token, pid, uid);
+4494:         newSession->SetIsSystemSpecificSession(isSystemCalling);
+4495:         systemConfig = systemConfig_;
+4496:         persistentId = property->GetPersistentId();
+4497: 
+4498:         NotifyCreateSpecificSession(newSession, property, type);
+4499:         session = newSession;
+4500:         AddClientDeathRecipient(sessionStage, newSession);
+4501: 
+4502:         if (property->GetWindowType() == WindowType::WINDOW_TYPE_FLOAT) {
+4503:             CheckFloatWindowIsAnco(pid, newSession);
+4504:         }
+4505: 
+4506:         UpdateSubSessionBlackList(newSession);
+4507:         TLOGNI(WmsLogTag::WMS_LIFE, "create specific session success, id: %{public}d, "
+4508:             "parentId: %{public}d, type: %{public}d",
+4509:             newSession->GetPersistentId(), newSession->GetParentPersistentId(), type);
+4510:         return errCode;
+4511:     };
+4512: 
+4513:     return taskScheduler_->PostSyncTask(task, "CreateAndConnectSpecificSession");
+4514: }
+4515: 
+4516: WSError SceneSessionManager::CheckSubSessionStartedByExtension(const sptr<IRemoteObject>& token,
+4517:     const sptr<WindowSessionProperty>& property)
+4518: {
+4519:     sptr<SceneSession> extensionParentSession = GetSceneSession(property->GetParentPersistentId());
+4520:     if (extensionParentSession == nullptr) {
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/session.cpp:192,198
+192: void Session::SetSurfaceNode(const std::shared_ptr<RSSurfaceNode>& surfaceNode)
+193: {
+194:     RSAdapterUtil::SetRSUIContext(surfaceNode, GetRSUIContext(), true);
+195:     std::lock_guard<std::mutex> lock(surfaceNodeMutex_);
+196:     surfaceNode_ = surfaceNode;
+197:     shadowSurfaceNode_ = RSAdapterUtil::IsClientMultiInstanceEnabled() && surfaceNode_ ?
+198:         surfaceNode_->CreateShadowSurfaceNode() : nullptr;
+=== /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/session.cpp:1465,1500
+1465: __attribute__((no_sanitize("cfi"))) WSError Session::ConnectInner(const sptr<ISessionStage>& sessionStage,
+1466:     const sptr<IWindowEventChannel>& eventChannel,
+1467:     const std::shared_ptr<RSSurfaceNode>& surfaceNode,
+1468:     SystemSessionConfig& systemConfig, sptr<WindowSessionProperty> property,
+1469:     sptr<IRemoteObject> token, int32_t pid, int32_t uid, const std::string& identityToken)
+1470: {
+1471:     if (property == nullptr) {
+1472:         TLOGE(WmsLogTag::WMS_LIFE, "property is nullptr");
+1473:         return WSError::WS_ERROR_NULLPTR;
+1474:     }
+1475:     TLOGI(WmsLogTag::WMS_LIFE, "[id: %{public}d] state: %{public}u,"
+1476:         "isTerminating:%{public}d, callingPid:%{public}d, disableDelegator:%{public}d", GetPersistentId(),
+1477:         static_cast<uint32_t>(GetSessionState()), isTerminating_, pid, property->GetIsAbilityHookOff());
+1478:     if (GetSessionState() != SessionState::STATE_DISCONNECT && !isTerminating_ &&
+1479:         !GetSessionInfo().reuseDelegatorWindow) {
+1480:         TLOGE(WmsLogTag::WMS_LIFE, "state is not disconnect state:%{public}u id:%{public}u!, reuse %{public}d",
+1481:             GetSessionState(), GetPersistentId(), GetSessionInfo().reuseDelegatorWindow);
+1482:         return WSError::WS_ERROR_INVALID_SESSION;
+1483:     }
+1484:     if (sessionStage == nullptr || eventChannel == nullptr) {
+1485:         TLOGE(WmsLogTag::WMS_LIFE, "session stage or eventChannel is nullptr");
+1486:         return WSError::WS_ERROR_NULLPTR;
+1487:     }
+1488:     sessionStage_ = sessionStage;
+1489:     NotifyAppHookWindowInfoUpdated();
+1490:     sessionStage_->SetCurrentRotation(currentRotation_);
+1491:     windowEventChannel_ = eventChannel;
+1492:     SetSurfaceNode(surfaceNode);
+1493:     abilityToken_ = token;
+1494:     systemConfig = systemConfig_;
+1495:     InitSessionPropertyWhenConnect(property);
+1496:     SetCallingPid(pid);
+1497:     callingUid_ = uid;
+1498:     UpdateSessionState(SessionState::STATE_CONNECT);
+1499:     WindowHelper::IsUIExtensionWindow(GetWindowType()) ?
+1500:         UpdateRect(GetSessionRect(), SizeChangeReason::UNDEFINED, "Connect") :
+=== /opt/build-trees/oh610_lts_source/foundation/graphic/graphic_2d/rosen/modules/render_service_client/core/ui/rs_surface_node.cpp:481,505
+481: std::shared_ptr<RSSurfaceNode> RSSurfaceNode::Unmarshalling(Parcel& parcel)
+482: {
+483:     uint64_t id = UINT64_MAX;
+484:     std::string name;
+485:     bool isRenderServiceNode = false;
+486:     if (!(parcel.ReadUint64(id) && parcel.ReadString(name) && parcel.ReadBool(isRenderServiceNode))) {
+487:         ROSEN_LOGE("RSSurfaceNode::Unmarshalling, read param failed");
+488:         return nullptr;
+489:     }
+490:     RSSurfaceNodeConfig config = { name };
+491:     RS_LOGI("RSSurfaceNode::Unmarshalling, Node: %{public}" PRIu64 ", Name: %{public}s", id, name.c_str());
+492: 
+493:     if (auto prevNode = RSNodeMap::Instance().GetNode(id)) { // Planning
+494:         RS_LOGD("RSSurfaceNode::Unmarshalling, the node id is already in the map");
+495:         // if the node id is already in the map, we should not create a new node
+496:         return prevNode->ReinterpretCastTo<RSSurfaceNode>();
+497:     }
+498: 
+499:     SharedPtr surfaceNode(new RSSurfaceNode(config, isRenderServiceNode, id));
+500:     RSNodeMap::MutableInstance().RegisterNode(surfaceNode);
+501: 
+502:     // for nodes constructed by unmarshalling, we should not destroy the corresponding render node on destruction
+503:     surfaceNode->skipDestroyCommandInDestructor_ = true;
+504: 
+505:     return surfaceNode;
+=== /opt/build-trees/oh610_lts_source/foundation/graphic/graphic_2d/rosen/modules/render_service_client/core/ui/rs_node.cpp:220,275
+220: RSNode::~RSNode()
+221: {
+222:     if (!FallbackAnimationsToContext()) {
+223:         FallbackAnimationsToRoot();
+224:     }
+225:     ClearAllModifiers();
+226: #if defined(RS_MODIFIERS_DRAW_ENABLE)
+227:     RSModifiersDraw::EraseOffTreeNode(instanceId_, id_);
+228:     if (RSSystemProperties::GetHybridRenderEnabled()) {
+229:         RSModifiersDraw::EraseDrawRegions(id_);
+230:     }
+231: #endif
+232: 
+233:     // break current (ui) parent-child relationship.
+234:     // render nodes will check if its child is expired and remove it, no need to manually remove it here.
+235:     SharedPtr parentPtr = parent_.lock();
+236:     if (parentPtr) {
+237:         parentPtr->children_.erase(std::remove_if(parentPtr->children_.begin(), parentPtr->children_.end(),
+238:                                                   [](const auto& child) { return child.expired(); }),
+239:             parentPtr->children_.end());
+240:     }
+241:     auto rsUIContext = rsUIContext_;
+242:     // To prevent a process from repeatedly serializing and generating different node objects, it is necessary to place
+243:     // the nodes in a globally static map. Therefore, when disassembling, the global map needs to be deleted
+244:     if (skipDestroyCommandInDestructor_ && rsUIContext) {
+245:         RSNodeMap::MutableInstance().UnregisterNode(id_);
+246:     }
+247:     if (rsUIContext != nullptr) {
+248:         // tell RT/RS to destroy related render node
+249:         rsUIContext->GetMutableNodeMap().UnregisterNode(id_);
+250:         auto transaction = rsUIContext->GetRSTransaction();
+251:         if (transaction == nullptr || skipDestroyCommandInDestructor_) {
+252:             RS_LOGD("RSNode::~RSNode stop destroy proxy:%{public}d, skip: %{public}d", transaction == nullptr,
+253:                 skipDestroyCommandInDestructor_);
+254:             return;
+255:         }
+256:         std::unique_ptr<RSCommand> command = std::make_unique<RSBaseNodeDestroy>(id_);
+257:         transaction->AddCommand(command, IsRenderServiceNode());
+258:         if ((IsRenderServiceNode() && hasCreateRenderNodeInRT_) ||
+259:             (!IsRenderServiceNode() && hasCreateRenderNodeInRS_)) {
+260:             command = std::make_unique<RSBaseNodeDestroy>(id_);
+261:             transaction->AddCommand(command, !IsRenderServiceNode());
+262:         }
+263:     } else {
+264:         RSNodeMap::MutableInstance().UnregisterNode(id_);
+265:         // tell RT/RS to destroy related render node
+266:         auto transactionProxy = RSTransactionProxy::GetInstance();
+267:         if (transactionProxy == nullptr || skipDestroyCommandInDestructor_) {
+268:             RS_LOGD("RSNode::~RSNode stop destroy proxy:%{public}d, skip: %{public}d", transactionProxy == nullptr,
+269:                 skipDestroyCommandInDestructor_);
+270:             return;
+271:         }
+272:         std::unique_ptr<RSCommand> command = std::make_unique<RSBaseNodeDestroy>(id_);
+273:         transactionProxy->AddCommand(command, IsRenderServiceNode());
+274:         if ((IsRenderServiceNode() && hasCreateRenderNodeInRT_) ||
+275:             (!IsRenderServiceNode() && hasCreateRenderNodeInRS_)) {

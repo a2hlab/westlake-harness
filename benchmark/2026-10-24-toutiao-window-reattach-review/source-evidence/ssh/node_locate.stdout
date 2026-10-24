@@ -1,0 +1,46 @@
+foundation/graphic/graphic_2d/rosen/modules/render_service_client/core/ui
+d315e38c12615f41fb164fcb8204b335c47acbff8888051e73546fb6007c8d19  /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session_manager/src/scene_session_manager.cpp
+8eb3b54de34e342c622cf59cdc18995e051f84ff539007e47b287aab5799d0cb  /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/session.cpp
+d31ad31be74222d93863858031cf28960524d1dc5403bb4e68f1c0063c275436  /opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/scene_session.cpp
+6e40e271a640649d6876f610852f102fbb20b8b6971eef83e609ff54abb2b3c4  foundation/graphic/graphic_2d/rosen/modules/render_service_client/core/ui/rs_surface_node.cpp
+4064c35364dc2d125f6f57bcc2805bf3f61c675ed659b16177b1662f8449125b  foundation/graphic/graphic_2d/rosen/modules/render_service_client/core/ui/rs_node.cpp
+4392:WSError SceneSessionManager::CreateAndConnectSpecificSession(const sptr<ISessionStage>& sessionStage,
+4940:WSError SceneSessionManager::RecoverAndConnectSpecificSession(const sptr<ISessionStage>& sessionStage,
+/opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/session.cpp:192:void Session::SetSurfaceNode(const std::shared_ptr<RSSurfaceNode>& surfaceNode)
+/opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/session.cpp:196:    surfaceNode_ = surfaceNode;
+/opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/session.cpp:1465:__attribute__((no_sanitize("cfi"))) WSError Session::ConnectInner(const sptr<ISessionStage>& sessionStage,
+/opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/session.cpp:1492:    SetSurfaceNode(surfaceNode);
+/opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/session.cpp:1621:    SetSurfaceNode(surfaceNode);
+/opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/scene_session.cpp:166:WSError SceneSession::ConnectInner(const sptr<ISessionStage>& sessionStage,
+/opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/scene_session.cpp:204:        auto ret = LOCK_GUARD_EXPR(SCENE_GUARD, session->Session::ConnectInner(
+/opt/build-trees/oh610_lts_source/foundation/window/window_manager/window_scene/session/host/src/scene_session.cpp:219:WSError SceneSession::Connect(const sptr<ISessionStage>& sessionStage, const sptr<IWindowEventChannel>& eventChannel,
+112:    // create node in RT (only when in divided render and isRenderServiceNode_ == false)
+175:    isRenderServiceNode_ = false;
+180:    // create node in RT (only when in divided render and isRenderServiceNode_ == false)
+481:std::shared_ptr<RSSurfaceNode> RSSurfaceNode::Unmarshalling(Parcel& parcel)
+485:    bool isRenderServiceNode = false;
+486:    if (!(parcel.ReadUint64(id) && parcel.ReadString(name) && parcel.ReadBool(isRenderServiceNode))) {
+487:        ROSEN_LOGE("RSSurfaceNode::Unmarshalling, read param failed");
+491:    RS_LOGI("RSSurfaceNode::Unmarshalling, Node: %{public}" PRIu64 ", Name: %{public}s", id, name.c_str());
+494:        RS_LOGD("RSSurfaceNode::Unmarshalling, the node id is already in the map");
+499:    SharedPtr surfaceNode(new RSSurfaceNode(config, isRenderServiceNode, id));
+503:    surfaceNode->skipDestroyCommandInDestructor_ = true;
+511:    SharedPtr surfaceNode(new RSSurfaceNode(config, isRenderServiceNode_, GetId()));
+516:    surfaceNode->skipDestroyCommandInDestructor_ = true;
+532:RSNode::SharedPtr RSSurfaceNode::UnmarshallingAsProxyNode(Parcel& parcel)
+536:    bool isRenderServiceNode = false;
+537:    if (!(parcel.ReadUint64(id) && parcel.ReadString(name) && parcel.ReadBool(isRenderServiceNode))) {
+538:        ROSEN_LOGE("RSSurfaceNode::Unmarshalling, read param failed");
+596:        // Only when in divided render and isRenderServiceNode_ == false
+634:    const RSSurfaceNodeConfig& config, bool isRenderServiceNode, std::shared_ptr<RSUIContext> rsUIContext)
+635:    : RSNode(isRenderServiceNode, config.isTextureExportNode, rsUIContext, true), name_(config.SurfaceNodeName)
+220:RSNode::~RSNode()
+244:    if (skipDestroyCommandInDestructor_ && rsUIContext) {
+251:        if (transaction == nullptr || skipDestroyCommandInDestructor_) {
+252:            RS_LOGD("RSNode::~RSNode stop destroy proxy:%{public}d, skip: %{public}d", transaction == nullptr,
+253:                skipDestroyCommandInDestructor_);
+256:        std::unique_ptr<RSCommand> command = std::make_unique<RSBaseNodeDestroy>(id_);
+260:            command = std::make_unique<RSBaseNodeDestroy>(id_);
+267:        if (transactionProxy == nullptr || skipDestroyCommandInDestructor_) {
+268:            RS_LOGD("RSNode::~RSNode stop destroy proxy:%{public}d, skip: %{public}d", transactionProxy == nullptr,
+269:                skipDestroyCommandInDestructor_);
