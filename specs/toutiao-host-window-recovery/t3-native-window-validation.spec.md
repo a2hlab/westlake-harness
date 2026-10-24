@@ -8,6 +8,8 @@ tags: [native, window, validation, draft]
 ## 意图
 在61b一次可回滚短窗中验证已采认native候选的实际加载、正常桌面打开与最近任务关闭宿主后重开的信息流及触控。先核当前应用实际消费的单库payload、候选来源与精确回滚，再以新boot和新child的maps及SHA验生效；本契约的起草和lint不构成设备执行或候选签认。
 ## 已定决策
+- 2026-10-25 外环具名恢复例外 `restored_idle_exact_object`：旧版本身无法运行不能成为精确恢复的无限循环前置。仅当本窗原像已有真实映射来源及持久备份、原子回滚和不同boot的正常恢复重启有实际成功回执，持锁后两个时点均无任何头条进程且boot/host/唯一appspawn根身份不变、目标完整stat/SHA/metadata与本窗原像逐字段相同、非目标系统件与原电源值均恢复、最终截图已留存时，允许以该状态闭窗释锁。必须写baseline_actual_mapping_verified=false、mapping_now=not_running及historical_provenance，不称旧版健康或当前映射通过。后续普通部署可固定此恢复回执SHA，按同boot/角色/对象双检准入；候选新boot实际maps及三阶段真实画面/触控验收不变。对应例外不删除原失败原件，不影响冻结门；任何对象或身份不符仍recovery_required。
+- 合法后代集合在只读采样间变化时，可在20秒内最多3次重采完整绑定；仅boot/host/appspawn根/主child完全不变且后代谱系与UID合法时可重采。最终接受的一轮仍须完整身份稳定且全部目标映射核齐；核心身份、对象SHA/inode、未知谱系错误立即失败，不靠重启/点击/写入换条件。
 - 2026-10-25 T136进程谱系澄清：本契约的主child指唯一appspawn-x直接派生的头条进程，不按同名进程总数计独立启动。保留完整原始进程表；同名后代须有可追至主child的无环PPID链与相同应用UID，其已映射bridge逐项核对象/SHA，主child必须实际映射。两个直接主child、未知谱系、身份变化或对象不符仍拒绝；before/after身份夹持、候选published inode校验和旧child重关联断言不减弱。依据：eafd14真实主child7331与其同名后代8080，旧名称唯一性检查在既有PPID断言之前误拒。
 - 2026-10-25 外环具名准入例外 `idle-app-same-boot-restored-object`：T136恢复窗已核baseline-s30的真实maps/process-root/backing，之后同boot子进程退出，不再要求故障应用先启动才允许普通单库维护。仅当当前child数量恰为0、boot与host/parent的PID/birth/UID均和这份已恢复收据一致、目标fresh stat全部字段及完整SHA与原收据对象一致时，允许以`mapping_now=not_running`准入；收据文件SHA须固定进外环执行签认，持锁后再次核同一条件。若存在1个child仍走原严格maps检查，超过1个或任何身份/对象漂移均拒绝。本例外只适用于部署前，绝不替代新候选新boot新child实际maps验证、截图验收、冻结门或精确回滚。依据：T136 execute-20261025-024115-2e76dc/baseline-s30-binding.json及execute-20261025-024653-611cef fresh身份原件；当前未运行不宣称当前已映射。
 - 前置为t2最终源码manifest、真实构建日志、库完整SHA与CC/外环采认回执一致；候选以最新snapshot02的3291f76db0945f90b402ea61b14c3a912efbeecec9e0422af1a92fec95b8a819和最终审查为准，未齐时保持candidate_pending，不把旧build01的158c1740填为新候选。执行前外环另固定单写者、实际计划SHA及恢复材料。
@@ -30,6 +32,17 @@ tags: [native, window, validation, draft]
 - 本次起草阶段设备或远程调用、部署脚本；后续未经外环固定执行计划的设备写入。
 - 其他两板、root系统bridge、其他runtime件、APK数据、HAP/Java/JAR、原冻结源、停止的控制器/执行器/配置及其等价重试、REA、hook、进程信号、权限和例外表修改、推送。
 ## 验收标准
+场景: 故障基线未运行时精确恢复闭窗
+  审核: human
+  测试: host_window_native_validation_receipts
+  假设原像历史真实映射备份原子回滚新boot和完整对象恢复均有原件且持锁两次无头条进程
+  当核稳定角色非目标原电源最终截图和具名restored_idle_exact_object恢复回执
+  那么允许释锁但当前映射为not_running且baseline_actual_mapping_verified为false并且候选实际maps和可操作画面仍须另验
+场景: 合法后代变化只允许有界完整重采
+  测试: host_window_native_validation_receipts
+  假设采样间核心身份稳定而合法后代集合变化或核心身份对象谱系出现实质变化
+  当核20秒最多3次的完整采样原件
+  那么仅前一种可重采且最终稳定轮全部映射核齐才接受而后一种立即失败
 场景: 同名后代不冒充第二个独立启动
   测试: host_window_native_validation_receipts
   假设一个appspawn直接主child与同UID且可追溯的同名后代同时存在
@@ -84,7 +97,7 @@ tags: [native, window, validation, draft]
   当核恢复后新child映射基线非目标指纹原电源设置和最终截图
   那么仅证据完整才报告已恢复并释锁且缺项或超时不能写成全流程PASS
 ## 排除范围
-本次起草不实现收据检查器或部署执行器，不实际运行设备测试；测试选择器由后续执行任务实现，parse/lint通过不等于选择器已运行。系统WMS修改、控制器改造、全部bridge源码重建、随机退出归因、物理断电与永久封板不在本窗范围。
+本次起草不实现收据检查器或部署执行器，不实际运行设备测试；测试选择器由后续执行任务实现，parse/lint通过不等于选择器已运行。系统WMS修改、控制器改造、全部bridge源码重建、随机退出归因、物理断电与永久封板不在本窗范围。恢复例外只区分文件已恢复与旧应用未运行，不作为候选实测通过的替代。
 ## 问题
 - 当前payload的精确宿主可见路径、inode/标签与回滚原像还需同窗fresh证据；mountinfo推导不替代实际文件绑定。
 - 正常软件启动是否重拷或校验覆盖该payload由本实验回答，不是写前阻塞或额外审批；仅以新child真实maps/SHA判生效，不修改停止对象应对。
