@@ -1,0 +1,1 @@
+Boot1-04 completed all three externally reviewed feed and content-interaction stages, retained the candidate for boot2, restored power and released its lock. The first recreated response remained unknown; the second fresh response was usable. Raw result status=running is preserved, not rewritten. This is not audio/video or full-seal acceptance.

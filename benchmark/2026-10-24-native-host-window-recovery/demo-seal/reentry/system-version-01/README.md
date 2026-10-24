@@ -1,0 +1,1 @@
+Three explicit system version queries completed with transport and remote rc 0. Boot IDs before and after match the retained boot2. Raw argv, time bounds, stdout, stderr and return codes are pinned in results.json and copied to the persistent home evidence directory. No UI or runtime change was performed.

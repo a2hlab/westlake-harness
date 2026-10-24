@@ -1,6 +1,6 @@
 {
   "task": "T141",
-  "revision": "retain-09-content-after-multiframe",
+  "revision": "T141-content-multiframe-boot1-04",
   "serial": "61b0657200000000000000000324012c",
   "entry": "execute_retain.py",
   "execution_status": "not_executed_waiting_outer_receipt_per_phase",
@@ -107,8 +107,8 @@
   },
   "idle_exception": {
     "id": "T136-idle-app-same-boot-restored-object",
-    "source": "benchmark/2026-10-24-native-host-window-recovery/device-validation/t136/.private/execute-20261025-032931-2688cd/baseline-early-17-binding.json",
-    "source_sha256": "457d7b4bb8590fa1b51763b3170724a3bf1463d136cdd4fed969dd6586738718",
+    "source": "benchmark/2026-10-24-native-host-window-recovery/demo-seal/reentry/.private/execute-20261025-045533-7544e1/baseline-restored-early-13-binding.json",
+    "source_sha256": "0974d82d98451bd3be3f73e8aeed7c6b1c8cd1403d189c1bd59ddac54ca9108d",
     "contract_input": ".private/t136-native-validation-input/t3-native-window-validation-v4.spec.md",
     "contract_sha256": "f690c5effc36d250683d70e3d64a1e70c1b1b0bb7ef14a0ad175edda25297171",
     "predicate": "Exactly0 fresh children; boot and full host/parent identity equal pinned current restored binding; TARGET full stat/SHA/metadata equal that exact restored object; repeat under own lock. No hardcoded prior-run boot/PID.",
@@ -116,7 +116,7 @@
     "one_child": "Original strict current maps/process-root/backing bind",
     "more_than_one": "reject",
     "unchanged": "New-boot candidate actual mapping, three UI stages, frozen gate, exact unconditional rollback and budgets.",
-    "status": "pinned_to_v7_2688cd_restored_binding; outer must repin (steps SHA only) if a later window (e.g. v7 08) produces a newer restored binding",
+    "status": "pinned_to_T141_7544e1_actual_restored_mapping; candidate firstopen not passed and child exit preserved",
     "resolves_in": "repository where the writer runs this entry (peer worktree holds the private run directory)",
     "source_kind": "mapped_binding",
     "source_kind_rule": "mapped_binding: binding record without status/kind. restored_idle_exact_object: either the canonical T136 receipt (status=restored_idle_exact_object, released=true, baseline_actual_mapping_verified=false, mapping_now=not_running, no maps/health claim, identity_before/identity roles stable without article process; replayed from the real .private/t141-input/restored-idle-binding-t136.json c1697eb7...) or a T141-own kind receipt only together with its released result.json pinned in source_result_sha256. Repin source, source_sha256, source_kind (and source_result_sha256 for T141-own) together in steps only.",
@@ -200,8 +200,28 @@
   "content_after_review": {
     "source": "T136 execute_v9.py sha256 30cd65641928398bafe2dcf361f1edb5e905266cd67f47e990fba7be634191eb (stage content path)",
     "rule": "before the content touch require now+60 <= start+900 (otherwise no touch, failure path); content-after review deadline min(now+60, start+900); after usable re-read identity and require core_identity (boot, host, appspawn root, main child pid/birth/uid) unchanged; legal same-name descendant changes allowed; the stage returns the post-content identity",
-    "unchanged": "two boots, stage kinds, swipe/click rule, review schema, recovery reserve and frozen items",
-    "multiframe": "one content touch only; inside min(touch+60, start+900) take read-only frames >=2 s apart (max 8, none in the last 5 s), each with its own label/hash and review; unknown or feed+changed_from_feed=false = no change yet, keep observing; any other verdict, core identity change after any frame, review timeout or window end fails; pass only on a changed usable frame (no log substitutes)",
-    "basis": "ffd0d4 recreated: tap delivered (DOWN/UP handled) and ArticleInflowActivity resumed ~1.0 s after UP while the single 2 s frame fell inside the activity switch; a single frame cannot separate late drawing from no drawing. Not a claim that the cause is timing only."
+    "unchanged": "two boots, stage kinds, swipe/click rule, review schema, recovery reserve and frozen items"
+  },
+  "layout_collection_retry": {
+    "known_error": "DumpLayout failed:Get window nodes failed",
+    "predicate": "local rc0, empty stderr, exact trimmed error body, remote rc1; preserve original failure-marker refusals",
+    "attempts_max": 3,
+    "retry_window_seconds_after_first_failure": 10,
+    "retry_gap_seconds": 1,
+    "call_timeout": "first15s; later min(15, retry window remaining, operation budget remaining), never start below2s",
+    "fresh_targets": true,
+    "no_stale_layout_or_screenshot": true,
+    "failure": "all other errors or exhaustion => existing exact rollback; app pass requires actual new screenshots and reviews"
+  },
+  "content_after_observation": {
+    "single_touch_only": true,
+    "window_seconds": 60,
+    "operation_limit_seconds": 900,
+    "max_frames": 8,
+    "labels": "content-after then content-after-2..8; fresh per-image SHA/review",
+    "pending_verdicts": "unknown; feed only with changed_from_feed false",
+    "success": "actual new changed usable image plus unchanged boot/host/root/main identity; legal descendant change allowed",
+    "negative": "all other verdicts, identity drift, review timeout, exhaustion fail and exact rollback",
+    "scope": "No native change; avoids treating one early unchanged frame as proof no eventual response. No existing failed image reclassified."
   }
 }
