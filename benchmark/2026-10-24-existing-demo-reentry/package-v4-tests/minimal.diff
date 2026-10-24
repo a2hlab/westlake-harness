@@ -1,0 +1,27 @@
+--- v3/initial_stage_candidate.py
++++ v4/initial_stage_candidate.py
+@@ -134,11 +134,14 @@
+         publish_once(RUN/'unlock-reservation.json',{'xy':xy,'at':wall()})
+         ui_changed=True
+         r,t,e=call('unlock-once',unlock_cmd('uitest uiInput swipe '+' '.join(map(str,xy))+' 600'),90);good(r,t,e)
++        settle_start=time.monotonic();settle_end=min(settle_start+1.5,clock['monotonic']+90)
++        while time.monotonic()<settle_end:time.sleep(min(.1,max(0,settle_end-time.monotonic())))
++        publish_once(RUN/'unlock-settle.json',{'start_monotonic':settle_start,'end_monotonic':time.monotonic(),'requested_seconds':1.5,'deadline_monotonic':clock['monotonic']+90})
+         remote='/data/local/tmp/t123-'+RUN.name+'-unlocked'
+         r,t,e=call('unlocked-layout-command',unlock_cmd('uitest dumpLayout -p '+remote+'.json',15),90);good(r,t,e)
+         r,t,e=call('unlocked-layout-recv',{'argv':base[:3]+['file','recv',remote+'.json',str(RUN/'unlocked-layout.json')],'timeout_seconds':15},90);good(r,t,e)
+         unlocked=json.loads(subprocess.check_output([sys.executable,str(selector),str(RUN/'unlocked-layout.json')],text=True))
+-        if unlocked['credential_like_ids'] or unlocked['lock_ids']:raise RuntimeError('unlock not confirmed or credentials visible')
++        publish_once(RUN/'unlocked-layout-flags.json',{'lock_ids':unlocked['lock_ids'],'credential_like_ids':unlocked['credential_like_ids'],'interpretation':'Tree flags are not a visual verdict; always capture post-swipe evidence before deciding.'})
+         for j,post in enumerate(PLAN['phases'][2]['post_uitest']):
+             r,t,e=call('unlock-post-'+str(j),post,90);good(r,t,e)
+             if j==1:assert power(t)=={'base':pre['power_preimage']['base'],'override':600000}
+@@ -146,6 +149,8 @@
+         final_image=RUN/'unlocked.jpeg'
+         r,t,e=call('unlocked-image-recv',{'argv':base[:3]+['file','recv',remote+'.jpeg',str(final_image)],'timeout_seconds':15},90);good(r,t,e)
+         assert final_image.stat().st_size>100 and final_image.read_bytes()[:2]==b'\xff\xd8'
++        print('POST_UNLOCK_IMAGE_READY '+json.dumps({'path':str(final_image),'image_sha256':hashlib.sha256(final_image.read_bytes()).hexdigest(),'lock_ids':unlocked['lock_ids'],'credential_like_ids':unlocked['credential_like_ids']}),flush=True)
++        if unlocked['credential_like_ids']:raise RuntimeError('credential-like controls: evidence saved; stop without further UI')
+     expected={'run_id':RUN.name,'serial':PLAN['serial'],'boot':PLAN['baseline_receipt']['boot'],
+               'image':final_image.name,'image_sha256':hashlib.sha256(final_image.read_bytes()).hexdigest()}
+     publish_once(RUN/'final-image-ready.json',dict(expected,elapsed=time.monotonic()-clock['monotonic']))

@@ -1110,3 +1110,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-24 T122：内环HDC list超时10秒不证明离线/权限拒绝；同入口外环只读复查与2.50秒补采成功。7011/9860完整日志与旧128KiB前缀逐字节一致，新增421kB含jdwx线程HTML标题302→JSON异常，但其后仍有WMC/RS进展；标题不证明HTTP状态，未绑定请求/消费方不可判API缺陷。
 
 - 2026-10-24 T123：离线图标11例通过不等于实机录制入口通过；现场拼接的等待循环只看cleanup-now、不消费outer-review，导致有效T+66.388图审仍T+120清理，后继同名回执又覆盖。上板前冻结实际将运行的完整入口，测试走锁屏→解锁图→最终图审→同worker继续/统一cleanup；不在持板窗内写后继脚本或用PID交接，回执独占创建。
+
+- 2026-10-24 T123：103406已目读白屏图（950622b1…）对应的dumpLayout仍有ScreenLockRootComponent且visible=true/opacity1/focused=true；110011按该节点提前停止而未采解锁后图，不能据此判解锁失败。一次普通上滑后先保存真实截图，锁节点残留仅记证据，外环目读最终画面再决定Home；凭据/未知仍停止。
