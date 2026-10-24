@@ -15,4 +15,6 @@
 | FLAW-011 | open | Verification, Measurement | — | — |
 | FLAW-012 | open | Execution, Verification | — | — |
 
+| FLAW-013 | open | Verification, Measurement | — | — |
+
 retired_prose: 0
