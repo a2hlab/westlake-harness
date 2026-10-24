@@ -1,0 +1,758 @@
+{
+  "verdict": "BLOCKED_FOR_DEVICE_USE_P6_FAILURE_HOME_MISSING",
+  "candidate_sha256": "a96a1d3aaa182e3e681d5929c3997b34b513bf0f820306e62993b6bd87fb9df0",
+  "author_results_sha256": "738c1fce84250d959b53e3cf26a70d67f89047134e6e32c294fdd69de7e5b5e2",
+  "independent_tests": {
+    "rc": 0,
+    "methods": 15,
+    "stderr_sha256": "5d54f4f1eff5db6562c2b73593902ff54f2a951c581464374df54312dc665c9f",
+    "actual_argv_ref": "$REVIEW/.private/final-01/tests.argv.json",
+    "entry": "fixture_cli.py uses runpy.run_path(candidate, run_name=__main__), entire run_after_review intact",
+    "isolation": "receipt_candidate module simulated; real selector subprocess local JSON only; production receipt helper separately tested with a local Python print command",
+    "additional_retained_full_entry_cases": [
+      {
+        "mode": "valid",
+        "rc": 0,
+        "home": 1,
+        "click": 1,
+        "unlock_ui": 1,
+        "cleanup_restore": 1,
+        "cleanup_unlock": 1,
+        "same_process": true,
+        "elapsed_fake_s": 186.73999999999998,
+        "cleanup": {
+          "power_changed_or_attempted": true,
+          "restored": true,
+          "lock_released": true,
+          "power_after": {
+            "base": 30000,
+            "override": 10000
+          }
+        },
+        "stage": "SAMPLING_ENDED",
+        "shot_count": 5
+      },
+      {
+        "mode": "absent",
+        "rc": 0,
+        "home": 0,
+        "click": 0,
+        "unlock_ui": 1,
+        "cleanup_restore": 1,
+        "cleanup_unlock": 1,
+        "same_process": true,
+        "elapsed_fake_s": 120.06000000000003,
+        "cleanup": {
+          "power_changed_or_attempted": true,
+          "restored": true,
+          "lock_released": true,
+          "power_after": {
+            "base": 30000,
+            "override": 10000
+          }
+        },
+        "stage": "INITIAL_IMAGE_READY_PAUSED_NO_HOME_NO_CLICK",
+        "shot_count": 0
+      },
+      {
+        "mode": "invalid",
+        "rc": 0,
+        "home": 0,
+        "click": 0,
+        "unlock_ui": 1,
+        "cleanup_restore": 1,
+        "cleanup_unlock": 1,
+        "same_process": true,
+        "elapsed_fake_s": 120.06000000000003,
+        "cleanup": {
+          "power_changed_or_attempted": true,
+          "restored": true,
+          "lock_released": true,
+          "power_after": {
+            "base": 30000,
+            "override": 10000
+          }
+        },
+        "stage": "INITIAL_IMAGE_READY_PAUSED_NO_HOME_NO_CLICK",
+        "shot_count": 0
+      },
+      {
+        "mode": "continuation_error",
+        "rc": 0,
+        "home": 1,
+        "click": 0,
+        "unlock_ui": 1,
+        "cleanup_restore": 1,
+        "cleanup_unlock": 1,
+        "same_process": true,
+        "elapsed_fake_s": 66.59000000000006,
+        "cleanup": {
+          "power_changed_or_attempted": true,
+          "restored": true,
+          "lock_released": true,
+          "power_after": {
+            "base": 30000,
+            "override": 10000
+          }
+        },
+        "stage": "STOP",
+        "shot_count": 0
+      }
+    ]
+  },
+  "verified": {
+    "final_binding_after_unlock": {
+      "initial_sha256": "bdb87459c4276b9da88ef017880baf46639891722a2f46c6e5251afe28492241",
+      "final_sha256": "6575379a1660b8d081694862667537e4c51798cd8c29109bc2b7bad8caaae13b",
+      "different_images": true,
+      "review_image": "unlocked.jpeg",
+      "consumed_elapsed_s": 66.50000000000001,
+      "exact_final_sha_match": true
+    },
+    "exclusive_receipt_duplicate_refusal": "Actual receipt_candidate.call first executes synthetic Python; second same label raises FileExistsError before execution and keeps all prior bytes. publish_once also rejects existing target.",
+    "cleanup": "One restore and unlock in each of4 full-candidate cases; does not establish completeness of contract cleanup.",
+    "deadlines": "Original T0 retained; absent/invalid outer review cleans up at120.06 fake seconds; valid click before180, observations below360; production call caps subprocess timeout to original deadline remaining."
+  },
+  "blockers": [
+    {
+      "id": "B1",
+      "kind": "implementation_contract_gap",
+      "source": "initial_stage_candidate.py:129-153",
+      "requirement": "plan.json /phases/6/failure_only_home_before_T360 and home_rule; t123-existing-demo-ordinary-reentry.spec.md:14",
+      "finding": "Finally has power restore/readback and lock release only; never reads or issues failure_only_home_before_T360. UI-changed unsuccessful cases belowT360 therefore lack required return to desktop.",
+      "test_gap": "Absent/invalid full cases assert home=0 without distinguishing continuation Home from cleanup Home.15PASS does not validate this requirement.",
+      "minimum_resolution": "Implement only the already-planned guarded failure Home, bounded beforeT360 with ownership/identity checks; preserve usable/feed no-Home and late cleanup reserve. Test distinct cleanup-Home versus continuation-Home outcomes."
+    }
+  ],
+  "launch_package": {
+    "status": "PENDING_FINAL_PACKAGE_AND_P0_INTEGRATION_ACCEPTANCE",
+    "observed_p0": "p0.py:2 imports receipt_candidate;4 publishes clock;6-20 executes P0 and pins hashes;22 refuses nonPASS;23-24 calls candidate with packaged selector.",
+    "limits": [
+      "Full-candidate fixture precreates P0_PASS and simulates receipt module; it does not execute launch-package p0.py.",
+      "Production receipt_candidate.py:5 requires fresh context.json and plan.json in run directory. Author is still preparing publication; missing generated context is not itself a claimed final-package defect.",
+      "Final package needs frozen manifest, dependencies, preparation invocation and real P0 admission/negative paths verified offline before readiness claim."
+    ],
+    "sampled_files": [
+      {
+        "path": "$PEER/launch-package-v1/p0.py",
+        "sha256": "12ac39d3277835c05a1c34e6089cb44f077b44cff2d111f1785eda3531ea7905"
+      },
+      {
+        "path": "$PEER/launch-package-v1/receipt_candidate.py",
+        "sha256": "2da3897599de0cb8ed68bea7cfc189ab78b498259b832d338312b34c7386b2d8"
+      },
+      {
+        "path": "$PEER/launch-package-v1/initial_stage_candidate.py",
+        "sha256": "a96a1d3aaa182e3e681d5929c3997b34b513bf0f820306e62993b6bd87fb9df0"
+      },
+      {
+        "path": "$PEER/launch-package-v1/review_wait.py",
+        "sha256": "577de73bee07fa6bdce366d758ffc1230754294002c19a96d9cb800841fe39d7"
+      },
+      {
+        "path": "$PEER/launch-package-v1/select_icon.py",
+        "sha256": "1dccd9f0ba8e12fad91d4f9186f20beb61296e3e92271b416f0f3b12197c1a65"
+      },
+      {
+        "path": "$PEER/launch-package-v1/plan.json",
+        "sha256": "5828f898630f46548933e632d695a0a814c9e55aad0ba96449d458a56156f6b4"
+      },
+      {
+        "path": "$PEER/launch-package-v1/lab_paths.py",
+        "sha256": "9617af4913ba62282420e2d34bc662484c6667e6715e16783b16f66dbac7e626"
+      }
+    ]
+  },
+  "input_pins": [
+    {
+      "path": "recorder-fix/initial_stage_candidate.py",
+      "sha256": "a96a1d3aaa182e3e681d5929c3997b34b513bf0f820306e62993b6bd87fb9df0",
+      "source_unchanged_at_end": true
+    },
+    {
+      "path": "recorder-fix/receipt_candidate.py",
+      "sha256": "2da3897599de0cb8ed68bea7cfc189ab78b498259b832d338312b34c7386b2d8",
+      "source_unchanged_at_end": true
+    },
+    {
+      "path": "recorder-fix/review_wait.py",
+      "sha256": "577de73bee07fa6bdce366d758ffc1230754294002c19a96d9cb800841fe39d7",
+      "source_unchanged_at_end": true
+    },
+    {
+      "path": "recorder-fix/fixture_cli.py",
+      "sha256": "7c55af946e9186519720a99d0c19bd3964e7f02ff5461b8868fd88b2802fa774",
+      "source_unchanged_at_end": true
+    },
+    {
+      "path": "recorder-fix/test_review_wait.py",
+      "sha256": "9007464c1d0e80e2d82b0878f50913908c11eb27264294d556f2d7a1540300c7",
+      "source_unchanged_at_end": true
+    },
+    {
+      "path": "recorder-fix/README.md",
+      "sha256": "2e9e4f5721c6bc47688c8854e4f5278ff83cc9b4bca17ed7066e2237c6a8caf1",
+      "source_unchanged_at_end": true
+    },
+    {
+      "path": "recorder-fix/tests-04.stdout",
+      "sha256": "90a8185e9b2a2aa7d9e41e254c678fa3c42b799644e25049bc31e3c27e00d67e",
+      "source_unchanged_at_end": true
+    },
+    {
+      "path": "recorder-fix/tests-04.stderr",
+      "sha256": "deb15da9b0c314caacb59f8f255f79a7326ecc5af43bf02ab23dd2d0401e614e",
+      "source_unchanged_at_end": true
+    },
+    {
+      "path": "plan.json",
+      "sha256": "5828f898630f46548933e632d695a0a814c9e55aad0ba96449d458a56156f6b4",
+      "source_unchanged_at_end": true
+    },
+    {
+      "path": "select_icon.py",
+      "sha256": "1dccd9f0ba8e12fad91d4f9186f20beb61296e3e92271b416f0f3b12197c1a65",
+      "source_unchanged_at_end": true
+    }
+  ],
+  "private_index": [
+    {
+      "path": "$REVIEW/.private/final-01/input-pins.json",
+      "sha256": "c0a33ae1961350e0761529eb6dc8843de02ca851d33455ccd85e506631c4c26e",
+      "bytes": 1322
+    },
+    {
+      "path": "$REVIEW/.private/final-01/plan.json",
+      "sha256": "5828f898630f46548933e632d695a0a814c9e55aad0ba96449d458a56156f6b4",
+      "bytes": 24536
+    },
+    {
+      "path": "$REVIEW/.private/final-01/recorder-fix/README.md",
+      "sha256": "2e9e4f5721c6bc47688c8854e4f5278ff83cc9b4bca17ed7066e2237c6a8caf1",
+      "bytes": 4024
+    },
+    {
+      "path": "$REVIEW/.private/final-01/recorder-fix/fixture_cli.py",
+      "sha256": "7c55af946e9186519720a99d0c19bd3964e7f02ff5461b8868fd88b2802fa774",
+      "bytes": 4452
+    },
+    {
+      "path": "$REVIEW/.private/final-01/recorder-fix/initial_stage_candidate.py",
+      "sha256": "a96a1d3aaa182e3e681d5929c3997b34b513bf0f820306e62993b6bd87fb9df0",
+      "bytes": 11610
+    },
+    {
+      "path": "$REVIEW/.private/final-01/recorder-fix/receipt_candidate.py",
+      "sha256": "2da3897599de0cb8ed68bea7cfc189ab78b498259b832d338312b34c7386b2d8",
+      "bytes": 3084
+    },
+    {
+      "path": "$REVIEW/.private/final-01/recorder-fix/results.json",
+      "sha256": "738c1fce84250d959b53e3cf26a70d67f89047134e6e32c294fdd69de7e5b5e2",
+      "bytes": 6364
+    },
+    {
+      "path": "$REVIEW/.private/final-01/recorder-fix/review_wait.py",
+      "sha256": "577de73bee07fa6bdce366d758ffc1230754294002c19a96d9cb800841fe39d7",
+      "bytes": 4602
+    },
+    {
+      "path": "$REVIEW/.private/final-01/recorder-fix/test_review_wait.py",
+      "sha256": "9007464c1d0e80e2d82b0878f50913908c11eb27264294d556f2d7a1540300c7",
+      "bytes": 8216
+    },
+    {
+      "path": "$REVIEW/.private/final-01/recorder-fix/tests-04.stderr",
+      "sha256": "deb15da9b0c314caacb59f8f255f79a7326ecc5af43bf02ab23dd2d0401e614e",
+      "bytes": 1605
+    },
+    {
+      "path": "$REVIEW/.private/final-01/recorder-fix/tests-04.stdout",
+      "sha256": "90a8185e9b2a2aa7d9e41e254c678fa3c42b799644e25049bc31e3c27e00d67e",
+      "bytes": 16
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/clock.json",
+      "sha256": "f66489846d065ea77c7275ccc3df71b647980a94b0e55945f62ac06083668197",
+      "bytes": 74
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/final-image-ready.json",
+      "sha256": "d0e75c62358fa5a3add16e921f3b6a61138e7b424088e475da27f4ac24b1aa65",
+      "bytes": 279
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/fixture-result.json",
+      "sha256": "0e72597a4f4e0f1b4d0ac75f82194326e2745f2c9de67d050e98db1bb5a9425c",
+      "bytes": 10334
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/initial-layout.json",
+      "sha256": "406b2a2cc6fa376f0bbc61f854ad8c1064f1ef23ea65e90fb119244ea4d5693a",
+      "bytes": 116
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/initial-ready.json",
+      "sha256": "8ddb02d4c14ed1fda84fd7f916b48c80bac386fdff499f20ac51e5328f553253",
+      "bytes": 608
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/initial.jpeg",
+      "sha256": "bdb87459c4276b9da88ef017880baf46639891722a2f46c6e5251afe28492241",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/inner-review-consumed.json",
+      "sha256": "aab4acc7dbd5f125549a978b610dd541c1da84c416362efaf4b9fd67cea8da73",
+      "bytes": 355
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/inner-unlock-review.json",
+      "sha256": "2c3ab0a1ae71769646255808c4602ed79d40058db249b806623af49512b87b4f",
+      "bytes": 294
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/lock-tuple.txt",
+      "sha256": "2fa0a0fe2e6668499c98d46d9ff194571d1370cafaa05fdf563f6e295d43e563",
+      "bytes": 35
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/owner-result.json",
+      "sha256": "55d22d9a38c46fdd8d53cc1396c74ed44616ed594fae657b8644765f0d466b02",
+      "bytes": 1173
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/p0-result.json",
+      "sha256": "92f40f4188769be98c032b2f56c968eb2988c6a7713860029194bbcb0ed850be",
+      "bytes": 133
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/test.argv.json",
+      "sha256": "a35466011dd459a26f19ddb5b9bc19fd41a6eff28d4a8a1b9946656333607896",
+      "bytes": 329
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/test.receipt.json",
+      "sha256": "ed079222925605aff1d35e9d7e01f23221206786415010ecbed2c8c0a4c3f3e4",
+      "bytes": 141
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/test.start",
+      "sha256": "eb677afcc0988028b53b8d18ce727b9c837ffe905a4dcf32fe45cea0dd886b51",
+      "bytes": 32
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/test.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/test.stdout",
+      "sha256": "d67e8edce42e466db2e26674d1d7ea01242668ee2775b5abc498e92d8c6c925f",
+      "bytes": 2094
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/unlock-reservation.json",
+      "sha256": "7e6508be59a19e44c663bad715fa83803bd527874a19ce6b03f0ae59b911d344",
+      "bytes": 98
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/unlocked-layout.json",
+      "sha256": "4b108eee8ae19c313b866094081977743c3ff8c2fb554ec1929a827345087cba",
+      "bytes": 84
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-absent/unlocked.jpeg",
+      "sha256": "6575379a1660b8d081694862667537e4c51798cd8c29109bc2b7bad8caaae13b",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/clock.json",
+      "sha256": "f66489846d065ea77c7275ccc3df71b647980a94b0e55945f62ac06083668197",
+      "bytes": 74
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/final-image-ready.json",
+      "sha256": "32e1e8b42cfb21bd34bc81d8fe0bda933e160d1e5724457087d7d5a06c263540",
+      "bytes": 291
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/fixture-result.json",
+      "sha256": "5f59af26ec13f5a4cced7c6a1b0fe9e51191117089b2d963abd7fd660f4d5c96",
+      "bytes": 11375
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/initial-layout.json",
+      "sha256": "406b2a2cc6fa376f0bbc61f854ad8c1064f1ef23ea65e90fb119244ea4d5693a",
+      "bytes": 116
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/initial-ready.json",
+      "sha256": "60a1af9f7fd7baf2cb7420dbd035dc7217be838dd58501a1b0444c991efdceed",
+      "bytes": 620
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/initial.jpeg",
+      "sha256": "bdb87459c4276b9da88ef017880baf46639891722a2f46c6e5251afe28492241",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/inner-review-consumed.json",
+      "sha256": "80721ce7877adc7cc3d0b84adb7d719b0ea2e91f5ab55d4b5453bd32aabc3232",
+      "bytes": 367
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/inner-unlock-review.json",
+      "sha256": "303370fd0d18e25f993c88cf9ec9f694978c510ae07fc4ee8a5d5e41c4dd8d15",
+      "bytes": 306
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/lock-tuple.txt",
+      "sha256": "2fa0a0fe2e6668499c98d46d9ff194571d1370cafaa05fdf563f6e295d43e563",
+      "bytes": 35
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/outer-review.json",
+      "sha256": "83cd4c69efb1ce91ba688e71627126ede7a26d7f746d29e340006212caff7486",
+      "bytes": 483
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/owner-result.json",
+      "sha256": "0cb2fd94aeaafa76400c1406fc00257b55c301e73c64e3b3774c086f15bf5ed2",
+      "bytes": 325
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/p0-result.json",
+      "sha256": "92f40f4188769be98c032b2f56c968eb2988c6a7713860029194bbcb0ed850be",
+      "bytes": 133
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/review-consumed.json",
+      "sha256": "4b7849060691c554d5e62ed0e1556d969f11840a57ef14f892df22101d3407b7",
+      "bytes": 752
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/test.argv.json",
+      "sha256": "2d19f12c32b8367c42367f92583f13da761ae77f6d754b9b6fd0aafa90e1c62e",
+      "bytes": 353
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/test.receipt.json",
+      "sha256": "f6faa799a8e6b8922f78b2ddbe4487da33bdb9b7b31c0c4a4d8b5d9e7774b71d",
+      "bytes": 141
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/test.start",
+      "sha256": "d3df6c2bb6e5623f5c3800a312b9d2fabf21ecf5565963e15cc4cc9f4067c1e1",
+      "bytes": 32
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/test.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/test.stdout",
+      "sha256": "ef7b7341fea42e0dca81f3f620e90bc024a0da424cd91d0de18f796ed086cc30",
+      "bytes": 1387
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/unlock-reservation.json",
+      "sha256": "7e6508be59a19e44c663bad715fa83803bd527874a19ce6b03f0ae59b911d344",
+      "bytes": 98
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/unlocked-layout.json",
+      "sha256": "4b108eee8ae19c313b866094081977743c3ff8c2fb554ec1929a827345087cba",
+      "bytes": 84
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-continuation_error/unlocked.jpeg",
+      "sha256": "6575379a1660b8d081694862667537e4c51798cd8c29109bc2b7bad8caaae13b",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/clock.json",
+      "sha256": "f66489846d065ea77c7275ccc3df71b647980a94b0e55945f62ac06083668197",
+      "bytes": 74
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/final-image-ready.json",
+      "sha256": "2fba499c600c61f2cabc0ecd9cd9179471a03e65f36b666890fc8d6828fe1529",
+      "bytes": 280
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/fixture-result.json",
+      "sha256": "520dc1617150564540be051045ecd9d992bf425d5058ac04facd4a01d3e0a539",
+      "bytes": 10341
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/initial-layout.json",
+      "sha256": "406b2a2cc6fa376f0bbc61f854ad8c1064f1ef23ea65e90fb119244ea4d5693a",
+      "bytes": 116
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/initial-ready.json",
+      "sha256": "a5ce284381373a1f92813d9c0b3118d3006baedadb80dca7a725f83e263905e1",
+      "bytes": 609
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/initial.jpeg",
+      "sha256": "bdb87459c4276b9da88ef017880baf46639891722a2f46c6e5251afe28492241",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/inner-review-consumed.json",
+      "sha256": "a212251ac40991d4b17068fdb705f8d32f024171abe3d93e322f5ede5dc498e9",
+      "bytes": 356
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/inner-unlock-review.json",
+      "sha256": "b739dbad1a6b8d970dc81251eddce18fceaab395b22b012e149b384e3cffaad4",
+      "bytes": 295
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/lock-tuple.txt",
+      "sha256": "2fa0a0fe2e6668499c98d46d9ff194571d1370cafaa05fdf563f6e295d43e563",
+      "bytes": 35
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/outer-review.json",
+      "sha256": "e5f8a493bf981791a420f996c7e0e4faac8bea0b34e7bdeb54e9e2fd91db6714",
+      "bytes": 446
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/owner-result.json",
+      "sha256": "5d0a85c927328ca2ea3c5f414d5566a726a8df6f30a9480551b2c5cb8bdb4dbc",
+      "bytes": 988
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/p0-result.json",
+      "sha256": "92f40f4188769be98c032b2f56c968eb2988c6a7713860029194bbcb0ed850be",
+      "bytes": 133
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/test.argv.json",
+      "sha256": "fa0aa47ddc63fc1a33e107e12ae0262dd46d1574d436b96ca5e56c4337626c28",
+      "bytes": 331
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/test.receipt.json",
+      "sha256": "1fc24b70d4beae71705ddf6a192621df7c2f15a8dcf323b7e161d8f5b25f2f0e",
+      "bytes": 141
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/test.start",
+      "sha256": "c1af78e78daa2d8741293866276ad88359582658c8968eb4475687a0854a088b",
+      "bytes": 32
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/test.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/test.stdout",
+      "sha256": "dee11fd37e782919c8f3be97b92ec3d650bfeade624ff14f6978bb41859759dd",
+      "bytes": 1912
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/unlock-reservation.json",
+      "sha256": "7e6508be59a19e44c663bad715fa83803bd527874a19ce6b03f0ae59b911d344",
+      "bytes": 98
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/unlocked-layout.json",
+      "sha256": "4b108eee8ae19c313b866094081977743c3ff8c2fb554ec1929a827345087cba",
+      "bytes": 84
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-invalid/unlocked.jpeg",
+      "sha256": "6575379a1660b8d081694862667537e4c51798cd8c29109bc2b7bad8caaae13b",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-summary.json",
+      "sha256": "ca92df6c8f403cf8272c03c052b50435c6e0b543cafeefdd14e514a6eaa2c59c",
+      "bytes": 1917
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/clock.json",
+      "sha256": "f66489846d065ea77c7275ccc3df71b647980a94b0e55945f62ac06083668197",
+      "bytes": 74
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/final-image-ready.json",
+      "sha256": "f7c72750895486b0f12e05e38e636d47ae3b41b61f413427fc666cace1fb3760",
+      "bytes": 278
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/fixture-result.json",
+      "sha256": "afef8e80d9f8b1cba78a5fa85ea28d79fa85698f0950c84d0fbc4837317bfe8e",
+      "bytes": 25334
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/initial-layout.json",
+      "sha256": "406b2a2cc6fa376f0bbc61f854ad8c1064f1ef23ea65e90fb119244ea4d5693a",
+      "bytes": 116
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/initial-ready.json",
+      "sha256": "c0e244a61b2ede124402ee0aa398470ec75d3242e6b5b480a7f10799f56c22da",
+      "bytes": 607
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/initial.jpeg",
+      "sha256": "bdb87459c4276b9da88ef017880baf46639891722a2f46c6e5251afe28492241",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/inner-review-consumed.json",
+      "sha256": "8aa3681fa55fb2197530ad21fadf9538d8a82b7644664731c13242efa557d6a2",
+      "bytes": 354
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/inner-unlock-review.json",
+      "sha256": "fa9a47ed31c8fbe5a67973749bb47922c1d1ed05db89063a339f45e8db7fffe1",
+      "bytes": 293
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/lock-tuple.txt",
+      "sha256": "2fa0a0fe2e6668499c98d46d9ff194571d1370cafaa05fdf563f6e295d43e563",
+      "bytes": 35
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/outer-review.json",
+      "sha256": "2fca17e76cebb8cb71e201575d45d8643396be9083e4533dc2df23fb6d2470bb",
+      "bytes": 470
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/owner-result.json",
+      "sha256": "cb79f6e7c02bc582a2ed1115ccc1e6662a09f005085fefe2fd591a43a429da23",
+      "bytes": 372
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/p0-result.json",
+      "sha256": "92f40f4188769be98c032b2f56c968eb2988c6a7713860029194bbcb0ed850be",
+      "bytes": 133
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/page-0-selection.json",
+      "sha256": "c4d1e63ffb67a922274c246e87d4368bda4b74b9375bd92e252109ce62a3fba5",
+      "bytes": 821
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/page-0.json",
+      "sha256": "7604bd1fa7cd3a4ce4c0a6c5e8333429ff254d38fe29c2df6e654678af92ae4f",
+      "bytes": 315
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/review-consumed.json",
+      "sha256": "ed6991b391527a94838addda35b069cc938ad1e391ae40438638bd60d6ad731e",
+      "bytes": 739
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/s10.jpeg",
+      "sha256": "6575379a1660b8d081694862667537e4c51798cd8c29109bc2b7bad8caaae13b",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/s120.jpeg",
+      "sha256": "6575379a1660b8d081694862667537e4c51798cd8c29109bc2b7bad8caaae13b",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/s30.jpeg",
+      "sha256": "6575379a1660b8d081694862667537e4c51798cd8c29109bc2b7bad8caaae13b",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/s60.jpeg",
+      "sha256": "6575379a1660b8d081694862667537e4c51798cd8c29109bc2b7bad8caaae13b",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/s90.jpeg",
+      "sha256": "6575379a1660b8d081694862667537e4c51798cd8c29109bc2b7bad8caaae13b",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/single-click-reservation.json",
+      "sha256": "8a633fb185a51e91c64ba0f57863719bf640d9333fdde1217a1205cceaa1595c",
+      "bytes": 126
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/test.argv.json",
+      "sha256": "3ccec489ed1dd73895780089101a610496912b874a6ffe7c51e82e6fb36ebdcd",
+      "bytes": 327
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/test.receipt.json",
+      "sha256": "f4c3e05e2b7aba63020ccaea3eb1c012ffc37bad870a31bbea2ba09d4aaed463",
+      "bytes": 141
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/test.start",
+      "sha256": "0b06f83e76193de2942f27234d9ef926e7a3fda65cf108da9c29883bbd01414c",
+      "bytes": 32
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/test.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/test.stdout",
+      "sha256": "8e2efb9fad63390c0608eac8397b0ba6583c1614bec0251a445edc98b3782b21",
+      "bytes": 2855
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/unlock-reservation.json",
+      "sha256": "7e6508be59a19e44c663bad715fa83803bd527874a19ce6b03f0ae59b911d344",
+      "bytes": 98
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/unlocked-layout.json",
+      "sha256": "4b108eee8ae19c313b866094081977743c3ff8c2fb554ec1929a827345087cba",
+      "bytes": 84
+    },
+    {
+      "path": "$REVIEW/.private/final-01/retained-valid/unlocked.jpeg",
+      "sha256": "6575379a1660b8d081694862667537e4c51798cd8c29109bc2b7bad8caaae13b",
+      "bytes": 202
+    },
+    {
+      "path": "$REVIEW/.private/final-01/select_icon.py",
+      "sha256": "1dccd9f0ba8e12fad91d4f9186f20beb61296e3e92271b416f0f3b12197c1a65",
+      "bytes": 3380
+    },
+    {
+      "path": "$REVIEW/.private/final-01/tests.argv.json",
+      "sha256": "4a729f67c882578da3888c53e5d09940c80dad55351cfe9d47cac1ee16cd4b19",
+      "bytes": 176
+    },
+    {
+      "path": "$REVIEW/.private/final-01/tests.receipt.json",
+      "sha256": "f46921953cf373614c60475cc5179e586edb44d37bc99b2fd5b9be5dd5360f26",
+      "bytes": 140
+    },
+    {
+      "path": "$REVIEW/.private/final-01/tests.start",
+      "sha256": "d11a20866214faae2ceb39bda7af34256ca3e02dd4985873e02a9deacf868d3b",
+      "bytes": 32
+    },
+    {
+      "path": "$REVIEW/.private/final-01/tests.stderr",
+      "sha256": "5d54f4f1eff5db6562c2b73593902ff54f2a951c581464374df54312dc665c9f",
+      "bytes": 1605
+    },
+    {
+      "path": "$REVIEW/.private/final-01/tests.stdout",
+      "sha256": "90a8185e9b2a2aa7d9e41e254c678fa3c42b799644e25049bc31e3c27e00d67e",
+      "bytes": 16
+    }
+  ],
+  "device_calls": 0,
+  "peer_files_modified": false,
+  "author_commit": null
+}

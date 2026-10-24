@@ -1,0 +1,123 @@
+{
+  "status": "OFFLINE_CANDIDATE_ONLY_PENDING_OUTER_REVIEW",
+  "device_calls_after_stop": 0,
+  "third_run_started": false,
+  "old_run_directories_written_after_preservation_instruction": false,
+  "old_sources": {
+    "initial_stage.py": {
+      "path": "$HOME/.local/share/westlake/existing-demo-reentry-20261024/run-20261024-103406/initial_stage.py",
+      "sha256": "04d3dd5c9762b6ac959e4f6b9e0332721612a541d2c2f4f462c7c617d8dc49a2"
+    },
+    "continue_stage.py": {
+      "path": "$HOME/.local/share/westlake/existing-demo-reentry-20261024/run-20261024-103406/continue_stage.py",
+      "sha256": "8b791b6e02c2337d540aac071b09313518e64ea5cad7deb328f8893372966b95"
+    },
+    "outer-review.json": {
+      "path": "$HOME/.local/share/westlake/existing-demo-reentry-20261024/run-20261024-103406/outer-review.json",
+      "sha256": "5a72105b193fd9dc11e4310943ae25eeabcae2de5a5280c83d2850246a956eac"
+    },
+    "cleanup-restore.json": {
+      "path": "$HOME/.local/share/westlake/existing-demo-reentry-20261024/run-20261024-103406/cleanup-restore.json",
+      "sha256": "20e55dcfca13d732d3fcbfabeee893f6666d7ee029ceb006696b9308a2287920"
+    },
+    "cleanup-power.json": {
+      "path": "$HOME/.local/share/westlake/existing-demo-reentry-20261024/run-20261024-103406/cleanup-power.json",
+      "sha256": "c4f9b418137e5832537fc287e9e710f07e13ca4910d855f19c0de98d524053f7"
+    },
+    "cleanup-power.stdout": {
+      "path": "$HOME/.local/share/westlake/existing-demo-reentry-20261024/run-20261024-103406/cleanup-power.stdout",
+      "sha256": "b0db50e20b268914dac0107d584180b23f7f839080ec6f19b1d0a016973bf567"
+    },
+    "cleanup-unlock.json": {
+      "path": "$HOME/.local/share/westlake/existing-demo-reentry-20261024/run-20261024-103406/cleanup-unlock.json",
+      "sha256": "e31162cf26c76579e70d0d9230c14ffa053c9f2002a9db4c49405c7c2bf0e868"
+    },
+    "cleanup-final-held.json": {
+      "path": "$HOME/.local/share/westlake/existing-demo-reentry-20261024/run-20261024-103406/cleanup-final-held.json",
+      "sha256": "e8c4a1852effe7b345d5db2aa40c91cf77b7aee055a953e14c7f2068a9a1ddcb"
+    },
+    "cleanup-final-held.stdout": {
+      "path": "$HOME/.local/share/westlake/existing-demo-reentry-20261024/run-20261024-103406/cleanup-final-held.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "cleanup-final-held.stderr": {
+      "path": "$HOME/.local/share/westlake/existing-demo-reentry-20261024/run-20261024-103406/cleanup-final-held.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stage-result.json": {
+      "path": "$HOME/.local/share/westlake/existing-demo-reentry-20261024/run-20261024-103406/stage-result.json",
+      "sha256": "f749d11c62da1576bf1fb53b2fad6f8c4653d486b39617f1c6f91078321d6fbb"
+    }
+  },
+  "defects": [
+    {
+      "source": "initial_stage.py",
+      "lines": [
+        31,
+        32,
+        33
+      ],
+      "finding": "Wait loop never reads outer-review.json; valid receipt at elapsed66.388396 ignored; timer cleanup at120.622380."
+    },
+    {
+      "source": "continue_stage.py",
+      "lines": [
+        10,
+        13,
+        16
+      ],
+      "finding": "Separate late continuation required now<120 and attempted fixed-host-PID transfer; failed before transfer/UI."
+    },
+    {
+      "finding": "Late continuation reused stage-result.json, cleanup-held and cleanup-before-unlock receipt stems. Their prior bytes are unavailable; no reconstruction claimed. Original restore/power/unlock/final-held receipts survive."
+    }
+  ],
+  "fix": {
+    "review_file": "outer-review.json",
+    "inner_visual_file": "inner-unlock-review.json",
+    "final_binding_file": "final-image-ready.json",
+    "consumption_file": "review-consumed.json",
+    "result_file": "owner-result.json",
+    "single_owner": true,
+    "fixed_pid_handoff_removed": true,
+    "final_image_bound_after_unlock_capture": true,
+    "original_deadlines_seconds": [
+      120,
+      180,
+      360,
+      480
+    ],
+    "publication": "fsync complete temp + atomic hard-link create-if-absent + temp unlink; never overwrite destination",
+    "command_receipts": "exclusive label.reserved, stdout/stderr xb; separate immutable begin.json/end .json"
+  },
+  "validation": {
+    "command": "python3 benchmark/2026-10-24-existing-demo-reentry/recorder-fix/test_review_wait.py",
+    "rc": 0,
+    "test_methods": 15,
+    "full_candidate_cli_cases": [
+      "lock->unlock->review66.388396->oneHome->oneClick->fiveSamples->oneCleanup",
+      "no outer review -> noHome/noClick -> original deadline cleanup",
+      "wrong boot review -> noHome/noClick -> original deadline cleanup",
+      "Home exception -> noClick -> oneCleanup"
+    ],
+    "actual_candidate_test": "fixture_cli.py runs initial_stage_candidate.py with runpy as __main__; entire P4 function intact; only ordinary HDC/lock I/O simulated; real select_icon.py subprocess runs on fixtures",
+    "old_counterexample": "valid outer-review exists but original wait body advances to120 without consuming it",
+    "limitations": [
+      "No board execution after stop; no third observation window.",
+      "Initial candidate setup still requires a fresh private directory/context/clock/P0 result, and reviewed integration before execution.",
+      "Component reviewed_tail tests are not counted as replacement for candidate CLI coverage.",
+      "tests-02 used a P4 spy and is superseded for integration proof by tests-03/04 full CLI cases.",
+      "First unsaved test attempt failed due to fixture held-label matching; no device calls."
+    ]
+  },
+  "candidate_files": {
+    "initial_stage_candidate.py": "a96a1d3aaa182e3e681d5929c3997b34b513bf0f820306e62993b6bd87fb9df0",
+    "receipt_candidate.py": "2da3897599de0cb8ed68bea7cfc189ab78b498259b832d338312b34c7386b2d8",
+    "review_wait.py": "577de73bee07fa6bdce366d758ffc1230754294002c19a96d9cb800841fe39d7",
+    "fixture_cli.py": "7c55af946e9186519720a99d0c19bd3964e7f02ff5461b8868fd88b2802fa774",
+    "test_review_wait.py": "9007464c1d0e80e2d82b0878f50913908c11eb27264294d556f2d7a1540300c7",
+    "README.md": "2e9e4f5721c6bc47688c8854e4f5278ff83cc9b4bca17ed7066e2237c6a8caf1",
+    "tests-04.stdout": "90a8185e9b2a2aa7d9e41e254c678fa3c42b799644e25049bc31e3c27e00d67e",
+    "tests-04.stderr": "deb15da9b0c314caacb59f8f255f79a7326ecc5af43bf02ab23dd2d0401e614e"
+  }
+}
