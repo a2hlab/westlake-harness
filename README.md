@@ -713,6 +713,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-24-native-host-window-recovery/evidence-delivery/building-guide-01/`** | Recorded five-unit source compilation and baseline-object relink prerequisites; public sources versus persistent private build inputs, with reproduction limits. |
 | **`benchmark/2026-10-24-api-reference-git-audit/`** | Historical API reference identities confirmed through Git metadata; preserves the existing full-table render failure without rewriting old evidence. |
 
+| **[benchmark/2026-10-24-native-host-window-recovery/device-validation/t136/](benchmark/2026-10-24-native-host-window-recovery/device-validation/t136/)** | Native reentry observation and exact recovery tools, historical receipts, 13 portable offline suites / 160 checks. |
 | **[benchmark/2026-10-25-toutiao-native-runtime-observations/three-stage-accepted/](benchmark/2026-10-25-toutiao-native-runtime-observations/three-stage-accepted/)** | T136: one candidate boot, three desktop reentry stages with actual touch; exact rollback; two-boot retention pending. |
 | **`benchmark/2026-10-25-toutiao-native-runtime-observations/`** | Partial candidate UI success and a separate child-exit white-screen run; original screenshots, identity receipts, exact rollback, no seal claim. |
 | **`benchmark/2026-10-24-native-host-window-recovery/demo-seal/reentry/`** | Two-boot reentry retention verifier; tested offline, real retention and multimedia acceptance pending. |
