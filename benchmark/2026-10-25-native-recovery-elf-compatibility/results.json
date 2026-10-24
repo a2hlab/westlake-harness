@@ -49,9 +49,9 @@
  "findings": [
   {
    "id": "F1",
-   "severity": "unknown-pending (was 'informational')",
-   "title": "12 new undefined symbols: NO provider verification possible in this lane (downgraded from 'covered')",
-   "detail": "DT_NEEDED identity only proves the dependency LIST is unchanged; it does not prove any of the 12 new UND symbols is exported by those libraries on the 61b image. Provider verification via local build inputs was attempted and denied (home-dir sandbox). Each of the 12 symbols is UNKNOWN-pending: expected classes (Rosen WindowSessionProperty/Parcel from libwm*/libipc_single; std::_h from libc++; uid/lstat/open from libc) remain hypotheses, not verified facts.",
+   "severity": "resolved at build-input level (runtime still untested)",
+   "title": "12 new undefined symbols: 12/12 provider-verified in the full candidate-link input set",
+   "detail": "WindowSessionProperty::Unmarshalling & ::SetSubWindowLevel -> libwindow_scene_common.z.so; Parcel::WriteUint8/ReadUint8 -> libutils.z.so; mutex::try_lock & thread::join -> libc++.so; getegid/geteuid/getgid/getuid/lstat/open -> libc.so. Every provider is itself in the candidate's DT_NEEDED list.",
    "limit": "resolution: readelf dynsym of actual provider files from build inputs or the 61b image; or decisive runtime load test with exact rollback."
   }
  ],
@@ -70,17 +70,29 @@
   "permission_changes": 0,
   "pushes": 0
  },
- "revision": 2,
+ "revision": 4,
  "f1_correction_note": "Outer re-review: identical DT_NEEDED does NOT prove the 12 symbols exist on the target; 'all covered' was an unverified conclusion. Correction attempted per outer instruction.",
  "provider_verification": {
-  "attempted_inputs": [
-   "$HOME/.local/share/westlake/wmc-baseline-build-20261024/",
-   "$HOME/.local/share/westlake/native-host-recovery-build-20261024/"
-  ],
-  "probe": "ls on each directory (read-only)",
-  "result": "Operation not permitted (sandbox denies home-dir reads; same denial class as all session). argv.json and provider .so files therefore NOT readable in this lane.",
-  "per_symbol_status": "UNKNOWN (provider file SHA + defined-symbol listing not obtainable here)",
-  "constraint_honored": "no further probing, no tool install, no board operation, no scope expansion",
-  "non_blocking": "per outer instruction this does NOT block the normal rollback-capable load verification; runtime load on 61b remains the decisive check"
+  "status": "COMPLETED: 12/12 verified defined in actual candidate-link build inputs (NOT current 61b device export proof)",
+  "package": ".private/t137-provider-input/ (5/5 SHA-256 verified against manifest.json; outer-copied exact link argv providers)",
+  "method": "llvm-readelf --dyn-symbols per provider; defined names matched modulo @@VER suffix",
+  "raw": ".private/t137-raw/prov.*.sym.txt + t137-provider-table.json (private)",
+  "table": {
+   "_ZN4OHOS5Rosen21WindowSessionProperty13UnmarshallingERNS_6ParcelE": "libwindow_scene_common.z.so (defined; in candidate DT_NEEDED and full-link manifest)",
+   "_ZN4OHOS5Rosen21WindowSessionProperty17SetSubWindowLevelEj": "libwindow_scene_common.z.so (defined; in candidate DT_NEEDED and full-link manifest)",
+   "_ZN4OHOS6Parcel10WriteUint8Eh": "libutils.z.so (defined; in candidate DT_NEEDED and full-link manifest)",
+   "_ZN4OHOS6Parcel9ReadUint8Ev": "libutils.z.so (defined; in candidate DT_NEEDED and full-link manifest)",
+   "_ZNSt3__h5mutex8try_lockEv": "libc++.so (defined)",
+   "_ZNSt3__h6thread4joinEv": "libc++.so (defined)",
+   "getegid": "libc.so (defined)",
+   "geteuid": "libc.so (defined)",
+   "getgid": "libc.so (defined)",
+   "getuid": "libc.so (defined)",
+   "lstat": "libc.so (defined)",
+   "open": "libc.so (defined)"
+  },
+  "summary": "Full 44-lib link set (.private/t137-provider-input/ manifest-full-link.json, 56 files incl. toolchain extras) closes the earlier 4 UNKNOWNs: Rosen WindowSessionProperty::Unmarshalling & ::SetSubWindowLevel are exported by libwindow_scene_common.z.so; Parcel::WriteUint8/ReadUint8 by libutils.z.so — both libraries are already in the candidate's DT_NEEDED list. All 12 new UND symbols therefore have a defined provider among the candidate's own declared dependencies, as built.",
+  "interpretation_limit": "Build-input evidence only (exact link argv providers). Not current-61b-export proof, not device-load success; the runtime image may differ from these inputs.",
+  "non_blocking": "per outer ruling, does not block the normal rollback-capable load verification"
  }
 }
