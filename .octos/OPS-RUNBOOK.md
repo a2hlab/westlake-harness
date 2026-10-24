@@ -338,3 +338,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-25 用户指定故障接替顺序：CC → Codex → octoscode＋GLM。用于额度耗尽、已确认长时间断流、工具故障或普通工程任务无法完成；先确认原执行者及在途命令终态，保留源码/产物/原件与锁交接，再派下一车道，不并发写同板、不重复未知结果的写命令。明确的安全/内容拒绝不通过换模型、会话或入口规避；只停止对应请求，独立正常任务仍可按此顺序调度。REA继续仅交Codex或octoscode，不交CC。
 
 - 2026-10-25 T136正常库维护：新boot后有界等待PowerManager完整base/state，再进入普通解锁；按新截图确认USB仅充电弹窗，不改选项，按fresh布局最多12页定位精确EntryAbility。应用child恰0时只可用外环具名同boot/host/parent及精确已恢复对象例外部署，写前后均核stat/SHA，不拿历史maps假报当前映射；候选生效仍须实际新child maps。
+
+- 2026-10-25 T141观察工具：仅精确DumpLayout failed:Get window nodes failed且local0/remote1/空stderr/无通用失败marker可用新路径最多3次重采；首调用15秒，后两次共10秒并受窗口预算限制，其余错误照常失败。触摸只发一次；content-after及后续编号图共用60秒/总900秒预算，unknown或feed且changed=false仅为本帧未变化，逐帧核core身份，实际changed+usable才过；当前工具81离线用例通过不代替设备验收。

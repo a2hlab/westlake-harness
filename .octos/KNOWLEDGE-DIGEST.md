@@ -1135,3 +1135,7 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-25 T136：头条主child应取唯一appspawn-x直接子进程；同名后代不是第二次独立启动，保留全进程表并核PPID链/UID/已映射库，名称总数唯一性会误拒真实恢复。图审专职短上下文，锁屏/Recent回执用swipe，feed触控才用touch_coordinates；图审漏期和回执错误不得归为应用白屏失败。
 
 - 2026-10-25 T136分型：s30实际maps通过不代表后续child还活着；aa4d97 s60/s90原进程表已无article，后段白屏是child退出后宿主留白，不能归为持续活child重挂失败。HOST-SESSION只打印非Idle/Throttled，无日志不证明observer未启动；见toutiao-native-runtime-observations。
+
+- 2026-10-25 T136 b503ee实际通过：候选3291首开s60滑动、同host桌面重进s5滑动、新host10617/b33507保留child6715/b9179后s5信息流并点击打开正文均经真实图审；480.560秒精确回滚/电源/释锁。仅一个app一个boot，不等于两boot留板、音视频或物理断电封板；见toutiao-native-runtime-observations/three-stage-accepted。
+
+- 2026-10-25 T141 ffd0d4点击分型：完整6915日志证DOWN/UP已达应用且handled，新Activity RESUMED；触控后约1.3–1.7秒截图仍原feed，不证明无handler/进程已退出。Show邻近时戳与条件估算截图区间重叠，不能强称其晚于截图；应同一次触摸后在原60秒内取多帧真实变化，禁止日志代上屏、重置预算或追改失败原图。见native-host-window-recovery/demo-seal/reentry/boot1-02-click-review。
