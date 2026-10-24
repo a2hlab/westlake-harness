@@ -1,0 +1,362 @@
+{
+  "contract": {
+    "name": "Native host recovery evidence and mainline delivery",
+    "intent": "把t4实际留板结果与源码、真实构建、部署身份、截图和收据完整绑定到master，完成REQ-TTHOST的可复现交付。只在实测达到对应程度后推进API候选状态；仓内材料齐备、远端一致与设备封板是分别核验的事实。",
+    "must": [
+      "以实际截图与正常触控验证；主机新建、子进程存活、窗口dump或脚本PASS不能替代可操作的信息流。",
+      "修改前核现役产物、源码/工具链和构建配方；不将候选Java快照替代更晚的现役DEX。",
+      "同一host前后台不重建producer；host更换后的session恢复必须覆盖身份、窗口关联、surface与输入一致性。",
+      "单板单写者，先只读检查、持锁、备回滚；运行时构建保留原stdout/stderr/rc及SHA，冻结项按既有规则处理。",
+      "仍停止此前已被审查停止的动作及其等价重试；不读取停止的控制器/执行器/配置，不修改安全约束。",
+      "源码、构建配方、API记录与实测证据进入实际主干master；软件重启和物理断电证据分别标注。"
+    ],
+    "must_not": [],
+    "decisions": [
+      "前置是t4两个独立软件boot与最终候选保留的真实验收；若t4失败、仅t3临时成功并回滚或仍执行阻断，本任务可整理已有材料但最终发布保持pending，不写白屏已修复。",
+      "固定源码/依赖/工具链/原构建argv、输入SHA和实时stdout/stderr/rc，逐项追到最终候选与设备实际映射SHA。原对象重链接不能写成全源码重编，旧build01/失败日志保留，snapshot02及后继有依据的实际版本明确区分。",
+      "交付t3临时窗回滚与t4最终保留的独立收据、boot及PID/birth/UID、maps dev/inode/process-root SHA、锁/时间/电源/metadata、两boot逐阶段截图与触控视频图审、facts及精确基线恢复材料。原件大日志/二进制使用持久归档及大小/SHA，公开仓不放凭据、用户邮箱、完整邮件头或私人工单ID。",
+      "API进度仅对本候选追加实测证据与限制，不把lint/fixture标成实测。两条历史derive-candidate.sh引用预期c2855d54而当前0862a334的红灯单列保留，不盲替SHA，不导出恢复该历史停止对象。当前renderer因旧引用拒绝时只更新候选JSON并明确HTML/CSV待更新，不能宣称全表全绿；该已知红灯不否定有实际证据的新候选状态。",
+      "冻结规则仍需至少两个不同app过墙且其中至少一个t20截图亮；只有头条的两个boot不等于两个app。未满足规则不改frozen registry，不宣称公共API已冻结。",
+      "源码、配方、收据索引、截图和API候选记录落实际master后，由有权外环按用户明示推送；核本地master和远端master同一交付commit及清单对象SHA。仅worktree文件、内环ACK或旧远端提交不算完成。此规划任务不自行推送或远程访问。",
+      "原CC停止与支持链保留；最新product_bug_report_acknowledged仅为自动确认收到，execution_not_restored。只有后继真实受支持恢复证据可改变执行状态，不因交付文档修改就解除停止。"
+    ],
+    "allowed_changes": [
+      "benchmark/2026-10-24-native-host-window-recovery/evidence-delivery/**",
+      "benchmark/2026-10-19-api-progress-update/observations.json",
+      "tools/spec-checks/tests/host_window_native_evidence_delivery.rs"
+    ],
+    "forbidden": [
+      "修改既有观察对象历史SHA或事实、冻结registry、renderer、停止对象或历史正文、运行时和设备、原t1/t2/t3及冻结执行计划、权限、未经明示推送。"
+    ],
+    "out_of_scope": [],
+    "completion_criteria": [
+      {
+        "name": "实测发布链完整",
+        "steps": [
+          {
+            "kind": "given",
+            "text": "t4留板已通过且源码构建部署图审与恢复原件齐全",
+            "params": [],
+            "span": {
+              "start_line": 29,
+              "end_line": 29,
+              "start_col": 0,
+              "end_col": 0
+            }
+          },
+          {
+            "kind": "when",
+            "text": "核公开清单持久归档与master远端交付commit",
+            "params": [],
+            "span": {
+              "start_line": 30,
+              "end_line": 30,
+              "start_col": 0,
+              "end_col": 0
+            }
+          },
+          {
+            "kind": "then",
+            "text": "候选完整SHA与实际运行件一致且截图和输入视频结论逐项绑定人工审核并且本地远端master清单一致",
+            "params": [],
+            "span": {
+              "start_line": 31,
+              "end_line": 31,
+              "start_col": 0,
+              "end_col": 0
+            }
+          }
+        ],
+        "test_selector": {
+          "filter": "host_window_native_evidence_delivery_receipts"
+        },
+        "tags": [],
+        "review": "human",
+        "span": {
+          "start_line": 26,
+          "end_line": 31,
+          "start_col": 0,
+          "end_col": 0
+        }
+      },
+      {
+        "name": "缺实际收据或构建错绑",
+        "steps": [
+          {
+            "kind": "given",
+            "text": "只有fixture或只重链原对象却标全源码重编或实际候选与源码构建SHA不符",
+            "params": [],
+            "span": {
+              "start_line": 34,
+              "end_line": 34,
+              "start_col": 0,
+              "end_col": 0
+            }
+          },
+          {
+            "kind": "when",
+            "text": "核交付来源",
+            "params": [],
+            "span": {
+              "start_line": 35,
+              "end_line": 35,
+              "start_col": 0,
+              "end_col": 0
+            }
+          },
+          {
+            "kind": "then",
+            "text": "最终发布为pending或failed并列精确缺项且不宣布白屏修复",
+            "params": [],
+            "span": {
+              "start_line": 36,
+              "end_line": 36,
+              "start_col": 0,
+              "end_col": 0
+            }
+          }
+        ],
+        "test_selector": {
+          "filter": "host_window_native_evidence_delivery_receipts"
+        },
+        "tags": [],
+        "span": {
+          "start_line": 32,
+          "end_line": 36,
+          "start_col": 0,
+          "end_col": 0
+        }
+      },
+      {
+        "name": "历史API红灯不偷换",
+        "steps": [
+          {
+            "kind": "given",
+            "text": "历史两引用仍预期c2855d54且当前0862a334导致渲染拒绝",
+            "params": [],
+            "span": {
+              "start_line": 39,
+              "end_line": 39,
+              "start_col": 0,
+              "end_col": 0
+            }
+          },
+          {
+            "kind": "when",
+            "text": "追加本候选的真实观测",
+            "params": [],
+            "span": {
+              "start_line": 40,
+              "end_line": 40,
+              "start_col": 0,
+              "end_col": 0
+            }
+          },
+          {
+            "kind": "then",
+            "text": "原观察对象不变且红灯单列并允许候选JSON已更新而HTML和CSV保持pending而不冒称全表通过",
+            "params": [],
+            "span": {
+              "start_line": 41,
+              "end_line": 41,
+              "start_col": 0,
+              "end_col": 0
+            }
+          }
+        ],
+        "test_selector": {
+          "filter": "host_window_native_evidence_delivery_receipts"
+        },
+        "tags": [],
+        "span": {
+          "start_line": 37,
+          "end_line": 41,
+          "start_col": 0,
+          "end_col": 0
+        }
+      },
+      {
+        "name": "未达两个app冻结条件",
+        "steps": [
+          {
+            "kind": "given",
+            "text": "仅头条两个boot通过",
+            "params": [],
+            "span": {
+              "start_line": 44,
+              "end_line": 44,
+              "start_col": 0,
+              "end_col": 0
+            }
+          },
+          {
+            "kind": "when",
+            "text": "核公共API交付状态",
+            "params": [],
+            "span": {
+              "start_line": 45,
+              "end_line": 45,
+              "start_col": 0,
+              "end_col": 0
+            }
+          },
+          {
+            "kind": "then",
+            "text": "记录单app实测和未冻结且frozen registry保持不变",
+            "params": [],
+            "span": {
+              "start_line": 46,
+              "end_line": 46,
+              "start_col": 0,
+              "end_col": 0
+            }
+          }
+        ],
+        "test_selector": {
+          "filter": "host_window_native_evidence_delivery_receipts"
+        },
+        "tags": [],
+        "span": {
+          "start_line": 42,
+          "end_line": 46,
+          "start_col": 0,
+          "end_col": 0
+        }
+      },
+      {
+        "name": "留板或远端发布未完成",
+        "steps": [
+          {
+            "kind": "given",
+            "text": "最终设备已回滚基线或仅有本地commit或远端master对象不一致",
+            "params": [],
+            "span": {
+              "start_line": 49,
+              "end_line": 49,
+              "start_col": 0,
+              "end_col": 0
+            }
+          },
+          {
+            "kind": "when",
+            "text": "核完成状态",
+            "params": [],
+            "span": {
+              "start_line": 50,
+              "end_line": 50,
+              "start_col": 0,
+              "end_col": 0
+            }
+          },
+          {
+            "kind": "then",
+            "text": "分别报告留板未完成或发布未完成且不以文档收件代替最终交付",
+            "params": [],
+            "span": {
+              "start_line": 51,
+              "end_line": 51,
+              "start_col": 0,
+              "end_col": 0
+            }
+          }
+        ],
+        "test_selector": {
+          "filter": "host_window_native_evidence_delivery_receipts"
+        },
+        "tags": [],
+        "span": {
+          "start_line": 47,
+          "end_line": 51,
+          "start_col": 0,
+          "end_col": 0
+        }
+      },
+      {
+        "name": "视觉与支持状态不升级",
+        "steps": [
+          {
+            "kind": "given",
+            "text": "图审缺失或仅支持自动确认收到而无执行恢复证据",
+            "params": [],
+            "span": {
+              "start_line": 55,
+              "end_line": 55,
+              "start_col": 0,
+              "end_col": 0
+            }
+          },
+          {
+            "kind": "when",
+            "text": "核对交付结论与公开隐私字段",
+            "params": [],
+            "span": {
+              "start_line": 56,
+              "end_line": 56,
+              "start_col": 0,
+              "end_col": 0
+            }
+          },
+          {
+            "kind": "then",
+            "text": "视觉保持pending_review或执行保持blocked且公开材料不含邮箱邮件头或私人标识",
+            "params": [],
+            "span": {
+              "start_line": 57,
+              "end_line": 57,
+              "start_col": 0,
+              "end_col": 0
+            }
+          }
+        ],
+        "test_selector": {
+          "filter": "host_window_native_evidence_delivery_receipts"
+        },
+        "tags": [],
+        "review": "human",
+        "span": {
+          "start_line": 52,
+          "end_line": 57,
+          "start_col": 0,
+          "end_col": 0
+        }
+      }
+    ]
+  },
+  "codebase_context": {
+    "files": [],
+    "test_functions": []
+  },
+  "task_sketch": {
+    "groups": [
+      {
+        "order": 1,
+        "scenarios": [
+          "实测发布链完整",
+          "缺实际收据或构建错绑",
+          "历史API红灯不偷换",
+          "未达两个app冻结条件",
+          "留板或远端发布未完成",
+          "视觉与支持状态不升级"
+        ],
+        "boundary_paths": [
+          "benchmark/2026-10-24-native-host-window-recovery/evidence-delivery/**",
+          "benchmark/2026-10-19-api-progress-update/observations.json",
+          "tools/spec-checks/tests/host_window_native_evidence_delivery.rs"
+        ],
+        "test_selectors": [
+          "host_window_native_evidence_delivery_receipts",
+          "host_window_native_evidence_delivery_receipts",
+          "host_window_native_evidence_delivery_receipts",
+          "host_window_native_evidence_delivery_receipts",
+          "host_window_native_evidence_delivery_receipts",
+          "host_window_native_evidence_delivery_receipts"
+        ]
+      }
+    ]
+  },
+  "warnings": [
+    "Allowed Changes path not found: benchmark/2026-10-24-native-host-window-recovery/evidence-delivery/** (resolved to benchmark/2026-10-24-native-host-window-recovery/planning/benchmark/2026-10-24-native-host-window-recovery/evidence-delivery)",
+    "Allowed Changes path not found: benchmark/2026-10-19-api-progress-update/observations.json (resolved to benchmark/2026-10-24-native-host-window-recovery/planning/benchmark/2026-10-19-api-progress-update/observations.json)",
+    "Allowed Changes path not found: tools/spec-checks/tests/host_window_native_evidence_delivery.rs (resolved to benchmark/2026-10-24-native-host-window-recovery/planning/tools/spec-checks/tests/host_window_native_evidence_delivery.rs)"
+  ]
+}
