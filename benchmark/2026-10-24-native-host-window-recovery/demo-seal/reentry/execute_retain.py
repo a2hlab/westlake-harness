@@ -29,6 +29,8 @@ IDLE_SOURCE=REPO/STEPS['idle_exception']['source']
 IDLE_SOURCE_SHA=STEPS['idle_exception']['source_sha256']
 IDLE_SOURCE_KIND=STEPS['idle_exception'].get('source_kind','mapped_binding')  # mapped_binding | restored_idle_exact_object
 NO_EARLY_MAPPING='no actual baseline mapping within90s early observation'
+LAYOUT_TRANSIENT='DumpLayout failed:Get window nodes failed'  # the only UITest error that may be re-dumped
+CALL_FAIL_MARKERS=('[Fail]','Connect server failed','Permission denied','not found')  # same markers call() refuses
 IDLE_SOURCE_RESULT_SHA=STEPS['idle_exception'].get('source_result_sha256')  # required only for a T141-own kind receipt
 NOTE=MAIN/'scripts/lab/board_note.sh'
 BOARD=MAIN/'.octos/boards/app-lighting.md'
@@ -115,12 +117,12 @@ class Window:
         self.result={'status':'running','runtime_result':'pending_review','device_commands':0}
         print('RUN '+str(self.run),flush=True)
     def elapsed(self):return time.monotonic()-self.start if self.start is not None else 0
-    def call(self,label,argv,allow_failure=False):
+    def call(self,label,argv,allow_failure=False,timeout=15):
         if self.start is not None and self.elapsed()>=(1800 if (self.recovery or self.closing) else 900):raise RuntimeError('window deadline')
-        self.n+=1;d=self.run/(f'{self.n:04d}-'+label);d.mkdir();r=dict(argv=argv,start_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),start_monotonic=time.monotonic(),timeout_seconds=15)
+        self.n+=1;d=self.run/(f'{self.n:04d}-'+label);d.mkdir();r=dict(argv=argv,start_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),start_monotonic=time.monotonic(),timeout_seconds=timeout)
         save(d/'command.json',r)
         with (d/'stdout').open('wb') as o,(d/'stderr').open('wb') as e:
-            try:r['local_rc']=subprocess.run(argv,stdout=o,stderr=e,timeout=15).returncode
+            try:r['local_rc']=subprocess.run(argv,stdout=o,stderr=e,timeout=timeout).returncode
             except subprocess.TimeoutExpired:r['local_rc']=124
         r.update(end_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),end_monotonic=time.monotonic(),stdout_sha256=digest(d/'stdout'),stderr_sha256=digest(d/'stderr'));save(d/'receipt.json',r)
         s=(d/'stdout').read_text(errors='replace');e=(d/'stderr').read_text(errors='replace')
@@ -209,12 +211,39 @@ class Window:
     def screen(self,label):
         self.keepawake(label)
         remote='/data/local/tmp/t136-'+self.run.name+'-'+label
-        self.shell(label+'-layout','uitest dumpLayout -p '+q(remote+'.json'));self.keepawake(label+'-post-layout')
-        self.call(label+'-layout-recv',[HDC,'-t',SERIAL,'file','recv',remote+'.json',str(self.run/(label+'.layout.json'))])
+        layout=self.dump_layout(label,remote);self.keepawake(label+'-post-layout')
+        self.call(label+'-layout-recv',[HDC,'-t',SERIAL,'file','recv',layout,str(self.run/(label+'.layout.json'))])
         self.shell(label+'-capture','snapshot_display -f '+q(remote+'.jpeg'))
         self.call(label+'-recv',[HDC,'-t',SERIAL,'file','recv',remote+'.jpeg',str(self.run/(label+'.jpeg'))])
         pic=dict(run=self.run.name,label=label,image_sha256=digest(self.run/(label+'.jpeg')),layout_sha256=digest(self.run/(label+'.layout.json')))
         save(self.run/(label+'.image.json'),pic);print('IMAGE_READY '+json.dumps(dict(pic,path=str(self.run/(label+'.jpeg')))),flush=True);return pic
+    def dump_layout(self,label,remote):
+        # Attempt 1 is the original dump (15 s call). Only the exact known transient (local rc0, no stderr, no call()
+        # failure marker, remote rc1, body before the marker exactly LAYOUT_TRANSIENT) may be re-dumped: at most 2 more attempts inside a 10 s window that starts
+        # when attempt 1 returns, 1 s apart, each call timeout clipped to min(15, window left, operation budget left)
+        # and not started below 2 s. Worst case: 15 s + 10 s. Each attempt writes its own new run-unique target (no
+        # earlier layout reused); every attempt keeps its raw stdout/stderr/rc receipt. Any other outcome is refused.
+        limit=None if self.start is None else self.start+(1750 if (self.recovery or self.closing) else 900)
+        window_end=None;attempts=self.result.setdefault('layout_attempts',[])
+        for attempt in (1,2,3):
+            target=remote+('' if attempt==1 else '-retry'+str(attempt))+'.json'
+            timeout=15
+            if attempt>1:
+                timeout=min(15,window_end-time.monotonic(),(limit-time.monotonic()) if limit is not None else 15)
+                if timeout<2:raise RuntimeError('layout dump: known transient, no retry budget left '+label)
+            step=label+'-layout'+('' if attempt==1 else '-retry'+str(attempt))
+            r,s,e=self.call(step,[HDC,'-t',SERIAL,'shell','uitest dumpLayout -p '+q(target)+'; r=$?; echo T136_UI_RC:$r'],True,timeout)
+            body,marker,remote_rc=s.rstrip().rpartition('T136_UI_RC:')
+            clean=r['local_rc']==0 and not e.strip() and marker!='' and not any(t in s for t in CALL_FAIL_MARKERS)
+            if clean and remote_rc=='0':
+                if attempt>1:attempts.append(dict(label=label,attempt=attempt,receipt=f'{self.n:04d}-'+step,outcome='ok'))
+                return target
+            known=clean and remote_rc=='1' and body.strip()==LAYOUT_TRANSIENT  # exact body, nothing else mixed in
+            attempts.append(dict(label=label,attempt=attempt,receipt=f'{self.n:04d}-'+step,local_rc=r['local_rc'],remote_rc=remote_rc if marker else None,known_transient=known))
+            if not known:raise RuntimeError('layout dump failed (not the known transient) '+label)
+            if attempt==3:raise RuntimeError('layout dump: known transient persisted after 3 attempts '+label)
+            if window_end is None:window_end=time.monotonic()+10
+            time.sleep(1.0)
     def review(self,pic,deadline,wait=True,context='desktop',allowed_touch=('click','swipe')):
         p=self.run/(pic['label']+'.review.json')
         while time.monotonic()<deadline:

@@ -1,6 +1,6 @@
 """Offline dry-run tests for execute_retain.py. No device, network or HDC subprocess is used:
 every device-facing Window method is replaced by an in-memory fake."""
-import importlib.util, json, tempfile, unittest
+import importlib.util, json, os, tempfile, unittest
 from pathlib import Path
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location('execute_retain', HERE.parent / 'execute_retain.py')
@@ -330,6 +330,66 @@ class ContentAfterV9(unittest.TestCase):
     def test_legal_descendant_change_after_usable_accepted(self):
         after = ident(extra=[DESC]); out, _, _, res = self.go(after)
         self.assertEqual(out, after); self.assertEqual(res['stage_touches'][0]['touch_kind'], 'click')
+
+FAKE_HDC = r"""#!/usr/bin/env python3
+import json, os, re, sys, time
+from pathlib import Path
+q = Path(os.environ['FAKE_HDC_QUEUE']); args = sys.argv[1:]
+if args[2] == 'file':  # -t SERIAL file recv REMOTE LOCAL
+    Path(args[5]).write_text('{"layout": "' + args[4] + '"}'); sys.exit(0)
+cmd = args[3]
+if 'uitest dumpLayout' in cmd:
+    queue = json.loads(q.read_text()); out = queue.pop(0); q.write_text(json.dumps(queue))
+    time.sleep(out.get('sleep', 0)); sys.stdout.write(out['stdout']); sys.stderr.write(out.get('stderr', '')); sys.exit(out.get('rc', 0))
+token = re.search(r'echo (T136_REMOTE_[0-9a-f]+):', cmd).group(1); print(token + ':0')
+"""
+
+class LayoutRetryProduction(unittest.TestCase):
+    """Production Window.screen/dump_layout/call against a local fake hdc executable (no device)."""
+    OK = dict(stdout='T136_UI_RC:0\n'); TR = dict(stdout='DumpLayout failed:Get window nodes failed\nT136_UI_RC:1\n')
+    def go(self, queue, budget_left=None):
+        t = tempfile.TemporaryDirectory(); self.addCleanup(t.cleanup); d = Path(t.name)
+        hdc = d / 'hdc'; hdc.write_text(FAKE_HDC); hdc.chmod(0o755); (d / 'queue.json').write_text(json.dumps(queue))
+        saved = X.HDC; X.HDC = str(hdc); self.addCleanup(setattr, X, 'HDC', saved)
+        os.environ['FAKE_HDC_QUEUE'] = str(d / 'queue.json'); run = d / 'run'; run.mkdir()
+        w = bare_window(str(run)); w.result = {'device_commands': 0}; w.keepawake = lambda label: None
+        w.start = X.time.monotonic() - (0 if budget_left is None else 900 - budget_left)
+        err = None
+        try: w.screen('s60')
+        except RuntimeError as e: err = e
+        receipts = {p.name: json.loads((p / 'receipt.json').read_text()) for p in sorted(run.iterdir()) if (p / 'receipt.json').exists()}
+        return w, err, receipts, run
+    def dumps(self, receipts): return {k: v for k, v in receipts.items() if '-layout' in k and not k.endswith('layout-recv')}
+    def test_first_attempt_ok_is_original_15s_call(self):
+        w, err, rc, run = self.go([self.OK]); self.assertIsNone(err)
+        d = self.dumps(rc); self.assertEqual(len(d), 1); self.assertEqual(list(d.values())[0]['timeout_seconds'], 15)
+        self.assertEqual(json.loads((run / 's60.layout.json').read_text())['layout'][-9:], '-s60.json'); self.assertEqual(w.result['layout_attempts'], [])
+    def test_transient_twice_then_ok_uses_fresh_targets_and_keeps_raw_failures(self):
+        w, err, rc, run = self.go([self.TR, self.TR, self.OK]); self.assertIsNone(err)
+        d = self.dumps(rc); self.assertEqual(len(d), 3)
+        argvs = [v['argv'][-1] for v in d.values()]; self.assertEqual(len({a.split(' -p ')[1].split(';')[0] for a in argvs}), 3)
+        self.assertTrue(all(v['timeout_seconds'] <= 10 for v in list(d.values())[1:]))
+        self.assertTrue(json.loads((run / 's60.layout.json').read_text())['layout'].endswith('-s60-retry3.json'))
+        failed = [a for a in w.result['layout_attempts'] if a.get('known_transient')]; self.assertEqual([a['remote_rc'] for a in failed], ['1', '1'])
+        for a in failed: self.assertIn('Get window nodes failed', (run / a['receipt'] / 'stdout').read_text())
+        self.assertTrue((run / 's60.jpeg').exists())
+    def test_transient_three_times_refused_without_screenshot(self):
+        w, err, rc, run = self.go([self.TR] * 3); self.assertRegex(str(err), 'persisted after 3 attempts'); self.assertFalse((run / 's60.jpeg').exists())
+    def test_other_failures_refused_immediately(self):
+        for name, out in [('other text', dict(stdout='DumpLayout failed:other\nT136_UI_RC:1\n')), ('rc2', dict(stdout='DumpLayout failed:Get window nodes failed\nT136_UI_RC:2\n')),
+                          ('stderr', dict(self.TR, stderr='x')), ('local rc', dict(self.TR, rc=1)),
+                          ('remote0 with call fail marker', dict(stdout='[Fail]Error opening file\nT136_UI_RC:0\n')),
+                          ('remote0 with not found', dict(stdout='uitest: not found\nT136_UI_RC:0\n')),
+                          ('transient mixed with another error', dict(stdout='Permission denied\nDumpLayout failed:Get window nodes failed\nT136_UI_RC:1\n')),
+                          ('transient plus extra text', dict(stdout='DumpLayout failed:Get window nodes failed\nextra\nT136_UI_RC:1\n'))]:
+            with self.subTest(name):
+                w, err, rc, run = self.go([out, self.OK]); self.assertRegex(str(err), 'not the known transient'); self.assertEqual(len(self.dumps(rc)), 1)
+    def test_retry_timeout_clipped_by_budget_and_hang_refused(self):
+        w, err, rc, run = self.go([self.TR, dict(self.OK, sleep=6)], budget_left=5.0)
+        self.assertRegex(str(err), 'not the known transient'); d = list(self.dumps(rc).values())
+        self.assertLess(d[1]['timeout_seconds'], 4.5); self.assertEqual(d[1]['local_rc'], 124)
+    def test_no_retry_when_budget_below_two_seconds(self):
+        w, err, rc, run = self.go([self.TR, self.OK], budget_left=2.5); self.assertRegex(str(err), 'no retry budget left'); self.assertEqual(len(self.dumps(rc)), 1)
 
 class PhaseFlow(unittest.TestCase):
     def flow(self, phase, fail_stages=False, handoff=None, closeout='closeout_ok', restore=None, points=None, restored_obj=None):

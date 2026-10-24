@@ -58,6 +58,12 @@ Earlier drafts were diffed against v6; v7 already carries the lineage selector, 
    than 60 s remain in the 900 s operation budget; the content-after image gets its own 60 s review capped at
    `start+900` (recovery reserve untouched); after `usable` the identity is re-read and boot/host/appspawn root/main
    child (pid, birth, uid) must be unchanged, while a legal same-name descendant change is allowed.
+1e. **Bounded layout re-dump for one known UITest transient**: attempt 1 is the original 15 s dump. Only local rc0,
+   empty stderr, none of the `call()` failure markers, remote rc1 and a body exactly equal to
+   `DumpLayout failed:Get window nodes failed` may be re-dumped: at most 2 more attempts within 10 s after attempt 1
+   returns, 1 s apart, each call timeout clipped to the window/operation budget left (not started below 2 s); worst case
+   15 s + 10 s. Each attempt uses a new run-unique file; raw stdout/stderr/rc of every attempt stay in its receipt and
+   `result.layout_attempts`. Any other outcome is refused immediately. Identity/maps/review logic is unchanged.
 2. **Review schema before use, by context** (`validate_review(r, context, allowed_touch)`):
    `desktop` feed = Home only (no touch fields); `stage` feed needs `touch_kind` + `touch_coordinates`;
    clock/Recent always need `swipe[4]`; `content` usable needs `changed_from_feed: true`;
@@ -105,6 +111,6 @@ Budgets per window: 900 s stop new work, 1200 s close-out/recovery start, 1800 s
   stops the window (strict, same as v7).
 
 ## Tests
-`python3 tests/test_retain_dry_run.py` (68 cases, no device; 4 replay the real private T136 receipt and skip if it is absent). Selector:
+`python3 tests/test_retain_dry_run.py` (74 cases, no device; 4 replay the real private T136 receipt and skip if it is absent). Selector:
 `cargo test --test host_window_reentry_retain` (`host_window_reentry_retain_receipts`).
 Synthetic tests prove control flow only, not deployment, rollback or visual success.
