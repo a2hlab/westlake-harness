@@ -1114,3 +1114,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-24 T123：103406已目读白屏图（950622b1…）对应的dumpLayout仍有ScreenLockRootComponent且visible=true/opacity1/focused=true；110011按该节点提前停止而未采解锁后图，不能据此判解锁失败。一次普通上滑后先保存真实截图，锁节点残留仅记证据，外环目读最终画面再决定Home；凭据/未知仍停止。
 
 - 2026-10-24 T123成功对照：同boot正常桌面一次点击，s10/s30白屏无child，s60文字feed/s90图片加载；实测CLK_TCK100+birth/uptime命令时界把child创建估为点击后43.95–44.62秒，后续16秒不能全称绘制。成功child22035也有与T122失败child同栈的HTML标题302→JSON异常（前缀3131–3136），异常出现本身不充分解释持续白屏；日志增长时只声明重复采集的512KiB前缀相同，不称整文件稳定。
+
+- 2026-10-24 T124时间边界：同次成功重入events把约44秒创建等待进一步分为spawn_started前约42秒、其后至child出生仅数秒（整数标签舍入方式未独立验证）；parent普通日志证明accept→fork→response成功顺序，但无时间戳，不能判请求早晚。HAP源以TRUNC替换最后事件快照且日志先于落盘，foreground被stage替换的源码事实不证明本次落盘成功或白屏根因；mtime和日志首次可见时间均不能冒充请求接收时刻。

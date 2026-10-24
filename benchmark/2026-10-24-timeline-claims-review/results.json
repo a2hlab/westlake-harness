@@ -1,0 +1,66 @@
+{
+ "task": "independent timeline-claim check (local evidence only)",
+ "inputs": [
+  "westlake-harness-g10-env/benchmark/2026-10-24-existing-demo-reentry/peer-review/successful-child-22035/event-timeline-addendum/README.md",
+  "westlake-harness-g10-env/benchmark/2026-10-24-existing-demo-reentry/peer-review/successful-child-22035/event-timeline-addendum/results.json",
+  "westlake-harness-t4/benchmark/2026-10-24-ordinary-host-timeline/parent-log-closure/README.md",
+  "westlake-harness-t4/benchmark/2026-10-24-ordinary-host-timeline/parent-log-closure/excerpts.txt",
+  "westlake-harness-t4/benchmark/2026-10-24-ordinary-host-timeline/parent-log-closure/results.json"
+ ],
+ "arithmetic_errors": 0,
+ "checks": [
+  {
+   "claim": "click -> spawn_started ~42 s",
+   "where": "westlake-harness-g10-env/benchmark/2026-10-24-existing-demo-reentry/peer-review/successful-child-22035/event-timeline-addendum/README.md:3; results.json click_to_spawn_started_*",
+   "arithmetic": "65351-65309.74=41.26, 65351-65309.07=41.93 (correct)",
+   "verdict": "SUPPORTED as 'about 42 s'",
+   "note": "results.json click_to_spawn_started_nominal_bounds_s [41.26,41.93] treats the integer label 65351 as exact; with the unknown label rounding the interval widens to [40.76,42.43] (round) or [41.26,42.93) (floor). README:15 states the integer precision, so this is a field-labelling precision issue, not a wrong conclusion."
+  },
+  {
+   "claim": "click -> child birth ~44 s",
+   "where": "westlake-harness-g10-env/benchmark/2026-10-24-existing-demo-reentry/peer-review/successful-child-22035/event-timeline-addendum/README.md:3; results.json events birth 65353.69",
+   "arithmetic": "birth tick 6535369 / CLK_TCK 100 = 65353.69 (matches reentry_spawn_ok 'birth6535369'); 65353.69-65309.74=43.95, -65309.07=44.62 (correct)",
+   "verdict": "SUPPORTED"
+  },
+  {
+   "claim": "birth about 2-3 s after spawn_started",
+   "where": "westlake-harness-g10-env/benchmark/2026-10-24-existing-demo-reentry/peer-review/successful-child-22035/event-timeline-addendum/README.md:3; results.json conclusion",
+   "arithmetic": "nominal 65353.69-65351=2.69; true range 1.70-2.69 s if the label is floored, 2.19-3.19 s if rounded",
+   "verdict": "IMPRECISE: '2-3 s' holds only under rounding; floor gives 1.7-2.7 s. Suggest '≈1.7-3.2 s depending on label rounding'."
+  },
+  {
+   "claim": "reentry_spawn_ok about 4 s after spawn_started; birth->ok 1.31 s",
+   "where": "westlake-harness-g10-env/benchmark/2026-10-24-existing-demo-reentry/peer-review/successful-child-22035/event-timeline-addendum/README.md:3,15",
+   "arithmetic": "65355-65351=4 nominal (3-5 s with both labels quantized); 65355-65353.69=1.31 nominal (0.31-2.31 s)",
+   "verdict": "SUPPORTED as nominal; README:15 already marks 2.69/1.31 as non-precise"
+  },
+  {
+   "claim": "65374/65394 are later logged observations, not first visible frame",
+   "where": "westlake-harness-g10-env/benchmark/2026-10-24-existing-demo-reentry/peer-review/successful-child-22035/event-timeline-addendum/README.md:15",
+   "arithmetic": "s60 ~ click+60 ~ 65369, before 65374",
+   "verdict": "SUPPORTED"
+  },
+  {
+   "claim": "untimestamped parent.log lines cannot place request arrival",
+   "where": "westlake-harness-t4/benchmark/2026-10-24-ordinary-host-timeline/parent-log-closure/README.md:7,9; excerpts.txt L2256-2268",
+   "verdict": "SUPPORTED: excerpts carry no timestamps; msgId reuse is backed by results.json (uniqueness note, line 78); mtimes 11:06:44/11:07:27 bound only last writes"
+  }
+ ],
+ "issues": [
+  {
+   "where": "westlake-harness-g10-env/benchmark/2026-10-24-existing-demo-reentry/peer-review/successful-child-22035/event-timeline-addendum/README.md:19 and results.json next_minimal_question",
+   "issue": "conflates a host *foreground* timestamp with a host *request* timestamp. A foreground callback near the click (T114 recorded WL_IME_HOST foreground ~2.9 s after a tap) would not show that the spawn request was sent early, so 'early would place most waiting after that host boundary' only holds for a request-send timestamp.",
+   "effect": "could mislead the next observation choice; ask specifically for the request-send/accept time, not foreground"
+  },
+  {
+   "where": "westlake-harness-t4/benchmark/2026-10-24-ordinary-host-timeline/parent-log-closure/README.md:9 'No cause for the preceding ~44s'",
+   "issue": "~44 s is click->birth; the interval preceding spawn_started is ~42 s (A). Wording mixes the two intervals.",
+   "effect": "minor; no conclusion changes"
+  }
+ ],
+ "actions": {
+  "device": 0,
+  "REA": 0,
+  "runtime_controller_watchdog_executor_env_reads": 0
+ }
+}
