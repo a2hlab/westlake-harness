@@ -1123,3 +1123,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-24 头条新host/旧child白屏：实际宿主记录在模块路径 haps/entry/files/window-state.json；child沙箱路径缺失但同UID全局app路径指向同inode，root代读不等于child凭据已读。OH对应源码普通子窗随父销毁路径不保证NotifyDestroy，缺日志不能否定会话已删除；event4是HIDDEN，恢复消费者仅准入明确前台记录。现仅离线候选，未封板。见 benchmark/2026-10-24-toutiao-window-reattach-review/ 与 native-host-window-recovery/record-reader/。
 
 - 2026-10-24 验收收据检查：同SHA不等于同发布对象，activation须绑定发布dev/inode、UI须保持activation namespace；parent可为UID0，宿主新birth可重用PID；首开与加载观察必须共用同一点击回执，阶段区间不冒充单命令时界。规范化JSON+哈希只验内部一致性，不认证来源或图像含义；当前缺真实收据仍pending_missing，见native-host-window-recovery/device-validation/outer-review-02.json。
+
+- 2026-10-25 T128：61b同boot现存child22035四Uid/Gid=20011206，窗口记录11级路径在root与child-root视图同dev/inode，mode位可遍历且enforce=0；root采518B经生产reader本机回放为Candidate(id62,stage4/HIDDEN)，Foreground=false。该时点未见DAC路径阻断、当前字节可解析，但不证明OH child亲自读取、前台点击时记录或候选恢复；不要把隐藏状态旁证当白屏根因。见native-host-window-recovery/device-validation/access-preflight-01/。

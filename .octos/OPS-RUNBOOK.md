@@ -328,3 +328,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-24 WMC基线复现：原-MMD未记录系统头，完整SDK必须另保留；固定SDK的libcxx-ohos 792文件填到原-isystem目录后，原Linux编译argv输出精确f91b354f对象，再原Mac链接输出精确b0e5602a桥接库。保留第一次memory缺头rc1、修正清单、原始stdout/stderr与每步SHA；这证明该WMC重编链，不代表所有桥接对象全源重编，更不代表白屏修好。recipe见 benchmark/2026-10-24-wmc-build-preparation/，原始执行在$HOME/.local/share/westlake/wmc-baseline-build-20261024/。
 
 - 2026-10-24 内环派单输入预检：隔离车道未必可读相邻主仓。普通源码复核先把授权范围内的必要源码、契约和来源清单复制到该车道本树，逐件核 SHA 后再派单；不靠放宽权限解决，也不复制停止对象。T126 初次因缺本树输入退出，补14件后重开；working/done仍须核工具执行与真实交件。
+
+- 2026-10-25 octoscode模型切换：窄窗格菜单为空白时先临时zoom读取真实列表，不猜选项；/model选择后若显示restart required，正常退出并以原权限重启，核底栏实际model。profile名可仍为kimi而实际model为glm-5.3，不能只凭profile名判未切换；本轮已实核。
