@@ -8,6 +8,7 @@ tags: [native, window, validation, draft]
 ## 意图
 在61b一次可回滚短窗中验证已采认native候选的实际加载、正常桌面打开与最近任务关闭宿主后重开的信息流及触控。先核当前应用实际消费的单库payload、候选来源与精确回滚，再以新boot和新child的maps及SHA验生效；本契约的起草和lint不构成设备执行或候选签认。
 ## 已定决策
+- 2026-10-25 外环具名准入例外 `idle-app-same-boot-restored-object`：T136恢复窗已核baseline-s30的真实maps/process-root/backing，之后同boot子进程退出，不再要求故障应用先启动才允许普通单库维护。仅当当前child数量恰为0、boot与host/parent的PID/birth/UID均和这份已恢复收据一致、目标fresh stat全部字段及完整SHA与原收据对象一致时，允许以`mapping_now=not_running`准入；收据文件SHA须固定进外环执行签认，持锁后再次核同一条件。若存在1个child仍走原严格maps检查，超过1个或任何身份/对象漂移均拒绝。本例外只适用于部署前，绝不替代新候选新boot新child实际maps验证、截图验收、冻结门或精确回滚。依据：T136 execute-20261025-024115-2e76dc/baseline-s30-binding.json及execute-20261025-024653-611cef fresh身份原件；当前未运行不宣称当前已映射。
 - 前置为t2最终源码manifest、真实构建日志、库完整SHA与CC/外环采认回执一致；候选以最新snapshot02的3291f76db0945f90b402ea61b14c3a912efbeecec9e0422af1a92fec95b8a819和最终审查为准，未齐时保持candidate_pending，不把旧build01的158c1740填为新候选。执行前外环另固定单写者、实际计划SHA及恢复材料。
 - 仅61b0657200000000000000000324012c；写前fresh核设备、锁、boot、host/parent/child PID及birth/UID、maps、目标stat/SHA/标签、挂载来源、原电源/屏幕态与可恢复基线。旧child22035/b6535369仅是来源证据，不作为后继命令固定PID。
 - 已采child映射路径为/data/local/tmp/asx/liboh_adapter_bridge.so，SHA b0e5602a97133ebb1dca12972a8931a86528322685a211bb1a7a0a2185fefbd4；mountinfo指向/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d。该来源下同名库仅是待fresh绑定的发布目标，必须和child映射对象dev/inode及SHA相符；root的/system/android/lib64/liboh_adapter_bridge.so为8ab85446，不在替换范围。
@@ -28,6 +29,16 @@ tags: [native, window, validation, draft]
 - 本次起草阶段设备或远程调用、部署脚本；后续未经外环固定执行计划的设备写入。
 - 其他两板、root系统bridge、其他runtime件、APK数据、HAP/Java/JAR、原冻结源、停止的控制器/执行器/配置及其等价重试、REA、hook、进程信号、权限和例外表修改、推送。
 ## 验收标准
+场景: 已恢复同对象在应用退出后允许普通部署准入
+  测试: host_window_native_validation_receipts
+  假设实际已恢复映射收据被完整SHA固定且fresh child恰为0
+  当同boot和host及parent身份不变且目标stat全字段及SHA一致并持锁后重复核对
+  那么只登记idle-app-same-boot-restored-object准入且mapping_now为not_running并且候选仍须另取新boot真实加载和图审证据
+场景: 应用未运行例外不得容许来源或对象漂移
+  测试: host_window_native_validation_receipts
+  假设来源收据SHA不符或boot及host或parent漂移或目标对象字段改变或child多于1个
+  当检查idle-app-same-boot-restored-object例外
+  那么拒绝发布且保留具体差异并且不得用历史maps冒充当前映射
 场景: 候选或发布前置缺失时拒写
   测试: host_window_native_validation_receipts
   假设候选来源审查未齐或目标backing身份或精确原像回滚步骤缺证或冻结门不符
