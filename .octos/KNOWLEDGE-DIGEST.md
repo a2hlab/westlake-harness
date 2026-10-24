@@ -1133,3 +1133,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-25 T136：Mac的os.major/minor不能解OH/Linux的st_dev（66352在Mac解成0:66352，实际Linux为259:48，与maps103:30一致）；必须按目标平台编码解码。HDC恢复只证明通道上线，不能当PowerManager/UI已就绪。重启验收须覆盖USB仅充电弹窗与桌面翻页；恢复映射成功不代表信息流成功，本轮候选尚待实机验收。
 
 - 2026-10-25 T136：头条主child应取唯一appspawn-x直接子进程；同名后代不是第二次独立启动，保留全进程表并核PPID链/UID/已映射库，名称总数唯一性会误拒真实恢复。图审专职短上下文，锁屏/Recent回执用swipe，feed触控才用touch_coordinates；图审漏期和回执错误不得归为应用白屏失败。
+
+- 2026-10-25 T136分型：s30实际maps通过不代表后续child还活着；aa4d97 s60/s90原进程表已无article，后段白屏是child退出后宿主留白，不能归为持续活child重挂失败。HOST-SESSION只打印非Idle/Throttled，无日志不证明observer未启动；见toutiao-native-runtime-observations。
