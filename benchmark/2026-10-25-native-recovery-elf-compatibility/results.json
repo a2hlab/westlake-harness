@@ -1,0 +1,86 @@
+{
+ "schema": "t137-elf-compatibility-v1",
+ "date": "2026-10-25",
+ "lane": "octoscode static ELF comparison (read-only, llvm-readelf; no install, no device, no model calls, no stopped objects)",
+ "inputs": {
+  "package": ".private/t137-artifact-input/",
+  "candidate": {
+   "file": "candidate.so",
+   "bytes": 2154616,
+   "sha256_prefix": "3291f76db0945f90 (full 64-hex in manifest.json; recomputed match)"
+  },
+  "rollback": {
+   "file": "rollback.so",
+   "bytes": 2023136,
+   "sha256_prefix": "b0e5602a97133ebb (matches known T18 production bridge identity)"
+  }
+ },
+ "commands": [
+  "llvm-readelf -h/-d/-l",
+  "llvm-readelf --dyn-symbols | awk '$7==\"UND\"' sort -u",
+  "diff / comm"
+ ],
+ "raw_outputs": ".private/t137-raw/ (private persistence)",
+ "results": {
+  "arch_class_endian": "IDENTICAL: ELF64, little-endian, AArch64, DYN (both)",
+  "soname": "IDENTICAL: liboh_adapter_bridge.so",
+  "dt_needed": "IDENTICAL: 44 entries, byte-identical list (diff empty)",
+  "undefined_symbols": {
+   "rollback": 591,
+   "candidate": 603,
+   "new_in_candidate": [
+    "_ZN4OHOS5Rosen21WindowSessionProperty13UnmarshallingERNS_6ParcelE",
+    "_ZN4OHOS5Rosen21WindowSessionProperty17SetSubWindowLevelEj",
+    "_ZN4OHOS6Parcel10WriteUint8Eh",
+    "_ZN4OHOS6Parcel9ReadUint8Ev",
+    "_ZNSt3__h5mutex8try_lockEv",
+    "_ZNSt3__h6thread4joinEv",
+    "getegid",
+    "geteuid",
+    "getgid",
+    "getuid",
+    "lstat",
+    "open"
+   ],
+   "removed": []
+  },
+  "load_segments": "IDENTICAL alignment/flags (diff empty)"
+ },
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "unknown-pending (was 'informational')",
+   "title": "12 new undefined symbols: NO provider verification possible in this lane (downgraded from 'covered')",
+   "detail": "DT_NEEDED identity only proves the dependency LIST is unchanged; it does not prove any of the 12 new UND symbols is exported by those libraries on the 61b image. Provider verification via local build inputs was attempted and denied (home-dir sandbox). Each of the 12 symbols is UNKNOWN-pending: expected classes (Rosen WindowSessionProperty/Parcel from libwm*/libipc_single; std::_h from libc++; uid/lstat/open from libc) remain hypotheses, not verified facts.",
+   "limit": "resolution: readelf dynsym of actual provider files from build inputs or the 61b image; or decisive runtime load test with exact rollback."
+  }
+ ],
+ "actionable_blockers": "NONE found within scope",
+ "limits": [
+  "static pass is NOT device-load success; runtime loading on 61b unverified",
+  "candidate = 5-unit recompile + 103 reused objects per dispatch; NOT a whole-library rebuild claim",
+  "B1/C1 source review not repeated",
+  "not committed in this lane this round; outer collects/commits per path"
+ ],
+ "writes": {
+  "device_calls": 0,
+  "tool_installs": 0,
+  "stopped_object_reads": 0,
+  "model_calls": 0,
+  "permission_changes": 0,
+  "pushes": 0
+ },
+ "revision": 2,
+ "f1_correction_note": "Outer re-review: identical DT_NEEDED does NOT prove the 12 symbols exist on the target; 'all covered' was an unverified conclusion. Correction attempted per outer instruction.",
+ "provider_verification": {
+  "attempted_inputs": [
+   "$HOME/.local/share/westlake/wmc-baseline-build-20261024/",
+   "$HOME/.local/share/westlake/native-host-recovery-build-20261024/"
+  ],
+  "probe": "ls on each directory (read-only)",
+  "result": "Operation not permitted (sandbox denies home-dir reads; same denial class as all session). argv.json and provider .so files therefore NOT readable in this lane.",
+  "per_symbol_status": "UNKNOWN (provider file SHA + defined-symbol listing not obtainable here)",
+  "constraint_honored": "no further probing, no tool install, no board operation, no scope expansion",
+  "non_blocking": "per outer instruction this does NOT block the normal rollback-capable load verification; runtime load on 61b remains the decisive check"
+ }
+}
