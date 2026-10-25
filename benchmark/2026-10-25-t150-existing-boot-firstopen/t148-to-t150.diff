@@ -1,0 +1,65 @@
+--- benchmark/2026-10-25-t148-retained-firstopen/observe.py
++++ benchmark/2026-10-25-t150-existing-boot-firstopen/observe.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""One software reboot and one icon activation of the retained candidate. No deployment/recovery."""
++"""Existing T149 boot and one icon activation of the retained candidate. No deployment/recovery."""
+ import importlib.util,json,time,datetime,uuid,sys
+ from pathlib import Path
+ HERE=Path(__file__).resolve().parent
+@@ -9,18 +9,19 @@
+ assert m.digest(SOURCE)=='be8336df180ee124d921a11d3a3f66cf5943c06dd303d2cf798a37cc85ad6e4d'
+ PROVENANCE=SOURCE.parent/'.private/execute-20261025-050733-e42601/second-closeout-binding.json'
+ assert m.digest(PROVENANCE)=='9a54d5dc4aab3dfb47d91e59e1fedd1130d8d67b7dace700088a99d1d24daeca'
+-m.HERE=HERE;m.LANE='t148-retained-firstopen'
++EXPECTED_BOOT='66aeffa4-0d94-41aa-b110-f1ebdd081a08'
++m.HERE=HERE;m.LANE='t150-existing-boot-firstopen'
+ 
+ class Observation(m.Window):
+     def __init__(self):
+         super().__init__();self.reboots=0;self.icons=0
+     def call(self,label,argv,allow_failure=False,timeout=15):
+-        if self.start is not None and self.elapsed()>=900:raise RuntimeError('T148 900s hard deadline')
++        if self.start is not None and self.elapsed()>=900:raise RuntimeError('T150 900s hard deadline')
+         if argv[0]==m.HDC:
+             assert argv[1:3]==['-t',m.SERIAL] or argv==[m.HDC,'list','targets']
+             assert not ('file' in argv and 'send' in argv),'no device payload upload'
+             if argv[3:]==['target','boot']:
+-                assert self.reboots==0,'no second reboot';self.reboots+=1
++                raise AssertionError('T150 forbids reboot')
+         return super().call(label,argv,allow_failure,min(timeout,15))
+     def ui(self,label,command):
+         if label=='firstopen-icon-once':
+@@ -32,27 +33,27 @@
+         seen={p['pid'] for row in self.result['identities'] for p in row['identity']['processes'] if p['name']==m.CHILD}
+         for pid in sorted(seen):paths.append(('child-'+str(pid),f'/data/service/el1/public/appspawnx/adapter_child_{pid}.stderr',1048576))
+         for name,path,limit in paths:
+-            token='T148_LOG_'+uuid.uuid4().hex
++            token='T150_LOG_'+uuid.uuid4().hex
+             script='( set -e; stat -L -c '+m.q('%d|%i|%u|%g|%a|%s|%Y')+' '+m.q(path)+'; tail -c '+str(limit)+' '+m.q(path)+'; echo; stat -L -c '+m.q('%d|%i|%u|%g|%a|%s|%Y')+' '+m.q(path)+' ); r=$?; echo '+token+':$r'
+             r,s,e=self.call('ordinary-'+name,[m.HDC,'-t',m.SERIAL,'shell',script],True)
+             self.result.setdefault('ordinary_logs',[]).append(dict(label=name,path=path,limit=limit,transport_rc=r['local_rc'],remote_ok=s.rstrip().endswith(token+':0'),stderr_empty=not e.strip()))
+ 
+ def main():
+-    w=Observation();w.start=time.monotonic();w.result.update(task='T148',software_reboot_not_power_cycle=True,candidate_redeployed=False,rollback=False,identities=[],frames=[],feed_observed=False,swipe_verified=False)
++    w=Observation();w.start=time.monotonic();w.result.update(task='T150',software_reboot_not_power_cycle=False,reused_t149_boot=True,candidate_redeployed=False,rollback=False,identities=[],frames=[],feed_observed=False,swipe_verified=False)
+     m.save(w.run/'entry.json',dict(entry_sha256=m.digest(Path(__file__)),reuse_sha256=m.digest(SOURCE),provenance_sha256=m.digest(PROVENANCE)))
+     print('T0 '+str(w.start),flush=True)
+     try:
+         r,s,e=w.call('held-before',['bash',str(m.NOTE),'held',m.SERIAL],True);assert r['local_rc']==1 and not s.strip() and not e.strip(),'another owner or lock query failure'
+-        w.call('devices',[m.HDC,'list','targets']);w.original=w.identity('preflight-identity')
++        w.call('devices',[m.HDC,'list','targets']);w.original=w.identity('preflight-identity');assert w.original['boot']==EXPECTED_BOOT,'not T149 boot'
+         obj=w.object('preflight-candidate',m.TARGET);assert obj==json.loads(PROVENANCE.read_text())['object'];w.published=obj
+         system=w.object('preflight-system',m.SYSTEM);assert system['sha256']==m.SYSTEM_SHA
+         w.prepower=w.power('preflight-power');assert w.prepower['override'] is not None
+         m.save(w.run/'preflight.json',dict(identity=w.original,object=obj,system=system,power=w.prepower))
+         print('READ_ONLY_READY '+json.dumps(dict(boot=w.original['boot'],object=obj,power=w.prepower)),flush=True)
+-        w.call('lock',['bash',str(m.NOTE),'lock',str(m.BOARD),m.SERIAL,m.LANE,'T148 one software reboot/one icon; retain candidate; max900s'])
++        w.call('lock',['bash',str(m.NOTE),'lock',str(m.BOARD),m.SERIAL,m.LANE,'T150 existing boot/one icon; no reboot/deploy; max900s'])
+         r,s,e=w.call('held-acquired',['bash',str(m.NOTE),'held',m.SERIAL]);w.owner=s.strip();assert w.owner.startswith(m.LANE+' ')
+         print('LOCK '+w.owner,flush=True);w.held();assert w.identity('locked-identity')==w.original;assert w.object('locked-candidate',m.TARGET)==obj
+-        boot=w.reboot('software-reboot');assert boot!=w.original['boot'];w.result['boot']=boot
++        boot=w.original['boot'];assert boot==EXPECTED_BOOT;w.result['boot']=boot
+         xy=w.desktop('firstopen-before',min(time.monotonic()+120,w.start+600));assert w.elapsed()<660
+         w.held();assert w.identity('preclick-identity')['boot']==boot
+         # Click's remote command return is recorded separately from the post-UITest power check.

@@ -1,0 +1,9 @@
+# T150 — first activation on the existing T149 software boot
+
+**Real feed and one changed-content swipe verified; candidate retained.** T149 issued one software reboot at 10:07:53.837 +08:00, observed new boot `66aeffa4-0d94-41aa-b110-f1ebdd081a08` completed at 10:08:21.222, and released its lock at 10:08:21.678. T150 reused that exact boot and issued no reboot. This is not physical power-cycle acceptance. The raw `software_reboot_not_power_cycle=false` means no reboot in this window, not a hardware power cycle.
+
+One icon click returned at 10:10:47.978837 +08:00. s5/s30 showed white content; the feed frame was actually captured at +61.361–61.743s, followed by one swipe and a changed-content frame at +94.921–95.291s. External reviews bind image and layout SHA values. There was no second icon click, s90/s120 sampling, deployment or rollback.
+
+Final host5503/b16845, parent5631/b17032, main child7542/b18702 remained on that boot. Actual candidate mapping and final backing matched SHA3291/dev66352/inode590080. Power returned to base30000/override10000. Final held at 10:12:37.382–37.387 returned rc1 with empty output; lock window168.496s. Audio/video and physical power-cycle behavior are not established.
+
+`observe.py` is the T148 entry with only task labels, a fixed T149 boot check, skipped reboot, and an explicit reboot rejection; `t148-to-t150.diff` and `reuse.json` record this reuse. Raw inherited runtime_result remains unchanged; the actual status and external reviews establish the result. `facts.txt` counts actual files/receipts. `results.json` records exact command capture intervals. `evidence/` contains four key original images, reviews, mapping and final receipts; `t149-precondition/` contains the prior reboot/completion/release receipts. All private runs and consoles are backed up under `$HOME/.local/share/westlake/t150-existing-boot-firstopen-20261025/collection-01`, with every file pinned in `raw-index.json`.
