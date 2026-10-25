@@ -1139,3 +1139,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-25 T136 b503ee实际通过：候选3291首开s60滑动、同host桌面重进s5滑动、新host10617/b33507保留child6715/b9179后s5信息流并点击打开正文均经真实图审；480.560秒精确回滚/电源/释锁。仅一个app一个boot，不等于两boot留板、音视频或物理断电封板；见toutiao-native-runtime-observations/three-stage-accepted。
 
 - 2026-10-25 T141 ffd0d4点击分型：完整6915日志证DOWN/UP已达应用且handled，新Activity RESUMED；触控后约1.3–1.7秒截图仍原feed，不证明无handler/进程已退出。Show邻近时戳与条件估算截图区间重叠，不能强称其晚于截图；应同一次触摸后在原60秒内取多帧真实变化，禁止日志代上屏、重置预算或追改失败原图。见native-host-window-recovery/demo-seal/reentry/boot1-02-click-review。
+
+- 2026-10-25 T148：61b留板3291无重部署，单次软件重启+桌面单击，s5/s30白屏，真实feed截图采集于点击返回后61.373–61.829秒且一次滑动内容变化；655件原始证据持久备份，电源30000/10000恢复并释锁。采样时点不是精确首帧时延，也不证明物理断电或每次首开保证；见benchmark/2026-10-25-t148-retained-firstopen/。
