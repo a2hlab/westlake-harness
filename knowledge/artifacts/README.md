@@ -16,7 +16,7 @@ git clone https://github.com/a2hlab/westlake-harness.git
 cd westlake-harness
 
 export WESTLAKE_ARTIFACT_REMOTE=hw248
-export WESTLAKE_ARTIFACT_REMOTE_STORE=westlake-artifact-store
+export WESTLAKE_ARTIFACT_REMOTE_STORE=/home/alvin/westlake-artifact-store
 RECOVERY_ROOT="$HOME/.local/share/westlake/recovered-demo"
 mkdir -p "$RECOVERY_ROOT"
 
@@ -36,6 +36,8 @@ python3 scripts/lab/artifact_store.py verify \
 ```
 
 `demo/runtime` 是运行集合，`demo/deployment/rollback` 是回滚件，`demo/build` 是归档构建材料。精确路径以 manifest 为准。恢复目录不会自动安装、启动程序或改设备；目标板的系统版本、安装路径、权限和配置仍须按原部署记录核对。
+
+本机已保存不含凭据的配置文件 `$HOME/.config/westlake/artifact-recovery-20261026.env`，可用 `source` 载入。新机器按上面的两项配置即可；服务器路径通过环境变量传给工具，脚本未绑定个人目录。稳定版本索引见 [release 03](releases/61b-t150-3291-intake-20261026-03.json)。
 
 ## 如何构建、哪些还不能重建
 

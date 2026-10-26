@@ -340,3 +340,7 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-25 T136正常库维护：新boot后有界等待PowerManager完整base/state，再进入普通解锁；按新截图确认USB仅充电弹窗，不改选项，按fresh布局最多12页定位精确EntryAbility。应用child恰0时只可用外环具名同boot/host/parent及精确已恢复对象例外部署，写前后均核stat/SHA，不拿历史maps假报当前映射；候选生效仍须实际新child maps。
 
 - 2026-10-25 T141观察工具：仅精确DumpLayout failed:Get window nodes failed且local0/remote1/空stderr/无通用失败marker可用新路径最多3次重采；首调用15秒，后两次共10秒并受窗口预算限制，其余错误照常失败。触摸只发一次；content-after及后续编号图共用60秒/总900秒预算，unknown或feed且changed=false仅为本帧未变化，逐帧核core身份，实际changed+usable才过；当前工具81离线用例通过不代替设备验收。
+
+### 2026-10-26 演示制品归档与换机恢复
+
+入口 `knowledge/artifacts/README.md`，固定release03及完整manifest SHA；本机配置 `$HOME/.config/westlake/artifact-recovery-20261026.env`，服务器alias/store经环境变量传入。`artifact_store.py ingest/verify/restore` 管本机CAS；`artifact_publish.py` 远端先对象后清单；`artifact_fetch.py` 只从服务器进新cache/newdest，拒本地回填。服务器正式库位于hw248约定持久制品父目录，原始验收回执在 `$WESTLAKE_ARTIFACT_REMOTE_STORE/audit/20261026-release03`，全部SHA见benchmark raw-index。换机只取字节不需要先重编；source/build闭包按intake/build-status逐项看，不能把归档成功升级为整板重装或全源码可重建。删除worktree前另核其未提交源码与非本release实验件。本仓库Cargo验收包在tools/spec-checks，agent-spec生命周期测试应把--code指向该包；根目录没有Cargo包，raw verify会skip，不能报通过。

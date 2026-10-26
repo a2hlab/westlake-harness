@@ -1141,3 +1141,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-25 T141 ffd0d4点击分型：完整6915日志证DOWN/UP已达应用且handled，新Activity RESUMED；触控后约1.3–1.7秒截图仍原feed，不证明无handler/进程已退出。Show邻近时戳与条件估算截图区间重叠，不能强称其晚于截图；应同一次触摸后在原60秒内取多帧真实变化，禁止日志代上屏、重置预算或追改失败原图。见native-host-window-recovery/demo-seal/reentry/boot1-02-click-review。
 
 - 2026-10-25 T148：61b留板3291无重部署，单次软件重启+桌面单击，s5/s30白屏，真实feed截图采集于点击返回后61.373–61.829秒且一次滑动内容变化；655件原始证据持久备份，电源30000/10000恢复并释锁。采样时点不是精确首帧时延，也不证明物理断电或每次首开保证；见benchmark/2026-10-25-t148-retained-firstopen/。
+
+- 2026-10-26 T151–T153：演示制品必须独立required集合对manifest核差集，并真实远端空缓存恢复；release03收齐711/711历史运行成员，10,513文件/8,576 SHA对象，在sandbox禁读旧workspaces、本机CAS及intake后从远端全量恢复并复核SHA/size/mode。原二进制可恢复≠全源码可重建；103复用链接输入实为46.o+56.so+1.a；重定位/来源map也必须进制品清单，否则换机仍丢构建知识。见benchmark/2026-10-26-demo-artifact-recovery/。

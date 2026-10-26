@@ -93,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[benchmark/2026-10-26-demo-artifact-recovery/](benchmark/2026-10-26-demo-artifact-recovery/README.md)** | **SHA256 demo artifact store, independent remote recovery, build inputs and explicit rebuild gaps** |
 | **[Normal Genshin icon launch](benchmark/2026-10-21-commercial-game/normal-ui-01/)** | White-screen → desktop evidence, exact exit log, no game-frame claim |
 | **[Genshin commercial-game qualification](benchmark/2026-10-21-commercial-game/README.md)** | Official input, 11 prior implementation mappings, exact 32-ELF/5-DEX scan and five method-level REA observations. Later normal-icon launch records white screen then exit; no game-frame claim. |
 | **[Genshin GLES loader candidate](benchmark/2026-10-21-commercial-game/gles-loader-candidate/README.md)** | Exact U13 baseline rebuilt; one shared library name added, original policy regressions preserved. Source and recipes committed, original build archive remotely SHA-verified. Window 01 stopped before service start and restored the baseline; game result remains unknown. |
