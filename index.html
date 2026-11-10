@@ -154,6 +154,8 @@ pre{background:var(--sheet);border:1px solid var(--line);border-radius:6px;paddi
 .mini b{font-size:14px}
 .dots{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin:8px 0 6px}
 .dots i{aspect-ratio:1;border-radius:50%;border:1.5px solid var(--na);display:block}
+.dots i.s-online{background:#2f8f6e;border-color:#2f8f6e}.dots i.s-busy{background:#2f6fb5;border-color:#2f6fb5}.dots i.s-abnormal{background:#d08a1e;border-color:#d08a1e}.dots i.s-resetting{background:#8a63c7;border-color:#8a63c7}.dots i.s-offline,.dots i.s-unit-down{background:#c0392b;border-color:#c0392b}
+.live{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:999px;background:#2f8f6e;color:#fff;margin-left:6px}
 .lanes{color:var(--muted)}
 @media (max-width:640px){.band{grid-template-columns:1fr}.band .lab{border-right:0;border-bottom:1px solid var(--line);padding:8px 12px}.band .lab b{display:inline;margin-right:8px}.tile{width:calc(50% - 5px)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -308,6 +310,10 @@ const save=()=>{try{localStorage.setItem(LS,JSON.stringify(local.filter(e=>!e._s
 /* shared claims store (Vercel) */
 const API='https://nanhai-panorama-api.vercel.app/api/claims', KS='nanhai-pano-key';
 const getKey=()=>{try{return localStorage.getItem(KS)||''}catch(e){return ''}};
+/* hub 采集器快照（集群页、任务页只读快照）。?env=rehearsal 看演练环境 */
+const SNAP_ENV=(new URLSearchParams(location.search).get('env')||'prod').replace(/[^a-z0-9-]/g,'');
+let SNAPX=null;
+async function pullSnap(){try{const r=await fetch(API.replace('/claims','/snapshot')+'?env='+SNAP_ENV,{cache:'no-store'});if(!r.ok)throw 0;const j=await r.json();if(j&&Array.isArray(j.units)){SNAPX=j;clusterView();tasksView()}}catch(e){}}
 async function pullShared(){
  try{const r=await fetch(API,{cache:'no-store'});const arr=await r.json();if(!Array.isArray(arr))throw 0;
   const have=new Set(local.map(e=>e.id));let n=0;const seen=new Set();
@@ -549,6 +555,7 @@ function upgradeView(){
  <p class="note" style="margin-top:10px">拟议节点只在 a17 候选的全景里出现。墙通过 <span class="mono">root_cause</span> 字段指向条目；声明里填写未登记的条目号会被拒绝。</p>`;
 }
 function tasksView(){
+ if(SNAPX&&Array.isArray(SNAPX.tasks))return tasksLive();
  const ts=local.filter(e=>e.type==='task');
  const human=ts.filter(e=>e.verify_by==='human');
  const row=e=>`<tr><td><span class="trace">${esc(trace(e))}</span></td><td>${esc(e.text||'')}</td><td class="note">${esc((D.stages.find(s=>s.id===e.stage)||{}).name||'—')}</td><td>${(e.node_ids||[]).map(x=>NODE.has(x)?nodeLink(x):relLink(x)).join('、')}</td><td><span class="tag claim">${esc(D.scodes[e.status]||'—')}</span></td><td class="note">${esc(e.verify_by||'—')}</td><td>${e.issue_url?`<a href="${esc(e.issue_url)}" target="_blank" rel="noopener noreferrer">issue</a>`:'<span class="note">—</span>'}</td></tr>`;
@@ -560,7 +567,37 @@ function tasksView(){
  <h2 style="font-size:16px;font-weight:600;margin:16px 0 8px">全部任务声明（${ts.length}）</h2>
  ${ts.length?`<div class="tw"><table class="t">${head}<tbody>${ts.map(row).join('')}</tbody></table></div>`:'<p class="note">没有任务声明。</p>'}`;
 }
+function tasksLive(){
+ const ts=SNAPX.tasks;const human=ts.filter(e=>e.verify_by==='human'&&e.status!=='verified'&&e.status!=='void');
+ const row=e=>`<tr><td><span class="trace">${esc(trace(e))}</span></td><td>${esc(e.text||'')}</td><td class="note">${esc((D.stages.find(s=>s.id===e.stage)||{}).name||'—')}</td><td>${(e.node_ids||[]).map(x=>NODE.has(x)?nodeLink(x):relLink(x)).join('、')}</td><td><span class="tag">${esc(D.scodes[e.status]||e.status)}</span></td><td class="note">${esc(e.verify_by||'—')}</td><td>${e.issue_url?`<a href="${esc(e.issue_url)}" target="_blank" rel="noopener noreferrer">issue</a>`:'<span class="note">—</span>'}</td></tr>`;
+ const head='<thead><tr><th>追溯编号</th><th>内容</th><th>阶段</th><th>节点 / 契约</th><th>状态码</th><th>验证</th><th>GitHub</th></tr></thead>';
+ const cnt={};for(const t of ts)cnt[t.status]=(cnt[t.status]||0)+1;
+ $('v-tasks').innerHTML=`<div class="doc" style="margin-bottom:14px"><p>正式任务来自 hub 采集器快照<span class="live">${esc(SNAP_ENV==='prod'?'实时':'演练')} · ${esc(SNAPX.generated)}</span>。任务号就是黑板条目号；状态码由黑板行首定式推出：派卡 → 开发中，ACK(#N done) → 已完成，复验报告 → 测试中 / 通过 / 失败，外环 R2 记档 → 已校验。</p></div>
+ <div class="bar"><span>状态码</span>${D.codes.map(k=>`<span class="tag">${esc(D.scodes[k])} ${cnt[k]||0}</span>`).join('')}</div>
+ <h2 style="font-size:16px;font-weight:600;margin:12px 0 8px">待人工验证（${human.length}）</h2>
+ ${human.length?`<div class="tw" style="margin-bottom:20px"><table class="t">${head}<tbody>${human.map(row).join('')}</tbody></table></div>`:'<p class="note">没有待人工验证的任务。</p>'}
+ <h2 style="font-size:16px;font-weight:600;margin:16px 0 8px">全部任务（${ts.length}）</h2>
+ ${ts.length?`<div class="tw"><table class="t">${head}<tbody>${ts.map(row).join('')}</tbody></table></div>`:'<p class="note">还没有派出的任务。</p>'}`;
+}
+function clusterLive(){
+ const c=D.cluster,S=SNAPX,U=new Map(S.units.map(u=>[u.id,u])),by={};
+ for(const d of S.devices)(by[d.unit]=by[d.unit]||[]).push(d);
+ const st=S.device_states||{},zh={online:'空闲',busy:'占用',abnormal:'异常',resetting:'重置中',offline:'离线','unit-down':'单元失联'};
+ const ev=(S.events||[]).filter(e=>e.kind==='recovery'||e.kind==='host').slice(0,12);
+ $('v-cluster').innerHTML=`<div class="doc" style="margin-bottom:14px"><p>每台 Mac mini 是一个完整的生命周期单元，挂 ${c.devices_per} 台 D600，实时上报 hub。下面是 hub 采集器快照<span class="live">${esc(SNAP_ENV==='prod'?'实时':'演练')} · ${esc(S.generated)}</span>。</p></div>
+ <div class="bar"><span>设备状态</span>${['online','busy','abnormal','resetting','offline'].map(k=>`<span class="tag">${zh[k]} ${st[k]||0}</span>`).join('')}<span class="tag">活跃租约 ${esc(S.leases)}</span></div>
+ ${(S.alarms||[]).map(a=>`<p class="bad" style="margin:6px 0">采集器守底：${esc(a)}</p>`).join('')}
+ <div class="mini" style="margin-bottom:12px;border-left:4px solid var(--sel)"><b>hub</b><div class="lanes">${esc(c.hub)}</div></div>
+ <div class="cl">${c.minis.map(m=>{const u=U.get(m),ds=(by[m]||[]).filter(d=>d.kind!=='android').sort((a,b)=>a.id<b.id?-1:1);
+  return `<div class="mini"><b>${esc(m)}</b><span class="note">　${u?(u.alive?'心跳 '+Math.round(u.age)+' 秒前':'失联'):'未接入'}</span>
+  <div class="dots" aria-label="${esc(m)} 的设备">${(ds.length?ds:Array.from({length:c.devices_per},(_,i)=>({id:m+'-d'+String(i+1).padStart(2,'0'),state:'na'}))).map(d=>`<i class="s-${esc(d.state)}" title="${esc(d.id)} · ${esc(zh[d.state]||'未接入')}${d.lease?' · '+esc(d.lease.lease)+' '+esc(d.lease.holder):''}"></i>`).join('')}</div>
+  <div class="lanes">${u?esc(u.host)+' · 磁盘余 '+esc(u.disk_free_pct)+'%':'车道、跑测、复验同机'}</div></div>`}).join('')}</div>
+ <h2 style="font-size:16px;font-weight:600;margin:22px 0 8px">D600 自动恢复记录</h2>
+ ${ev.length?`<div class="tw"><table class="t"><thead><tr><th>设备</th><th>级别</th><th>动作</th><th>结果</th><th>原因</th></tr></thead><tbody>${ev.map(e=>`<tr><td class="mono">${esc(e.device||e.unit)}</td><td>${e.level?'第 '+e.level+' 级':'主机侧'}</td><td>${esc(e.action)}</td><td>${esc(e.result)}</td><td class="note">${esc(e.reason)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="note">暂无恢复记录。</p>'}
+ ${(S.issues||[]).length?`<h2 style="font-size:16px;font-weight:600;margin:22px 0 8px">转人工</h2><ul>${S.issues.map(i=>`<li class="mono">${esc(i.device)} · ${esc(i.title)} ${i.url&&i.url.startsWith('https://')?`<a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">issue</a>`:''}</li>`).join('')}</ul>`:''}`;
+}
 function clusterView(){
+ if(SNAPX)return clusterLive();
  const c=D.cluster;
  $('v-cluster').innerHTML=`<div class="doc" style="margin-bottom:14px"><p>每台 Mac mini 是一个完整的生命周期单元：车道、跑测、复验都在本机完成，挂 ${c.devices_per} 台 D600，实时上报到 hub。健康数据由巡检与设备监控写入快照，接入前显示为未接入。</p></div>
  <div class="bar"><span>设备状态</span>${c.states.map(s=>`<span class="tag">${esc(s)}</span>`).join('')}<span class="key"><i class="sw" style="border:1.5px solid var(--na);border-radius:50%"></i>未接入</span></div>
@@ -615,7 +652,7 @@ $('exp').onclick=()=>dl('panorama-claims.jsonl',local.map(({_shared,...x})=>JSON
 $('clr').onclick=()=>{local=local.filter(e=>e._shared);save();$('msgs').innerHTML='<div class="good">本地声明已清除，共享声明库不受影响。</div>';render()};
 $('pkey').value=getKey();$('pkey').onchange=e=>{try{localStorage.setItem(KS,e.target.value.trim())}catch(x){}};
 addEventListener('hashchange',route);
-schemaView();render();route();pullShared();
+schemaView();render();route();pullShared();pullSnap();setInterval(pullSnap,30000);
 </script>
 </body>
 </html>
