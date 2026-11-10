@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>南海+ 全景状态台 V3.2</title>
+<style>
+:root{
+ --paper:#EDF0EA;--sheet:#F7F8F4;--ink:#1D2A30;--muted:#56656A;--faint:#869295;--line:#C8CFC5;
+ --b-app:#E3E7DE;--b-and:#DDE7E3;--b-oh:#DEE4EC;--b-k:#E5E1E7;--b-ctl:#EFEDE6;
+ --na:#9AA3A5;--prop:#6C6687;--sel:#2C5AA0;--notch:#B3392F;--notch2:#C58A26;--ok:#2B7A68;--rev:#7B4FB0;
+ --heat:179,57,47;color-scheme:light;
+ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --paper:#141A1C;--sheet:#1B2225;--ink:#E2E8E4;--muted:#A3B0B2;--faint:#7A8789;--line:#334044;
+ --b-app:#1E2522;--b-and:#1A2624;--b-oh:#1B222A;--b-k:#221F25;--b-ctl:#23221D;
+ --na:#6F7A7C;--prop:#A39CC4;--sel:#7EA6E6;--notch:#E2685C;--notch2:#E0AE52;--ok:#4FB59C;--rev:#B48AE6;color-scheme:dark}}
+:root[data-theme="dark"]{
+ --paper:#141A1C;--sheet:#1B2225;--ink:#E2E8E4;--muted:#A3B0B2;--faint:#7A8789;--line:#334044;
+ --b-app:#1E2522;--b-and:#1A2624;--b-oh:#1B222A;--b-k:#221F25;--b-ctl:#23221D;
+ --na:#6F7A7C;--prop:#A39CC4;--sel:#7EA6E6;--notch:#E2685C;--notch2:#E0AE52;--ok:#4FB59C;--rev:#B48AE6;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",sans-serif}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;font-size:.86em}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+header{padding:20px clamp(16px,3vw,36px) 0}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 28px}
+h1{margin:0;font-size:clamp(23px,3vw,32px);font-weight:600;line-height:1.15}
+h1 small{font-size:13px;font-weight:500;color:var(--muted);margin-left:8px;border:1px solid var(--line);border-radius:4px;padding:1px 6px;vertical-align:middle}
+.comp{color:var(--muted);font-size:13px;margin-top:6px}
+.cand{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--muted)}
+.cand select{border:1px solid var(--line);background:var(--sheet);border-radius:4px;padding:4px 8px}
+.metrics{display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:6px;background:var(--sheet)}
+.metrics div{padding:8px 14px;border-left:1px solid var(--line);min-width:96px}
+.metrics div:first-child{border-left:0}
+.metrics b{display:block;font-size:18px;font-weight:600;line-height:1.25}
+.metrics b.na{color:var(--faint);font-weight:400}
+.metrics span{font-size:12px;color:var(--muted)}
+nav{display:flex;gap:4px;margin-top:18px;border-bottom:1px solid var(--line);overflow-x:auto}
+nav a{padding:9px 14px;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;font-size:14px}
+nav a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--ink);font-weight:500}
+main{padding:18px clamp(16px,3vw,36px) 48px}
+.view[hidden]{display:none}
+.skeleton{font-size:13px;color:var(--muted);margin:0 0 12px;max-width:90ch}
+.skeleton b{color:var(--ink);font-weight:600}
+.bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:12px;font-size:13px;color:var(--muted)}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:5px;overflow:hidden;background:var(--sheet)}
+.seg button{border:0;border-right:1px solid var(--line);background:none;padding:5px 10px;font-size:13px;color:var(--muted)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.key{display:inline-flex;align-items:center;gap:6px}
+.sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+.split{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:22px;align-items:start}
+@media (max-width:1000px){.split{grid-template-columns:1fr}}
+.strata{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.band{display:grid;grid-template-columns:140px minmax(0,1fr);border-top:1px solid var(--line)}
+.band:first-child{border-top:0}
+.band .lab{padding:12px;border-right:1px solid var(--line);font-size:12px;color:var(--muted);line-height:1.4}
+.band .lab b{display:block;color:var(--ink);font-size:14px;font-weight:600;margin-bottom:2px}
+.tiles{display:flex;flex-wrap:wrap;gap:10px;padding:16px 14px 14px}
+.band-app{background:var(--b-app)}.band-and{background:var(--b-and)}.band-oh{background:var(--b-oh)}.band-k{background:var(--b-k)}
+.ctlwrap{margin-top:16px;border:1px dashed var(--line);border-radius:8px;background:var(--b-ctl)}
+.ctlwrap .band{border-top:0}
+.tile{position:relative;width:170px;min-height:78px;text-align:left;background:var(--sheet);border:1px solid var(--line);border-left:4px solid var(--na);border-radius:4px;padding:12px 10px 8px;display:flex;flex-direction:column;gap:2px;transition:opacity .15s}
+.tile.prop{border-style:dashed;border-left-style:solid;border-left-color:var(--prop)}
+.tile[aria-pressed="true"]{outline:2px solid var(--sel);outline-offset:1px}
+.tile.dim,.rel.dim{opacity:.28}
+.tile .nm{font-weight:600;font-size:14px;line-height:1.3}
+.tile .sb{font-size:12px;color:var(--muted);line-height:1.35}
+.tile .ft{margin-top:auto;padding-top:6px;font-size:11.5px;color:var(--muted)}
+.tile .ft .hot{color:var(--notch)}
+.revtag{display:inline-block;font-size:11px;color:var(--rev);border:1px solid var(--rev);border-radius:3px;padding:0 4px;margin-top:4px;align-self:flex-start}
+.tile.revd{box-shadow:inset 0 0 0 1px var(--rev)}
+.hide-rev .revtag{display:none}.hide-rev .tile.revd{box-shadow:none}
+.notches{position:absolute;top:-1px;left:6px;right:6px;display:flex;gap:3px;height:7px;pointer-events:none}
+.notches i{width:11px;height:7px;background:var(--notch);clip-path:polygon(0 0,100% 0,50% 100%)}
+.notches i.p{background:var(--notch2)}
+.idx{margin-top:16px;border:1px solid var(--line);border-radius:8px;background:var(--sheet);padding:14px}
+.idx h2{margin:0 0 2px;font-size:15px;font-weight:600}
+.idx p{margin:0 0 10px;font-size:12.5px;color:var(--muted)}
+.rels{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.rel{text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:7px 9px;font-size:13px;transition:opacity .15s}
+.rel[aria-pressed="true"]{outline:2px solid var(--sel);outline-offset:1px}
+.rel .ep{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+.kind{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:0 4px;margin-left:4px}
+aside.drawer{position:sticky;top:12px;background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:18px;max-height:calc(100vh - 24px);overflow:auto}
+@media (max-width:1000px){aside.drawer{position:static;max-height:none}}
+.drawer h2{margin:0;font-size:20px;font-weight:600}
+.drawer .id{color:var(--faint)}
+.drawer h3{font-size:13px;font-weight:600;margin:16px 0 6px;color:var(--muted)}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:10px;border:1px solid var(--line);color:var(--muted);margin:0 4px 4px 0}
+.clist{list-style:none;margin:0;padding:0}
+.clist li{padding:6px 0;border-top:1px solid var(--line);font-size:13.5px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.clist li:first-child{border-top:0}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:0 6px;font-size:12px;white-space:nowrap}
+.chip.open{border-color:var(--notch);color:var(--notch)}
+.chip.progress{border-color:var(--notch2);color:var(--notch2)}
+.chip.crossed{color:var(--ok);border-color:var(--ok)}
+.lnk{background:none;border:0;padding:0;color:var(--sel);text-decoration:underline;text-underline-offset:2px;font-size:inherit;text-align:left}
+.tag{font-size:11.5px;padding:0 6px;border-radius:3px;background:var(--paper);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.hist{border-color:var(--notch2);color:var(--notch2)}
+.tag.claim{border-color:var(--prop);color:var(--prop)}
+.tag.warn{border-color:var(--notch);color:var(--notch)}
+.note{font-size:12.5px;color:var(--muted)}
+.dimtab{width:100%;border-collapse:collapse;font-size:13px}
+.dimtab td{border-top:1px solid var(--line);padding:6px 4px;vertical-align:top}
+.dimtab td:first-child{width:7.5em;color:var(--muted);white-space:nowrap}
+.empty{background:var(--sheet);border:1px solid var(--line);border-left:4px solid var(--na);border-radius:6px;padding:16px 18px;margin-bottom:16px;max-width:760px}
+.empty h2{margin:0 0 6px;font-size:16px;font-weight:600}
+.empty p{margin:0 0 10px;font-size:14px}
+.btn{border:1px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:4px;padding:5px 12px;font-size:13px}
+.btn.ghost{background:none;color:var(--ink);border-color:var(--line)}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--sheet)}
+table.t{border-collapse:collapse;width:100%;font-size:13.5px}
+table.t th,table.t td{text-align:left;padding:9px 12px;border-top:1px solid var(--line);vertical-align:top}
+table.t thead th{border-top:0;font-weight:600;color:var(--muted);font-size:12.5px;background:var(--paper)}
+.mx td.c{text-align:center;font-size:12px;white-space:nowrap}
+.mx td.c.d{color:var(--ink)}.mx td.c.u{color:var(--faint)}.mx td.c.r{color:var(--notch2);font-weight:600}
+.tag.up{border-color:var(--notch2);color:var(--notch2)}
+.stg{display:inline-flex;gap:3px}
+.stg i{width:14px;height:14px;border-radius:3px;border:1px solid var(--line);display:inline-block}
+.stg i.on{background:var(--na);border-color:var(--na)}
+.stg i.h{background:var(--sel);border-color:var(--sel)}
+.ingest{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-bottom:22px}
+@media (max-width:860px){.ingest{grid-template-columns:1fr}}
+.card{background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:16px}
+.card h2{margin:0 0 6px;font-size:16px;font-weight:600}
+textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:8px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+.msgs{margin-top:10px;font-size:12.5px}
+.msgs .bad{color:var(--notch)}.msgs .good{color:var(--ok)}
+.doc{max-width:860px}
+.doc h2{font-size:18px;font-weight:600;margin:28px 0 8px}
+.doc h2:first-child{margin-top:0}
+.doc p,.doc li{max-width:74ch}
+pre{background:var(--sheet);border:1px solid var(--line);border-radius:6px;padding:12px 14px;overflow-x:auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5}
+.stages{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin:14px 0 22px}
+.stage{background:var(--sheet);border:1px solid var(--line);border-top:4px solid var(--na);border-radius:6px;padding:12px 14px;font-size:13px}
+.stage h3{margin:0 0 2px;font-size:15px;font-weight:600}
+.stage .k{color:var(--muted);font-size:12px;margin-top:8px}
+.stage .v{font-size:18px;color:var(--faint);margin-top:2px}
+.ladder{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;margin:8px 0 18px}
+.ladder span.s{border:1px solid var(--line);background:var(--sheet);border-radius:4px;padding:2px 8px}
+.ladder span.s.fin{border-color:var(--ok);color:var(--ok)}
+.ladder span.ar{color:var(--faint)}
+.trace{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:var(--sheet);border:1px solid var(--line);border-radius:4px;padding:2px 6px}
+.flowt td{vertical-align:top}
+.cl{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.mini{background:var(--sheet);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:12.5px}
+.mini b{font-size:14px}
+.dots{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin:8px 0 6px}
+.dots i{aspect-ratio:1;border-radius:50%;border:1.5px solid var(--na);display:block}
+.lanes{color:var(--muted)}
+@media (max-width:640px){.band{grid-template-columns:1fr}.band .lab{border-right:0;border-bottom:1px solid var(--line);padding:8px 12px}.band .lab b{display:inline;margin-right:8px}.tile{width:calc(50% - 5px)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+ <div class="top">
+  <div>
+   <h1>南海+ 全景状态台<small>V3.2</small></h1>
+   <div class="comp" id="comp"></div>
+   <div class="cand"><label for="candSel">候选</label><select id="candSel"></select><span id="candNote"></span></div>
+  </div>
+  <div class="metrics" id="metrics" aria-label="口径"></div>
+ </div>
+ <nav aria-label="视图">
+  <a href="#goals" data-v="goals">目标与阶段</a>
+  <a href="#map" data-v="map">全景</a>
+  <a href="#flows" data-v="flows">流程对照</a>
+  <a href="#contracts" data-v="contracts">契约索引</a>
+  <a href="#upgrade" data-v="upgrade">升级变更集</a>
+  <a href="#tasks" data-v="tasks">任务中心</a>
+  <a href="#walls" data-v="walls">墙榜</a>
+  <a href="#apps" data-v="apps">应用矩阵</a>
+  <a href="#cluster" data-v="cluster">集群</a>
+  <a href="#claims" data-v="claims">声明与事件</a>
+  <a href="#schema" data-v="schema">数据约定</a>
+ </nav>
+</header>
+<main>
+<section class="view" id="v-map">
+ <p class="skeleton"><b>读法：</b>运行域是每个组件的唯一主归属；跨域契约是两端之间的关系，不是部署层，也不持有运行状态；开发与证据控制面在运行链之外。能力柱是透镜，只做交叉引用，不与运行域相加。</p>
+ <div class="bar"><span>能力透镜</span><span class="seg" role="group" aria-label="能力透镜" id="lensSeg"></span></div>
+ <div class="bar">
+  <span>关系视角</span>
+  <span class="seg" role="group" aria-label="关系视角" id="kindSeg">
+   <button data-k="" aria-pressed="true">全部</button><button data-k="control" aria-pressed="false">控制</button><button data-k="callback" aria-pressed="false">回调</button><button data-k="data" aria-pressed="false">数据</button><button data-k="evidence" aria-pressed="false">证据</button>
+  </span>
+  <span>修订标记</span>
+  <span class="seg" role="group" aria-label="修订标记" id="revSeg">
+   <button data-r="show" aria-pressed="true">显示</button><button data-r="only" aria-pressed="false">仅修订项</button><button data-r="hide" aria-pressed="false">隐藏</button>
+  </span>
+ </div>
+ <div class="bar">
+  <span class="key"><i class="sw" style="background:var(--na)"></i>正式状态未接入</span>
+  <span class="key"><i class="sw" style="border:1px dashed var(--prop)"></i>拟议组件</span>
+  <span class="key"><span class="revtag" style="margin:0">V2 修订</span>版本比较标记，不是状态</span>
+  <span class="key" id="histKey" hidden><span class="tag hist">历史声明</span>缺口为 V1 回填的墙，未绑定 RID</span>
+ </div>
+ <div class="split">
+  <div>
+   <div class="strata" id="strata"></div>
+   <div class="idx" id="idx"></div>
+   <div class="ctlwrap" id="ctl"></div>
+  </div>
+  <aside class="drawer" id="drawer" aria-live="polite"></aside>
+ </div>
+</section>
+<section class="view" id="v-goals" hidden></section>
+<section class="view" id="v-flows" hidden></section>
+<section class="view" id="v-tasks" hidden></section>
+<section class="view" id="v-cluster" hidden></section>
+<section class="view" id="v-contracts" hidden></section>
+<section class="view" id="v-upgrade" hidden></section>
+<section class="view" id="v-walls" hidden></section>
+<section class="view" id="v-apps" hidden></section>
+<section class="view" id="v-claims" hidden>
+ <div class="ingest">
+  <div class="card">
+   <h2>提交待核验声明</h2>
+   <p class="note">粘贴 agent 产出的 JSONL，每行一个声明。填了提交口令，声明会存到共享声明库（各单元都看得到）；不填就只存在本浏览器。无论存在哪里，声明都永远不会改变正式墙、应用、计数、颜色或认领；正式状态只来自采集器核对证据并经板采认的快照。</p>
+   <div class="row"><input id="pkey" type="password" autocomplete="off" placeholder="提交口令（可选，存在本浏览器）" style="flex:1;min-width:0;font:inherit;padding:6px 10px;border:1px solid var(--line,#ccc);border-radius:8px;background:transparent;color:inherit"><span class="note" id="srvInfo">共享声明库：连接中…</span></div>
+   <textarea id="paste" spellcheck="false" placeholder='{"id":"m07-lanea-20261112-0001","type":"fix","actor":"lane-07","candidate":"composition07","rid":"composition07:…","node_ids":["and.ams"],"text":"…"}'></textarea>
+   <div class="row">
+    <button class="btn" id="doImport">提交声明</button>
+    <label class="btn ghost">选择文件<input type="file" id="file" accept=".jsonl,.json,.txt" hidden></label>
+    <button class="btn ghost" id="demo">载入示例声明</button>
+   </div>
+   <div class="msgs" id="msgs" aria-live="polite"></div>
+  </div>
+  <div class="card">
+   <h2>本地声明</h2>
+   <p class="note" id="localInfo"></p>
+   <div class="row">
+    <button class="btn ghost" id="exp">导出声明 JSONL</button>
+    <button class="btn ghost" id="clr">清除本地声明</button>
+   </div>
+   <p class="note" style="margin-top:12px">导出的每一行都带 <span class="mono">accepted: false</span>。即使声明里填写了 authority、RID 或证据，页面也只把它当作待核验声明。</p>
+  </div>
+ </div>
+ <div id="claimList"></div>
+ <div id="evArea"></div>
+</section>
+<section class="view doc" id="v-schema" hidden></section>
+</main>
+<script id="data" type="application/json">{"meta": {"title": "南海+ 全景状态台", "version": "V3.2", "composition": "AOSP android-16.0.0_r4 / OH 7.0.0.39 / arm64", "target": 1000, "queue": 115, "legacy_note": "34 款应用、37 面墙、102 条事件来自 V1 原型对三份材料的回填，缺少逐条 RID/证据绑定；不判断真伪，也不据此推断其他应用从未运行。", "deadline": "2027-01-31", "goal": "未来 3 个月香港 1000 款 APK", "meeting": "2026-11-10 沙盘会议记录"}, "domains": [{"id": "app", "name": "应用", "rule": "应用包与应用服务提供方", "kind": "runtime"}, {"id": "and", "name": "Android 应用进程", "rule": "运行位置：Bionic 世界的应用进程内", "kind": "runtime"}, {"id": "oh", "name": "OH 宿主进程", "rule": "运行位置：OH 系统服务与项目对 OH 的改编", "kind": "runtime"}, {"id": "k", "name": "内核与硬件", "rule": "运行位置：Linux、GPU 内核驱动与设备；用户态驱动不在这里", "kind": "runtime"}, {"id": "ctl", "name": "开发与证据控制面", "rule": "运行链之外的开发闭环", "kind": "control"}], "lenses": ["进程身份", "生命周期", "包安装", "窗口输入", "图形输出", "音视频", "传感器", "跨应用/系统能力"], "dims": ["接口与版本", "行为与映射", "身份与授权", "状态与生命周期", "线程与异步", "ABI 与资源", "数据与图形", "错误与范围", "来源、构建与验收"], "nodes": [{"id": "app.apk", "domain": "app", "name": "APK 与语料", "sub": "原包、原签名", "design": "exist", "lenses": ["包安装"], "owns": "不持有运行状态", "desc": "原包不改、不重签；split、ABI、GMS 依赖在接入时分层。1000 款是目标，不是已测范围。", "rev": ""}, {"id": "app.gms", "domain": "app", "name": "Google 服务提供方", "sub": "microG / 官方 Play 研究", "design": "prop", "lenses": ["跨应用/系统能力"], "owns": "不持有运行状态（研究项）", "desc": "GmsCore 是另一个应用，依赖跨包查询、PendingIntent、有序广播与常驻。", "rev": ""}, {"id": "and.art", "domain": "and", "name": "ART / boot image", "sub": "解释、JIT、AOT", "design": "exist", "lenses": ["进程身份"], "owns": "Java 堆与类加载状态", "desc": "boot/OAT/VDEX 与 framework 配对生成。", "rev": ""}, {"id": "and.zygote", "domain": "and", "name": "适配 zygote", "sub": "fork / specialize", "design": "exist", "lenses": ["进程身份", "生命周期"], "owns": "孵化前的预加载状态", "desc": "由 OH init 拉起，接收 OH 的 spawn 请求；specialize 时建立正式身份。", "rev": ""}, {"id": "and.fw", "domain": "and", "name": "framework / BCP", "sub": "Java API 形状原样保留", "design": "exist", "lenses": ["窗口输入", "跨应用/系统能力"], "owns": "View、Activity 等 Android 本地状态", "desc": "应用直接面对的一层；NotificationManager、ClipboardManager 等客户端都在这里。", "rev": ""}, {"id": "and.env", "domain": "and", "name": "OHEnvironment", "sub": "NEW → READY → FAILED", "design": "exist", "lenses": ["进程身份"], "owns": "适配器就绪状态", "desc": "统一闸门，未就绪或反射失败直接抛错，不静默回退。", "rev": ""}, {"id": "and.ams", "domain": "and", "name": "AMS 适配端点", "sub": "进程内，有限管理边界", "design": "exist", "lenses": ["生命周期", "跨应用/系统能力"], "owns": "本进程内的有限管理状态", "desc": "只覆盖有限管理边界；未覆盖的事务应明示拒绝，不静默成功。", "rev": ""}, {"id": "and.atms", "domain": "and", "name": "ATMS 适配端点", "sub": "本包显式 Activity", "design": "exist", "lenses": ["生命周期", "窗口输入"], "owns": "本进程任务栈视图（非权威）", "desc": "task root、CLEAR_TOP、方向等语义逐项补齐。", "rev": ""}, {"id": "and.pms", "domain": "and", "name": "PMS 适配端点", "sub": "消费自包投影", "design": "exist", "lenses": ["包安装"], "owns": "启动期投影的只读缓存", "desc": "消费 BMS 安装记录在启动期投影出的自包信息，不是每次查询都向 BMS RPC。", "rev": "说明修订"}, {"id": "and.wms", "domain": "and", "name": "WMS 适配端点", "sub": "WindowSessionAdapter", "design": "exist", "lenses": ["窗口输入", "图形输出"], "owns": "窗口 token / frame 投影", "desc": "子窗口类型、Dialog、PopupWindow 逐项验证。", "rev": ""}, {"id": "and.local", "domain": "and", "name": "Android 语义本地补齐", "sub": "进程内移植的服务端", "design": "exist", "lenses": ["跨应用/系统能力"], "owns": "本进程的本地服务状态（如 ContentService 观察者）", "desc": "只服务本进程，跨进程语义不成立。", "rev": ""}, {"id": "and.rc", "domain": "and", "name": "ReverseChannel", "sub": "IApplicationThread 回执", "design": "exist", "lenses": ["生命周期"], "owns": "回执序号与附着状态", "desc": "校验 thread/seq/record；同进程 Service 有本地状态，不是 OH Ability 的一对一替换。", "rev": "说明修订"}, {"id": "and.ohkit", "domain": "and", "name": "OHKit", "sub": "OH IPC 客户端（Bionic 编）", "design": "exist", "lenses": ["进程身份", "生命周期", "窗口输入"], "owns": "客户端连接，不持有宿主状态", "desc": "运行在 Android 应用进程内；编译目标数不是 API 能力数。", "rev": "归属调整"}, {"id": "and.hwui", "domain": "and", "name": "HWUI / EGL loader", "sub": "Skia → EGL/GLES", "design": "exist", "lenses": ["图形输出"], "owns": "渲染线程与 EGL 上下文", "desc": "EGL 选择隔离 namespace，先绑定 libmc 再装载驱动。", "rev": ""}, {"id": "and.libmc", "domain": "and", "name": "libmc", "sub": "musl-ABI 兼容库", "design": "exist", "lenses": ["图形输出"], "owns": "后端绑定状态", "desc": "运行在 Android 应用进程内；同进程两套 libc 约定。", "rev": "归属调整"}, {"id": "and.umd", "domain": "and", "name": "厂商用户态 GPU 驱动", "sub": "隔离 namespace 内装载", "design": "exist", "lenses": ["图形输出"], "owns": "GL/Vulkan 上下文", "desc": "用户态驱动属于应用进程，不属于内核与硬件。", "rev": "新增端点"}, {"id": "and.ohw", "domain": "and", "name": "OHW provider", "sub": "libohw_sphal", "design": "exist", "lenses": ["图形输出"], "owns": "进程共享 RS 连接与每窗口节点", "desc": "provider 持有连接与节点；loader 只是消费者。", "rev": "新增端点"}, {"id": "and.buffer", "domain": "and", "name": "Buffer backend", "sub": "分配 / 导入 / 释放", "design": "exist", "lenses": ["图形输出"], "owns": "buffer 生命周期与引用计数", "desc": "格式、stride、fence 对齐；零拷贝未证明。", "rev": "新增端点"}, {"id": "and.native", "domain": "and", "name": "应用 native 与 JNI", "sub": "Bionic + linker namespace", "design": "exist", "lenses": [], "owns": "应用自有原生状态", "desc": "共享内存、位图等原生路径。", "rev": ""}, {"id": "and.media", "domain": "and", "name": "音视频客户端端点", "sub": "AudioTrack / MediaPlayer", "design": "exist", "lenses": ["音视频"], "owns": "播放器本地状态", "desc": "播放器、音频轨道等客户端；视频路径据沙盘记录为明示 stub。", "rev": ""}, {"id": "and.sensor", "domain": "and", "name": "传感器客户端端点", "sub": "SensorManager", "design": "exist", "lenses": ["传感器"], "owns": "订阅本地状态", "desc": "传感器发现与订阅的客户端。", "rev": ""}, {"id": "oh.init", "domain": "oh", "name": "OH init", "sub": "进程树起点", "design": "exist", "lenses": ["进程身份"], "owns": "系统启动状态", "desc": "启动受控的 Android 运行入口。", "rev": ""}, {"id": "oh.appmgr", "domain": "oh", "name": "AppMgr", "sub": "进程管理", "design": "exist", "lenses": ["进程身份", "生命周期"], "owns": "宿主进程记录（权威）", "desc": "图标启动受理、spawn、AppLaunchData 附着校验。", "rev": ""}, {"id": "oh.appspawn", "domain": "oh", "name": "appspawn", "sub": "孵化请求转发", "design": "exist", "lenses": ["进程身份"], "owns": "孵化请求", "desc": "OH 侧孵化入口，经 TLV 交给适配 zygote。", "rev": "新增端点"}, {"id": "oh.ability", "domain": "oh", "name": "AbilityMgr", "sub": "Ability 生命周期", "design": "exist", "lenses": ["生命周期"], "owns": "Ability 记录与前后台（权威）", "desc": "StartAbility/TerminateAbility 与 own-token 关联。", "rev": ""}, {"id": "oh.bms", "domain": "oh", "name": "BMS", "sub": "安装记录", "design": "exist", "lenses": ["包安装", "进程身份"], "owns": "安装记录（权威）", "desc": "APK 由 BMS 原生安装并持有安装记录；跨包查询属于跨应用契约。", "rev": ""}, {"id": "oh.token", "domain": "oh", "name": "AccessToken", "sub": "tokenID 与授权", "design": "exist", "lenses": ["进程身份", "跨应用/系统能力"], "owns": "tokenID 与权限授予（权威）", "desc": "所有授权判断的身份来源。", "rev": "新增端点"}, {"id": "oh.window", "domain": "oh", "name": "窗口 / SCB", "sub": "会话、frame、焦点", "design": "exist", "lenses": ["窗口输入"], "owns": "窗口会话（权威）", "desc": "多窗口、焦点、方向逐项验证。", "rev": ""}, {"id": "oh.rs", "domain": "oh", "name": "RenderService", "sub": "宿主合成", "design": "exist", "lenses": ["图形输出"], "owns": "渲染节点树与合成", "desc": "接收 OHW 提交的窗口节点。", "rev": ""}, {"id": "oh.mmi", "domain": "oh", "name": "MMI 输入", "sub": "触摸、按键", "design": "exist", "lenses": ["窗口输入"], "owns": "输入设备与路由", "desc": "普通注入与真人确认分开记账。", "rev": ""}, {"id": "oh.ans", "domain": "oh", "name": "通知 / Toast", "sub": "ANS（含项目改编）", "design": "exist", "lenses": ["跨应用/系统能力"], "owns": "通知渠道与通知记录（权威）", "desc": "通知渠道、Toast 与 DND 策略查询的宿主服务。", "rev": ""}, {"id": "oh.pasteboard", "domain": "oh", "name": "剪贴板", "sub": "Pasteboard", "design": "exist", "lenses": ["跨应用/系统能力"], "owns": "剪贴板内容（权威）", "desc": "剪贴板内容与变化监听的宿主服务。", "rev": ""}, {"id": "oh.storage", "domain": "oh", "name": "存储与文件", "sub": "卷 / 沙箱 / Picker", "design": "exist", "lenses": ["跨应用/系统能力"], "owns": "卷与沙箱（权威）", "desc": "Android 路径别名不可见。", "rev": ""}, {"id": "oh.power", "domain": "oh", "name": "电源与后台", "sub": "后台任务、冻结", "design": "exist", "lenses": ["生命周期", "跨应用/系统能力"], "owns": "后台策略（权威）", "desc": "对推送和常驻服务是决定性因素。", "rev": ""}, {"id": "oh.audio", "domain": "oh", "name": "音频服务", "sub": "AudioRenderer", "design": "exist", "lenses": ["音视频"], "owns": "音频会话与焦点（权威）", "desc": "", "rev": ""}, {"id": "oh.sensor", "domain": "oh", "name": "传感器服务", "sub": "sensor service", "design": "exist", "lenses": ["传感器"], "owns": "传感器订阅（权威）", "desc": "", "rev": ""}, {"id": "oh.ces", "domain": "oh", "name": "公共事件 / WantAgent", "sub": "CES", "design": "prop", "lenses": ["跨应用/系统能力"], "owns": "拟议：广播与延迟动作的宿主记录", "desc": "D-003 待决的映射目标之一。", "rev": ""}, {"id": "k.linux", "domain": "k", "name": "Linux 内核", "sub": "binder、dmabuf、memfd、cgroup", "design": "exist", "lenses": ["进程身份", "图形输出"], "owns": "内核对象", "desc": "两侧共用；Android 侧需要独立 binder 实例。", "rev": ""}, {"id": "k.gpu", "domain": "k", "name": "GPU 内核驱动与设备", "sub": "厂商 / 型号未锁定", "design": "exist", "lenses": ["图形输出"], "owns": "设备与内核驱动状态", "desc": "厂商未锁定，libmc 能否成立取决于具体驱动。", "rev": "说明修订"}, {"id": "ctl.tools", "domain": "ctl", "name": "工具与 agent", "sub": "外环、车道、REA（可选逆向证据）", "design": "exist", "lenses": [], "owns": "不持有运行状态", "desc": "REA 只作为可选逆向证据来源。", "rev": ""}, {"id": "ctl.source", "domain": "ctl", "name": "源码与来源", "sub": "source_origin、等价关系", "design": "exist", "lenses": [], "owns": "不持有运行状态", "desc": "记录每个适配来自上游、改编还是新写。", "rev": ""}, {"id": "ctl.build", "domain": "ctl", "name": "构建与配方", "sub": "manifest、配方、步骤", "design": "exist", "lenses": [], "owns": "不持有运行状态", "desc": "", "rev": ""}, {"id": "ctl.output", "domain": "ctl", "name": "输出与 RID", "sub": "候选组合", "design": "exist", "lenses": [], "owns": "不持有运行状态", "desc": "证据绑定到 RID；RID 变化后旧证据转为历史。", "rev": ""}, {"id": "ctl.verify", "domain": "ctl", "name": "验证", "sub": "host 检查、实机运行", "design": "exist", "lenses": [], "owns": "不持有运行状态", "desc": "有进程、有 Surface、真正截图上屏是三种不同证据。", "rev": ""}, {"id": "ctl.accept", "domain": "ctl", "name": "板采认", "sub": "结构化板 + outer-duty", "design": "exist", "lenses": [], "owns": "不持有运行状态", "desc": "正式状态只来自采集器核对证据后的板采认快照。", "rev": ""}, {"id": "ctl.ref", "domain": "ctl", "name": "平台参考与升级变更集", "sub": "A16 → A17", "design": "exist", "lenses": [], "owns": "不持有运行状态", "desc": "平台参考快照与版本之间的变更集；升级类问题的主归属。", "rev": "新增端点"}, {"id": "and.callerproxy", "domain": "and", "name": "调用方身份代理", "sub": "示例拟议（U-A16-A17-0001）", "design": "prop", "lenses": ["进程身份", "跨应用/系统能力"], "owns": "调用方身份缓存（拟议）", "desc": "示例：为满足更严格的调用方校验，在应用进程侧新增的对象。具体形态以设计蓝本为准。", "rev": "U 拟议", "only": "a17"}, {"id": "oh.isohelper", "domain": "oh", "name": "受限辅助进程", "sub": "示例拟议（U-A16-A17-0003）", "design": "prop", "lenses": ["进程身份"], "owns": "独立安全域内的辅助状态（拟议）", "desc": "示例：为满足更严格的进程隔离，在宿主侧新增的进程。具体形态以设计蓝本为准。", "rev": "U 拟议", "only": "a17"}], "rels": [{"id": "x.spawn", "name": "启动与孵化", "a": ["oh.appmgr", "oh.appspawn"], "b": ["and.zygote"], "kind": "control", "lenses": ["进程身份"], "note": "AppMgr 发起，appspawn 经 TLV 交给适配 zygote 做 fork/specialize。", "dims": {}, "rev": ""}, {"id": "x.identity", "name": "身份与授权", "a": ["oh.token", "oh.bms"], "b": ["and.zygote", "and.env"], "kind": "control", "lenses": ["进程身份"], "note": "specialize 阶段建立 UID、tokenID 与 SELinux 身份；安装标记与 tokenID 的一致性贯穿所有授权判断。", "dims": {}, "rev": ""}, {"id": "x.pkg", "name": "包信息投影", "a": ["oh.bms"], "b": ["and.pms"], "kind": "data", "lenses": ["包安装"], "note": "BMS 安装记录 → 启动期自包投影 → Android PMS 消费。", "dims": {"行为与映射": "投影：启动期一次性投影，PMS 只读消费；不是每次查询都向 BMS RPC。", "状态与生命周期": "BMS 是安装记录的权威；PMS 持有投影缓存，安装记录变化需要重新投影。", "错误与范围": "只覆盖 self 包/UID；跨包查询（OD-4）未闭合，flags 组合逐项决定满足、忽略或拒绝。"}, "rev": "说明修订"}, {"id": "x.life", "name": "生命周期命令与回执", "a": ["oh.ability", "oh.appmgr"], "b": ["and.rc"], "kind": "callback", "lenses": ["生命周期"], "note": "AppLaunchData 与 Ability 生命周期命令经反向通道回到 ActivityThread。", "dims": {"行为与映射": "转发命令并回执；同进程 Service 有本地状态，不是 OH Ability 的一对一替换。", "状态与生命周期": "Ability 记录与前后台由 OH 持有；Activity/View/本地 Service 状态在 Android 侧，并未消失。", "线程与异步": "命令回执需校验 thread/seq/record；FOREGROUND 无回应会导致前台超时（W-RC-01）。"}, "rev": "说明修订"}, {"id": "x.call", "name": "服务调用", "a": ["and.ohkit"], "b": ["oh.appmgr", "oh.ability", "oh.bms", "oh.window", "oh.mmi"], "kind": "control", "lenses": ["进程身份", "生命周期", "窗口输入"], "note": "Android 侧适配端点经 OHKit 走 OH IPC。接口码与 Parcel 格式随 OH 版本变化。", "dims": {"接口与版本": "须同时记录 Android descriptor/method/code 与 OH service/SA/code 及各自快照；事务码单独拿出来没有稳定含义。"}, "rev": ""}, {"id": "x.window", "name": "窗口会话", "a": ["and.wms", "and.atms"], "b": ["oh.window"], "kind": "control", "lenses": ["窗口输入"], "note": "token/frame 投影、方向更新、子窗口类型。", "dims": {}, "rev": ""}, {"id": "x.input", "name": "输入事件", "a": ["oh.mmi"], "b": ["and.fw"], "kind": "data", "lenses": ["窗口输入"], "note": "按窗口/token 路由进入 Android 事件分发。", "dims": {}, "rev": ""}, {"id": "x.gfx", "name": "图形提交", "a": ["and.ohw"], "b": ["oh.rs"], "kind": "data", "lenses": ["图形输出"], "note": "窗口、buffer/fence、libmc、OHW provider 与 RS 合成是不同环节。", "dims": {"行为与映射": "provider 提交窗口节点，RS 合成；loader 只是消费者。", "数据与图形": "七个版本化 C API 传递节点与缓冲区，避免跨 C++ 对象传递。", "来源、构建与验收": "有进程、有 Surface、真正截图上屏是三种证据；零拷贝、GPU 性能、首帧延迟尚未证明。"}, "rev": "说明修订"}, {"id": "x.buffer", "name": "Buffer 与 Fence", "a": ["and.buffer"], "b": ["oh.rs", "k.linux"], "kind": "data", "lenses": ["图形输出"], "note": "分配、导入、提交、释放；fence 缺失不能当作完成。", "dims": {"数据与图形": "格式、stride、对齐、fence 语义、引用计数需逐项对齐。"}, "rev": "新增端点"}, {"id": "x.abi", "name": "驱动 ABI", "a": ["and.libmc"], "b": ["and.umd"], "kind": "control", "lenses": ["图形输出"], "note": "同一进程内的 Bionic 与 musl 约定对接。", "dims": {"ABI 与资源": "TLS/errno、allocator、C++ 异常、namespace、驱动内部 dlopen 与 fd/内存释放。"}, "rev": ""}, {"id": "x.gpu", "name": "用户态驱动与内核驱动", "a": ["and.umd"], "b": ["k.gpu"], "kind": "control", "lenses": ["图形输出"], "note": "厂商未锁定，接口不明。", "dims": {}, "rev": ""}, {"id": "x.notify", "name": "通知与 Toast", "a": ["and.fw"], "b": ["oh.ans", "oh.token"], "kind": "control", "lenses": ["跨应用/系统能力"], "note": "通知渠道、Toast、DND 策略查询。", "dims": {}, "rev": ""}, {"id": "x.media", "name": "音视频", "a": ["and.media"], "b": ["oh.audio"], "kind": "data", "lenses": ["音视频"], "note": "媒体与传感器分开讲解。", "dims": {}, "rev": ""}, {"id": "x.sensor", "name": "传感器", "a": ["and.sensor"], "b": ["oh.sensor"], "kind": "data", "lenses": ["传感器"], "note": "发现、订阅与投递。", "dims": {}, "rev": ""}, {"id": "x.power", "name": "电源与后台", "a": ["and.fw", "and.ams"], "b": ["oh.power"], "kind": "control", "lenses": ["生命周期", "跨应用/系统能力"], "note": "电池豁免查询、前台服务与后台任务映射。", "dims": {}, "rev": ""}, {"id": "x.clip", "name": "剪贴板", "a": ["and.fw"], "b": ["oh.pasteboard"], "kind": "data", "lenses": ["跨应用/系统能力"], "note": "变化监听与正文读写。", "dims": {}, "rev": ""}, {"id": "x.storage", "name": "存储与文件", "a": ["and.fw", "and.native"], "b": ["oh.storage"], "kind": "data", "lenses": ["跨应用/系统能力"], "note": "卷描述、路径别名、SAF 与 Picker。", "dims": {}, "rev": ""}, {"id": "x.xapp", "name": "跨应用（拟议）", "a": ["and.ams", "and.local"], "b": ["oh.ces", "oh.bms"], "kind": "control", "lenses": ["跨应用/系统能力"], "note": "广播、PendingIntent、跨包可见性与跨包 bind；D-003 待决。", "dims": {}, "rev": ""}], "walls": [{"id": "W00001", "sig": "createNotificationChannels → BMS install-mark status -116", "node": "oh.ans", "contract": "通知渠道", "apps": ["未具名应用 A", "未具名应用 B"], "status": "open", "first": "A117", "last": "A122", "note": "渠道权威把正常安装判为过期安装；已越过旧 transaction34。", "src": "API与任务进展全景-20261109", "rels": ["x.notify", "x.identity"], "alias": "W-ANS-01"}, {"id": "W00002", "sig": "Toast enqueue transaction4", "node": "oh.ans", "contract": "Toast enqueue", "apps": ["LRC Editor"], "status": "open", "first": "A120", "last": "A121", "note": "共享存储不可用分支触发 Toast。", "src": "API与任务进展全景-20261109", "rels": ["x.notify"], "alias": "W-ANS-02"}, {"id": "W00003", "sig": "isNotificationPolicyAccessGranted → install-mark -116", "node": "oh.ans", "contract": "DND 策略", "apps": ["TimeTable"], "status": "crossed", "first": "A120", "last": "A125", "note": "A125 主页、Time settings 均已上屏。", "src": "API与任务进展全景-20261109", "rels": ["x.notify", "x.identity"], "alias": "W-ANS-03"}, {"id": "W00004", "sig": "创建期 Text Toast 需已附着窗口", "node": "and.wms", "contract": "Text Toast 附着窗口", "apps": ["Shader Editor"], "status": "crossed", "first": "A120", "last": "A121", "note": "A121 已显示真实文字 Toast。", "src": "API与任务进展全景-20261109", "rels": ["x.window"], "alias": "W-WMS-01"}, {"id": "W00005", "sig": "getIntentSenderWithFeature tx71 未实现", "node": "and.ams", "contract": "getIntentSenderWithFeature (tx71)", "apps": ["TimeTable", "未具名同步类应用"], "status": "progress", "first": "A123", "last": "A125", "note": "TimeTable 已越过；同步类应用越过后撞到 code22。", "src": "API与任务进展全景-20261109", "rels": ["x.xapp"], "alias": "W-AMS-71"}, {"id": "W00006", "sig": "registerReceiverWithFeature code22 未实现", "node": "and.ams", "contract": "有序广播投递", "apps": ["未具名同步类应用"], "status": "open", "first": "A125", "last": "A125", "note": "动态广播注册，属于跨应用契约底座。", "src": "API与任务进展全景-20261109", "rels": ["x.xapp"], "alias": "W-AMS-22"}, {"id": "W00007", "sig": "AlarmManager START 已受理，未来投递未证", "node": "and.ams", "contract": "Alarm 未来投递", "apps": ["TimeTable"], "status": "open", "first": "A125", "last": "A125", "note": "调度接受不等于 receiver 被投递。", "src": "API与任务进展全景-20261109", "rels": ["x.xapp", "x.power"], "alias": "W-XAPP-01"}, {"id": "W00008", "sig": "getApplicationInfo flags 0x10000400 unsupported 0x400", "node": "and.pms", "contract": "getApplicationInfo 0x400", "apps": ["NoNonsense Notes"], "status": "open", "first": "P48", "last": "P48", "note": "已进入 stock SearchableInfo 解析。", "src": "API与任务进展全景-20261109", "rels": ["x.pkg"], "alias": "W-PMS-01"}, {"id": "W00009", "sig": "getComponentEnabledSetting 未实现", "node": "and.pms", "contract": "getComponentEnabledSetting", "apps": ["PhotoPhase"], "status": "crossed", "first": "A123", "last": "A125", "note": "A124 组件状态增量后越过。", "src": "API与任务进展全景-20261109", "rels": ["x.pkg"], "alias": "W-PMS-02"}, {"id": "W00010", "sig": "getActivityInfo 0x100c0280 被拒", "node": "and.pms", "contract": "getActivityInfo flags", "apps": ["Simple Material Notes"], "status": "crossed", "first": "A101", "last": "A101", "note": "A101 越过。", "src": "API与任务进展全景-20261109", "rels": ["x.pkg"], "alias": "W-PMS-03"}, {"id": "W00011", "sig": "getServiceInfo 未实现", "node": "and.pms", "contract": "getServiceInfo", "apps": ["Chess Clock"], "status": "crossed", "first": "A101", "last": "A101", "note": "A101 越过。", "src": "API与任务进展全景-20261109", "rels": ["x.pkg"], "alias": "W-PMS-04"}, {"id": "W00012", "sig": "WallpaperManager$Globals.mService 为空", "node": "and.local", "contract": "WallpaperManager", "apps": ["PhotoPhase"], "status": "open", "first": "A125", "last": "A125", "note": "GeneralPreferenceFragment.onResume:170。", "src": "API与任务进展全景-20261109", "rels": [], "alias": "W-LOC-01"}, {"id": "W00013", "sig": "IContentService 未发布（R6_JAVA_SM_NOT_PUBLISHED content）", "node": "and.local", "contract": "IContentService", "apps": ["Alarm Clock"], "status": "progress", "first": "A106", "last": "P43", "note": "进程内 ContentService 已目标构建，实机待验。", "src": "API与任务进展全景-20261109", "rels": [], "alias": "W-LOC-02"}, {"id": "W00014", "sig": "IME 包装层取 input_method 为空", "node": "and.local", "contract": "IME 包装层", "apps": ["Simple Material Notes", "Chess Clock"], "status": "crossed", "first": "A105", "last": "A105", "note": "从真实服务管理器取回后修复。", "src": "API与任务进展全景-20261109", "rels": [], "alias": "W-LOC-03"}, {"id": "W00015", "sig": "getImeTrackerService 后 AM transaction264", "node": "and.ams", "contract": "getImeTrackerService (tx264)", "apps": ["Simple Material Notes"], "status": "crossed", "first": "A104", "last": "A110", "note": "Notes 主页与编辑器已上屏。", "src": "API与任务进展全景-20261109", "rels": [], "alias": "W-AMS-264"}, {"id": "W00016", "sig": "PowerManager 为空 / isIgnoringBatteryOptimizations", "node": "oh.power", "contract": "电池豁免查询", "apps": ["Alarm Clock"], "status": "progress", "first": "A110", "last": "P48", "note": "有限策略投影已有 host/API 检查，实机待验。", "src": "API与任务进展全景-20261109", "rels": ["x.power"], "alias": "W-PWR-01"}, {"id": "W00017", "sig": "WindowSessionAdapter.getWindowId 未实现（Transition）", "node": "and.wms", "contract": "getWindowId", "apps": ["BMI Calculator"], "status": "open", "first": "P48", "last": "P48", "note": "点击单位弹窗退桌面。", "src": "API与任务进展全景-20261109", "rels": ["x.window"], "alias": "W-WMS-02"}, {"id": "W00018", "sig": "PopupWindow.showAsDropDown → Dialog geometry unsupported", "node": "and.wms", "contract": "Dialog geometry", "apps": ["Ruler"], "status": "open", "first": "A116", "last": "A116", "note": "ConnectMain stage3 -22。", "src": "API与任务进展全景-20261109", "rels": ["x.window"], "alias": "W-WMS-03"}, {"id": "W00019", "sig": "type1000 子面板 fatal", "node": "and.wms", "contract": "type1000 子面板", "apps": ["Simple Counter"], "status": "crossed", "first": "P48", "last": "P48", "note": "新建计数面板完整出现。", "src": "API与任务进展全景-20261109", "rels": ["x.window"], "alias": "W-WMS-04"}, {"id": "W00020", "sig": "isTaskRoot → queryOwnTaskRoot ROOT_ORIGIN_UNKNOWN", "node": "and.atms", "contract": "isTaskRoot / queryOwnTaskRoot", "apps": ["Shader Editor"], "status": "open", "first": "A121", "last": "A122", "note": "Back 致命退桌面，不是成功 finish。", "src": "API与任务进展全景-20261109", "rels": ["x.life"], "alias": "W-ATMS-01"}, {"id": "W00021", "sig": "GameController BadParcelableException", "node": "and.atms", "contract": "Parcelable extras", "apps": ["Privacy Friendly Battleships"], "status": "crossed", "first": "A121", "last": "A123", "note": "本应用 Parcelable extras 修复后进入棋盘。", "src": "API与任务进展全景-20261109", "rels": [], "alias": "W-ATMS-02"}, {"id": "W00022", "sig": "setRequestedOrientation code32 未实现", "node": "and.atms", "contract": "setRequestedOrientation", "apps": ["Acrylic"], "status": "crossed", "first": "P45", "last": "A111", "note": "映射到 OH 主窗方向更新。", "src": "API与任务进展全景-20261109", "rels": ["x.window"], "alias": "W-ATMS-03"}, {"id": "W00023", "sig": "Splash FOREGROUND_NEW 无人回应，前台超时", "node": "and.rc", "contract": "FOREGROUND 回应", "apps": ["2048"], "status": "progress", "first": "A110", "last": "P45", "note": "按 OH ForegroundFailed 回应，尚未实机。", "src": "API与任务进展全景-20261109", "rels": ["x.life"], "alias": "W-RC-01"}, {"id": "W00024", "sig": "源生命周期失败后 SCB no-record / OH22", "node": "oh.window", "contract": "session 记录", "apps": ["Privacy Friendly Battleships"], "status": "crossed", "first": "A120", "last": "A121", "note": "A121 进入配置页。", "src": "API与任务进展全景-20261109", "rels": ["x.window", "x.life"], "alias": "W-SCB-01"}, {"id": "W00025", "sig": "getPrimaryClip transaction4 unsupported", "node": "oh.pasteboard", "contract": "getPrimaryClip", "apps": ["Clipboard Editor"], "status": "progress", "first": "A122", "last": "P47", "note": "纯文本映射有目标编译记录。", "src": "API与任务进展全景-20261109", "rels": ["x.clip"], "alias": "W-CLIP-01"}, {"id": "W00026", "sig": "Android 存储别名 ENOENT / 未挂载主卷", "node": "oh.storage", "contract": "路径别名", "apps": ["LRC Editor"], "status": "open", "first": "A121", "last": "P47", "note": "两个 OH 目录可打开，两个 Android 别名不存在。", "src": "API与任务进展全景-20261109", "rels": ["x.storage"], "alias": "W-STO-01"}, {"id": "W00027", "sig": "com.android.internal.util.Predicate 缺类", "node": "and.fw", "contract": "BCP 内部类完整性", "apps": ["packlist"], "status": "open", "first": "P48", "last": "P48", "note": "ACRA 初始化 attachBaseContext。", "src": "API与任务进展全景-20261109", "rels": [], "alias": "W-BCP-01"}, {"id": "W00028", "sig": "WebView 应用 MainActivity 启动失败", "node": "and.fw", "contract": "WebView 提供方", "apps": ["Jiten WebView"], "status": "open", "first": "A112", "last": "A112", "note": "Top 应用大量依赖 WebView，优先级应前移。", "src": "API与任务进展全景-20261109", "rels": [], "alias": "W-WEB-01"}, {"id": "W00029", "sig": "Bitmap_copyAshmem → createBitmap SIGSEGV", "node": "and.native", "contract": "Bitmap ashmem / memfd", "apps": ["Simple Material Notes"], "status": "crossed", "first": "A101", "last": "A104", "note": "OH memfd 探测与 JNI 空值处理。", "src": "API与任务进展全景-20261109", "rels": [], "alias": "W-NAT-01"}, {"id": "W00030", "sig": "SoundPool → IAudioService.trackPlayer 为空", "node": "and.media", "contract": "IAudioService.trackPlayer", "apps": ["Chess Clock"], "status": "crossed", "first": "A101", "last": "A110", "note": "仅登记兼容，声音未验。", "src": "API与任务进展全景-20261109", "rels": ["x.media"], "alias": "W-MED-01"}, {"id": "W00031", "sig": "传感器订阅 status201", "node": "and.sensor", "contract": "sensorservice 订阅", "apps": ["Privacy Friendly Dicer"], "status": "progress", "first": "A118", "last": "P47", "note": "源码与 host 检查，真实投递未确认。", "src": "API与任务进展全景-20261109", "rels": ["x.sensor"], "alias": "W-MED-02"}, {"id": "W00032", "sig": "OHW Adopt 错拒 session0", "node": "and.ohw", "contract": "Adopt / session", "apps": ["Flowit!"], "status": "crossed", "first": "A120", "last": "A122", "note": "A122 首次完整主页。", "src": "API与任务进展全景-20261109", "rels": ["x.gfx"], "alias": "W-OHW-01"}, {"id": "W00033", "sig": "libutils RefBase 强引用 sig7", "node": "and.ohw", "contract": "RS 节点生命周期", "apps": ["Flowit!"], "status": "crossed", "first": "A121", "last": "A122", "note": "", "src": "API与任务进展全景-20261109", "rels": ["x.gfx"], "alias": "W-OHW-02"}, {"id": "W00034", "sig": "VelocityTracker 输入服务配置缺失", "node": "oh.mmi", "contract": "VelocityTracker 配置", "apps": ["VAT Calculator", "Shopping List"], "status": "crossed", "first": "A112", "last": "A114", "note": "", "src": "API与任务进展全景-20261109", "rels": ["x.input"], "alias": "W-MMI-01"}, {"id": "W00035", "sig": "注入坐标与控件不对应", "node": "oh.mmi", "contract": "坐标映射", "apps": ["3D Model Viewer", "Memo Game"], "status": "open", "first": "A117", "last": "P48", "note": "Load Model 点进 Help；OKAY 注入未关闭对话框。", "src": "API与任务进展全景-20261109", "rels": ["x.input"], "alias": "W-MMI-02"}, {"id": "W00036", "sig": "OH7 流式安装入口拒绝 .apk（file is not hap or hsp or app）", "node": "oh.bms", "contract": "流式安装入口", "apps": ["新候选全部"], "status": "open", "first": "C2", "last": "C2", "note": "新候选的所有工作都卡在这一步之后。", "src": "API与任务进展全景-20261109", "rels": ["x.pkg"], "alias": "W-BMS-01"}, {"id": "W00037", "sig": "仅标题、黑底正文", "node": "and.wms", "contract": "", "apps": ["Page"], "status": "open", "first": "P48", "last": "P48", "note": "未归因：需要日志确认首错。", "src": "API与任务进展全景-20261109", "rels": [], "alias": "W-UNK-01"}], "apps": [{"name": "HelloWorld", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "human", "wall": null, "summary": "Main→Second→Back、变色、Service、桌面重开；composition07 有真人确认。"}, {"name": "RPN", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "2 ENTER 3 + 得到 5.00。"}, {"name": "Simple Material Notes", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": null, "wall": null, "summary": "主页及编辑器可见；键入、保存未验。"}, {"name": "Chess Clock", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "倒计时与暂停通过；声音未验。"}, {"name": "Ruler", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": null, "wall": "W00018", "summary": "完整标尺上屏；右上菜单崩溃。"}, {"name": "2048", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": null, "wall": "W00023", "summary": "只确认 Welcome 引导。"}, {"name": "Alarm Clock", "tier": "T0", "installed": true, "process": true, "content": false, "interaction": null, "wall": "W00016", "summary": "越过权限首错，卡在 PowerManager。"}, {"name": "HIIT", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "训练计时与复位通过；声音未验。"}, {"name": "VAT Calculator", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "选择 20% 后表单正常；计算未验。"}, {"name": "Acrylic", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "点击出现绿色绘点；拖画、保存未验。"}, {"name": "Diceware Password Generator", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "NEW PASSWORD 改变文字。"}, {"name": "Privacy Friendly Dicer", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": "W00031", "summary": "掷骰页与 Roll 按钮可用；摇动未证。"}, {"name": "Text Editor (Textpad)", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": null, "wall": null, "summary": "约 91 秒后编辑器上屏；保存与输入未验。"}, {"name": "Shopping List", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "Add 打开输入栏；保存未验。"}, {"name": "Jiten WebView", "tier": "T0", "installed": true, "process": true, "content": false, "interaction": null, "wall": "W00028", "summary": "MainActivity 启动失败。"}, {"name": "Shader Editor", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": null, "wall": "W00020", "summary": "历史编辑页上屏；本轮 Back 致命。"}, {"name": "Open Calculator", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "2+3 显示 5。"}, {"name": "Privacy Friendly Battleships", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "棋盘、选格、FIRE、换人对话框。"}, {"name": "LRC Editor", "tier": "T0", "installed": true, "process": true, "content": false, "interaction": null, "wall": "W00002", "summary": "Toast transaction4 崩溃。"}, {"name": "Clipboard Editor", "tier": "T0", "installed": true, "process": true, "content": false, "interaction": null, "wall": "W00025", "summary": "监听已越过，读正文崩溃。"}, {"name": "Flowit!", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "菜单与 HOW TO PLAY；正式关卡未验。"}, {"name": "TimeTable", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": "W00007", "summary": "主页、Time settings、返回均通过；闹钟投递未证。"}, {"name": "Memo Game", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": null, "wall": "W00035", "summary": "菜单与 Welcome；OKAY 注入未关闭。"}, {"name": "NoNonsense Notes", "tier": "T0", "installed": true, "process": true, "content": false, "interaction": null, "wall": "W00008", "summary": "SearchableInfo 后 flags 0x400。"}, {"name": "PhotoPhase", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": "W00012", "summary": "设置列表与 General 越过；Wallpaper 为空。"}, {"name": "3D Model Viewer", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": null, "wall": "W00035", "summary": "菜单与 Help/Demos/About；模型渲染未验。"}, {"name": "Voltage Drop Calculator", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": null, "wall": null, "summary": "完整表单显示。"}, {"name": "DebtCalc", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": null, "wall": null, "summary": "日期、金额、利率表单显示。"}, {"name": "Its Dicey!", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "按住显示红圆，抬手清空。"}, {"name": "Simple Counter", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "+ 打开完整新建面板。"}, {"name": "Page", "tier": "T0", "installed": true, "process": true, "content": false, "interaction": null, "wall": "W00037", "summary": "仅标题、黑底。"}, {"name": "DozenCalc", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": "auto", "wall": null, "summary": "1+1 等于 2。"}, {"name": "BMI Calculator", "tier": "T0", "installed": true, "process": true, "content": true, "interaction": null, "wall": "W00017", "summary": "完整表单；点单位退桌面。"}, {"name": "packlist", "tier": "T0", "installed": true, "process": true, "content": false, "interaction": null, "wall": "W00027", "summary": "启动动画后回桌面。"}], "events": [{"type": "observation", "round": "P48", "app": "HelloWorld", "stage": "interaction", "verified": "verified", "node_ids": [], "text": "Main→Second→Back、变色、Service、桌面重开；composition07 有真人确认。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-001"}, {"type": "observation", "round": "P48", "app": "RPN", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "2 ENTER 3 + 得到 5.00。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-002"}, {"type": "observation", "round": "P48", "app": "Simple Material Notes", "stage": "content", "verified": "partially-verified", "node_ids": [], "text": "主页及编辑器可见；键入、保存未验。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-003"}, {"type": "observation", "round": "P48", "app": "Chess Clock", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "倒计时与暂停通过；声音未验。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-004"}, {"type": "observation", "round": "P48", "app": "Ruler", "stage": "content", "verified": "partially-verified", "node_ids": [], "text": "完整标尺上屏；右上菜单崩溃。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-005"}, {"type": "observation", "round": "P48", "app": "2048", "stage": "content", "verified": "partially-verified", "node_ids": [], "text": "只确认 Welcome 引导。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-006"}, {"type": "observation", "round": "P48", "app": "Alarm Clock", "stage": "process", "verified": "partially-verified", "node_ids": [], "text": "越过权限首错，卡在 PowerManager。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-007"}, {"type": "observation", "round": "P48", "app": "HIIT", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "训练计时与复位通过；声音未验。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-008"}, {"type": "observation", "round": "P48", "app": "VAT Calculator", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "选择 20% 后表单正常；计算未验。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-009"}, {"type": "observation", "round": "P48", "app": "Acrylic", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "点击出现绿色绘点；拖画、保存未验。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-010"}, {"type": "observation", "round": "P48", "app": "Diceware Password Generator", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "NEW PASSWORD 改变文字。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-011"}, {"type": "observation", "round": "P48", "app": "Privacy Friendly Dicer", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "掷骰页与 Roll 按钮可用；摇动未证。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-012"}, {"type": "observation", "round": "P48", "app": "Text Editor (Textpad)", "stage": "content", "verified": "partially-verified", "node_ids": [], "text": "约 91 秒后编辑器上屏；保存与输入未验。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-013"}, {"type": "observation", "round": "P48", "app": "Shopping List", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "Add 打开输入栏；保存未验。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-014"}, {"type": "observation", "round": "P48", "app": "Jiten WebView", "stage": "process", "verified": "partially-verified", "node_ids": [], "text": "MainActivity 启动失败。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-015"}, {"type": "observation", "round": "P48", "app": "Shader Editor", "stage": "content", "verified": "partially-verified", "node_ids": [], "text": "历史编辑页上屏；本轮 Back 致命。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-016"}, {"type": "observation", "round": "P48", "app": "Open Calculator", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "2+3 显示 5。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-017"}, {"type": "observation", "round": "P48", "app": "Privacy Friendly Battleships", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "棋盘、选格、FIRE、换人对话框。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-018"}, {"type": "observation", "round": "P48", "app": "LRC Editor", "stage": "process", "verified": "partially-verified", "node_ids": [], "text": "Toast transaction4 崩溃。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-019"}, {"type": "observation", "round": "P48", "app": "Clipboard Editor", "stage": "process", "verified": "partially-verified", "node_ids": [], "text": "监听已越过，读正文崩溃。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-020"}, {"type": "observation", "round": "P48", "app": "Flowit!", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "菜单与 HOW TO PLAY；正式关卡未验。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-021"}, {"type": "observation", "round": "P48", "app": "TimeTable", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "主页、Time settings、返回均通过；闹钟投递未证。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-022"}, {"type": "observation", "round": "P48", "app": "Memo Game", "stage": "content", "verified": "partially-verified", "node_ids": [], "text": "菜单与 Welcome；OKAY 注入未关闭。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-023"}, {"type": "observation", "round": "P48", "app": "NoNonsense Notes", "stage": "process", "verified": "partially-verified", "node_ids": [], "text": "SearchableInfo 后 flags 0x400。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-024"}, {"type": "observation", "round": "P48", "app": "PhotoPhase", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "设置列表与 General 越过；Wallpaper 为空。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-025"}, {"type": "observation", "round": "P48", "app": "3D Model Viewer", "stage": "content", "verified": "partially-verified", "node_ids": [], "text": "菜单与 Help/Demos/About；模型渲染未验。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-026"}, {"type": "observation", "round": "P48", "app": "Voltage Drop Calculator", "stage": "content", "verified": "partially-verified", "node_ids": [], "text": "完整表单显示。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-027"}, {"type": "observation", "round": "P48", "app": "DebtCalc", "stage": "content", "verified": "partially-verified", "node_ids": [], "text": "日期、金额、利率表单显示。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-028"}, {"type": "observation", "round": "P48", "app": "Its Dicey!", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "按住显示红圆，抬手清空。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-029"}, {"type": "observation", "round": "P48", "app": "Simple Counter", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "+ 打开完整新建面板。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-030"}, {"type": "observation", "round": "P48", "app": "Page", "stage": "process", "verified": "partially-verified", "node_ids": [], "text": "仅标题、黑底。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-031"}, {"type": "observation", "round": "P48", "app": "DozenCalc", "stage": "interaction", "verified": "partially-verified", "node_ids": [], "text": "1+1 等于 2。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-032"}, {"type": "observation", "round": "P48", "app": "BMI Calculator", "stage": "content", "verified": "partially-verified", "node_ids": [], "text": "完整表单；点单位退桌面。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-033"}, {"type": "observation", "round": "P48", "app": "packlist", "stage": "process", "verified": "partially-verified", "node_ids": [], "text": "启动动画后回桌面。", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-034"}, {"type": "wall", "round": "A117", "wall_id": "W00001", "node_ids": ["oh.ans"], "apps": ["未具名应用 A", "未具名应用 B"], "text": "createNotificationChannels → BMS install-mark status -116", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-035"}, {"type": "wall", "round": "A120", "wall_id": "W00002", "node_ids": ["oh.ans"], "apps": ["LRC Editor"], "text": "Toast enqueue transaction4", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-036"}, {"type": "wall", "round": "A120", "wall_id": "W00003", "node_ids": ["oh.ans"], "apps": ["TimeTable"], "text": "isNotificationPolicyAccessGranted → install-mark -116", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-037"}, {"type": "wall", "round": "A120", "wall_id": "W00004", "node_ids": ["and.wms"], "apps": ["Shader Editor"], "text": "创建期 Text Toast 需已附着窗口", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-038"}, {"type": "wall", "round": "A123", "wall_id": "W00005", "node_ids": ["and.ams"], "apps": ["TimeTable", "未具名同步类应用"], "text": "getIntentSenderWithFeature tx71 未实现", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-039"}, {"type": "wall", "round": "A125", "wall_id": "W00006", "node_ids": ["and.ams"], "apps": ["未具名同步类应用"], "text": "registerReceiverWithFeature code22 未实现", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-040"}, {"type": "wall", "round": "A125", "wall_id": "W00007", "node_ids": ["and.ams"], "apps": ["TimeTable"], "text": "AlarmManager START 已受理，未来投递未证", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-041"}, {"type": "wall", "round": "P48", "wall_id": "W00008", "node_ids": ["and.pms"], "apps": ["NoNonsense Notes"], "text": "getApplicationInfo flags 0x10000400 unsupported 0x400", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-042"}, {"type": "wall", "round": "A123", "wall_id": "W00009", "node_ids": ["and.pms"], "apps": ["PhotoPhase"], "text": "getComponentEnabledSetting 未实现", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-043"}, {"type": "wall", "round": "A101", "wall_id": "W00010", "node_ids": ["and.pms"], "apps": ["Simple Material Notes"], "text": "getActivityInfo 0x100c0280 被拒", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-044"}, {"type": "wall", "round": "A101", "wall_id": "W00011", "node_ids": ["and.pms"], "apps": ["Chess Clock"], "text": "getServiceInfo 未实现", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-045"}, {"type": "wall", "round": "A125", "wall_id": "W00012", "node_ids": ["and.local"], "apps": ["PhotoPhase"], "text": "WallpaperManager$Globals.mService 为空", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-046"}, {"type": "wall", "round": "A106", "wall_id": "W00013", "node_ids": ["and.local"], "apps": ["Alarm Clock"], "text": "IContentService 未发布（R6_JAVA_SM_NOT_PUBLISHED content）", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-047"}, {"type": "wall", "round": "A105", "wall_id": "W00014", "node_ids": ["and.local"], "apps": ["Simple Material Notes", "Chess Clock"], "text": "IME 包装层取 input_method 为空", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-048"}, {"type": "wall", "round": "A104", "wall_id": "W00015", "node_ids": ["and.ams"], "apps": ["Simple Material Notes"], "text": "getImeTrackerService 后 AM transaction264", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-049"}, {"type": "wall", "round": "A110", "wall_id": "W00016", "node_ids": ["oh.power"], "apps": ["Alarm Clock"], "text": "PowerManager 为空 / isIgnoringBatteryOptimizations", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-050"}, {"type": "wall", "round": "P48", "wall_id": "W00017", "node_ids": ["and.wms"], "apps": ["BMI Calculator"], "text": "WindowSessionAdapter.getWindowId 未实现（Transition）", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-051"}, {"type": "wall", "round": "A116", "wall_id": "W00018", "node_ids": ["and.wms"], "apps": ["Ruler"], "text": "PopupWindow.showAsDropDown → Dialog geometry unsupported", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-052"}, {"type": "wall", "round": "P48", "wall_id": "W00019", "node_ids": ["and.wms"], "apps": ["Simple Counter"], "text": "type1000 子面板 fatal", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-053"}, {"type": "wall", "round": "A121", "wall_id": "W00020", "node_ids": ["and.atms"], "apps": ["Shader Editor"], "text": "isTaskRoot → queryOwnTaskRoot ROOT_ORIGIN_UNKNOWN", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-054"}, {"type": "wall", "round": "A121", "wall_id": "W00021", "node_ids": ["and.atms"], "apps": ["Privacy Friendly Battleships"], "text": "GameController BadParcelableException", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-055"}, {"type": "wall", "round": "P45", "wall_id": "W00022", "node_ids": ["and.atms"], "apps": ["Acrylic"], "text": "setRequestedOrientation code32 未实现", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-056"}, {"type": "wall", "round": "A110", "wall_id": "W00023", "node_ids": ["and.rc"], "apps": ["2048"], "text": "Splash FOREGROUND_NEW 无人回应，前台超时", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-057"}, {"type": "wall", "round": "A120", "wall_id": "W00024", "node_ids": ["oh.window"], "apps": ["Privacy Friendly Battleships"], "text": "源生命周期失败后 SCB no-record / OH22", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-058"}, {"type": "wall", "round": "A122", "wall_id": "W00025", "node_ids": ["oh.pasteboard"], "apps": ["Clipboard Editor"], "text": "getPrimaryClip transaction4 unsupported", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-059"}, {"type": "wall", "round": "A121", "wall_id": "W00026", "node_ids": ["oh.storage"], "apps": ["LRC Editor"], "text": "Android 存储别名 ENOENT / 未挂载主卷", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-060"}, {"type": "wall", "round": "P48", "wall_id": "W00027", "node_ids": ["and.fw"], "apps": ["packlist"], "text": "com.android.internal.util.Predicate 缺类", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-061"}, {"type": "wall", "round": "A112", "wall_id": "W00028", "node_ids": ["and.fw"], "apps": ["Jiten WebView"], "text": "WebView 应用 MainActivity 启动失败", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-062"}, {"type": "wall", "round": "A101", "wall_id": "W00029", "node_ids": ["and.native"], "apps": ["Simple Material Notes"], "text": "Bitmap_copyAshmem → createBitmap SIGSEGV", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-063"}, {"type": "wall", "round": "A101", "wall_id": "W00030", "node_ids": ["and.media"], "apps": ["Chess Clock"], "text": "SoundPool → IAudioService.trackPlayer 为空", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-064"}, {"type": "wall", "round": "A118", "wall_id": "W00031", "node_ids": ["and.media"], "apps": ["Privacy Friendly Dicer"], "text": "传感器订阅 status201", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-065"}, {"type": "wall", "round": "A120", "wall_id": "W00032", "node_ids": ["and.ohw"], "apps": ["Flowit!"], "text": "OHW Adopt 错拒 session0", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-066"}, {"type": "wall", "round": "A121", "wall_id": "W00033", "node_ids": ["and.ohw"], "apps": ["Flowit!"], "text": "libutils RefBase 强引用 sig7", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-067"}, {"type": "wall", "round": "A112", "wall_id": "W00034", "node_ids": ["oh.mmi"], "apps": ["VAT Calculator", "Shopping List"], "text": "VelocityTracker 输入服务配置缺失", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-068"}, {"type": "wall", "round": "A117", "wall_id": "W00035", "node_ids": ["oh.mmi"], "apps": ["3D Model Viewer", "Memo Game"], "text": "注入坐标与控件不对应", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-069"}, {"type": "wall", "round": "C2", "wall_id": "W00036", "node_ids": ["oh.bms"], "apps": ["新候选全部"], "text": "OH7 流式安装入口拒绝 .apk（file is not hap or hsp or app）", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-070"}, {"type": "wall", "round": "P48", "wall_id": "W00037", "node_ids": ["and.wms"], "apps": ["Page"], "text": "仅标题、黑底正文", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-071"}, {"type": "fix", "round": "P43", "wall_id": "W00013", "node_ids": ["and.local"], "text": "进程内 IContentService：移植 AOSP16 ContentService/ObserverNode；host 49 项，目标构建通过", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-072"}, {"type": "fix", "round": "A102", "wall_id": "W00029", "node_ids": ["and.native"], "text": "OH memfd 探测与两处 JNI 空值处理；两库链接通过", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-073"}, {"type": "fix", "round": "A102", "wall_id": "W00030", "node_ids": ["and.media"], "text": "当前应用播放器登记与生命周期；仅登记兼容", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-074"}, {"type": "fix", "round": "P45", "wall_id": "W00022", "node_ids": ["and.atms"], "text": "setRequestedOrientation → OH 主窗 ACTION_UPDATE_ORIENTATION", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-075"}, {"type": "fix", "round": "P45", "wall_id": "W00023", "node_ids": ["and.rc"], "text": "源 finish 后按 OH ForegroundFailed 回 FOREGROUND_FAILED(8)", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-076"}, {"type": "fix", "round": "P47", "wall_id": "W00025", "node_ids": ["oh.pasteboard"], "text": "有边界的纯文本剪贴板映射，目标编译记录", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-077"}, {"type": "fix", "round": "P47", "wall_id": "W00031", "node_ids": ["and.media"], "text": "加速度传感器发现与订阅，host 检查", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-078"}, {"type": "fix", "round": "P48", "wall_id": "W00016", "node_ids": ["oh.power"], "text": "PowerManager 有限策略投影与 host/API 检查", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-079"}, {"type": "fix", "round": "A124", "wall_id": "W00009", "node_ids": ["and.pms"], "text": "已安装组件状态源码增量", "verified": "partially-verified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-080"}, {"type": "verification", "round": "A104", "wall_id": "W00029", "node_ids": ["and.native"], "result": "crossed", "text": "Notes 首页上屏，外环读图确认", "verified": "verified", "actor": "外环（回填）", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-081"}, {"type": "verification", "round": "A110", "wall_id": "W00030", "node_ids": ["and.media"], "result": "crossed", "text": "Chess Clock 倒计时与暂停通过", "verified": "verified", "actor": "外环（回填）", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-082"}, {"type": "verification", "round": "A111", "wall_id": "W00022", "node_ids": ["and.atms"], "result": "crossed", "text": "Acrylic 越过方向首错并绘点", "verified": "verified", "actor": "外环（回填）", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-083"}, {"type": "verification", "round": "A122", "wall_id": "W00032", "node_ids": ["and.ohw"], "result": "crossed", "text": "Flowit 首次完整主页", "verified": "verified", "actor": "外环（回填）", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-084"}, {"type": "verification", "round": "A125", "wall_id": "W00009", "node_ids": ["and.pms"], "result": "crossed", "text": "PhotoPhase General 越过", "verified": "verified", "actor": "外环（回填）", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-085"}, {"type": "verification", "round": "A125", "wall_id": "W00003", "node_ids": ["oh.ans"], "result": "crossed", "text": "TimeTable 主页、设置、返回均亲阅", "verified": "verified", "actor": "外环（回填）", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-086"}, {"type": "verification", "round": "P48", "wall_id": "W00019", "node_ids": ["and.wms"], "result": "crossed", "text": "Counter 新建面板完整出现", "verified": "verified", "actor": "外环（回填）", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-087"}, {"type": "decision", "round": "", "decision_id": "D-001", "node_ids": ["and.ams", "and.atms", "and.pms", "and.wms"], "text": "不运行完整 system_server：已定", "src": "南海_技术全景沙盘-V2-20261109", "verified": "unverified", "actor": "回填：进展全景", "backfill": true, "id": "BF-088"}, {"type": "decision", "round": "", "decision_id": "D-002", "node_ids": ["oh.bms", "oh.appmgr", "oh.ability"], "text": "OH 是唯一状态权威：已定", "src": "南海_技术全景沙盘-V2-20261109", "verified": "unverified", "actor": "回填：进展全景", "backfill": true, "id": "BF-089"}, {"type": "decision", "round": "", "decision_id": "D-003", "node_ids": ["and.ams", "oh.ces", "and.local"], "text": "跨应用状态归属：待决", "src": "本次讨论", "verified": "unverified", "actor": "回填：进展全景", "backfill": true, "id": "BF-090"}, {"type": "decision", "round": "", "decision_id": "D-004", "node_ids": ["app.gms", "and.ams"], "text": "Google 服务路线：研究初评", "src": "Google服务接入全景导读-20261109", "verified": "unverified", "actor": "回填：进展全景", "backfill": true, "id": "BF-091"}, {"type": "decision", "round": "", "decision_id": "D-005", "node_ids": ["and.libmc", "k.gpu"], "text": "GPU 驱动路径：待决", "src": "南海_技术全景沙盘-V2-20261109", "verified": "unverified", "actor": "回填：进展全景", "backfill": true, "id": "BF-092"}, {"type": "knowledge", "round": "", "node_ids": ["and.local"], "path": "docs/runtime/content-service.md", "text": "docs/runtime/content-service.md", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-093", "note": "本仓未定位"}, {"type": "knowledge", "round": "", "node_ids": ["and.atms"], "path": "docs/runtime/requested-orientation.md", "text": "docs/runtime/requested-orientation.md", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-094", "note": "本仓未定位"}, {"type": "knowledge", "round": "", "node_ids": ["and.rc"], "path": "docs/runtime/cold-redirect.md", "text": "docs/runtime/cold-redirect.md", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-095", "note": "本仓未定位"}, {"type": "knowledge", "round": "", "node_ids": ["and.native"], "path": "docs/native/bitmap-ashmem.md", "text": "docs/native/bitmap-ashmem.md", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-096", "note": "本仓未定位"}, {"type": "knowledge", "round": "", "node_ids": ["and.media"], "path": "docs/runtime/audio-player.md", "text": "docs/runtime/audio-player.md", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-097", "note": "本仓未定位"}, {"type": "knowledge", "round": "", "node_ids": ["oh.power"], "path": "knowledge/api/p48-alarm-power.md", "text": "knowledge/api/p48-alarm-power.md", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-098", "note": "本仓未定位"}, {"type": "knowledge", "round": "", "node_ids": ["oh.pasteboard"], "path": "knowledge/api/p47-clipboard-payload.md", "text": "knowledge/api/p47-clipboard-payload.md", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-099", "note": "本仓未定位"}, {"type": "knowledge", "round": "", "node_ids": ["oh.storage"], "path": "knowledge/api/p47-storage-volumes.md", "text": "knowledge/api/p47-storage-volumes.md", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-100", "note": "本仓未定位"}, {"type": "knowledge", "round": "", "node_ids": ["and.wms"], "path": "knowledge/api/p48-batch02.md", "text": "knowledge/api/p48-batch02.md", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-101", "note": "本仓未定位"}, {"type": "knowledge", "round": "", "node_ids": ["and.media"], "path": "knowledge/api/p47-sensor-accelerometer.md", "text": "knowledge/api/p47-sensor-accelerometer.md", "verified": "unverified", "actor": "回填：进展全景", "src": "API与任务进展全景-20261109", "backfill": true, "id": "BF-102", "note": "本仓未定位"}], "decisions": [{"id": "D-001", "title": "不运行完整 system_server", "state": "已定", "nodes": ["and.ams", "and.atms", "and.pms", "and.wms"], "text": "框架接口保留，服务语义在进程内适配端点中逐项接入、投影、补齐或明示拒绝。"}, {"id": "D-002", "title": "OH 是宿主状态的权威", "state": "已定（限定范围）", "nodes": ["oh.bms", "oh.appmgr", "oh.ability"], "text": "权威范围限于安装记录、宿主进程与 Ability 记录；View、本地 Service 等 Android 本地状态除外。"}, {"id": "D-003", "title": "跨应用状态归属", "state": "待决", "nodes": ["and.ams", "and.local", "oh.ces"], "text": "广播与 PendingIntent 映射到 CES/WantAgent，还是建 Android 跨应用代理服务。"}, {"id": "D-004", "title": "Google 服务路线", "state": "研究初评", "nodes": ["app.gms"], "text": "先补共同底座，再做 microG FCM 单功能闭环。"}, {"id": "D-005", "title": "GPU 驱动路径", "state": "待决", "nodes": ["and.libmc", "and.umd", "k.gpu"], "text": "libmc 承接 musl-ABI 厂商驱动，或保留 API 转发备选；先锁定 GPU 厂商。"}, {"id": "D-006", "title": "U-A16-A17 端到端设计", "state": "待蓝本", "nodes": ["ctl.ref", "and.callerproxy", "oh.isohelper"], "text": "安全/基建类任务蓝本先行：先由第二外环出对抗审查过的设计蓝本，再拆实现卡。"}], "cands": [{"id": "composition07", "name": "composition07", "note": "当前候选组合；正式明细未接入"}, {"id": "a17", "name": "a17-候选", "note": "AOSP 17 升级候选；正式明细未接入"}, {"id": "oh39", "name": "oh39", "note": "OH 7.0.0.39 候选；正式明细未接入"}, {"id": "source81", "name": "source81", "note": "源码组合 81；正式明细未接入"}, {"id": "tree", "name": "tree", "note": "库存视图，不适用验证"}, {"id": "legacy", "name": "历史回填摘要", "note": "V1 原型回填，未逐条绑定 RID 与证据；只作历史声明"}], "rounds": ["A101", "A102", "A104", "A105", "A106", "A109", "A110", "A111", "A112", "A113", "A114", "A116", "A117", "A118", "A119", "A120", "A121", "A122", "A123", "A124", "A125", "P43", "P45", "P47", "P48", "C2"], "stages": [{"id": "s0", "name": "阶段 0", "title": "API 开发", "target": "system server API 100% 覆盖（约 1000 个）；native server 可选（约 4000 个，如 Wi-Fi、发声、蓝牙）", "measure": "已实现 / 平台参考 API 数，按同一参考集与候选计算", "verify": "agent：host 检查 + 上板调用", "note": "会议记录在此处标注“3ms”，含义待确认"}, {"id": "s1", "name": "阶段 1", "title": "性能", "target": "阈值待定", "measure": "启动耗时、首帧、关键调用延迟", "verify": "agent 自动测量", "note": ""}, {"id": "s2", "name": "阶段 2", "title": "功能测试", "target": "菜单进入 6–7 级目录，功能完整", "measure": "每款应用到达的菜单深度", "verify": "人工点击；后续考虑 agent 自动化与物理触摸", "note": ""}, {"id": "s31", "name": "阶段 3.1", "title": "反虚", "target": "与传统方案全面对比并实测", "measure": "被检测出的应用数与检测点", "verify": "agent + 人工复核", "note": ""}, {"id": "s32", "name": "阶段 3.2", "title": "兼容性（CTS）", "target": "约 1000 个 API 完成后开始", "measure": "CTS 通过率（同一 CTS 版本与模块范围）", "verify": "CTS", "note": ""}, {"id": "s33", "name": "阶段 3.3", "title": "支付", "target": "microG、GrapheneOS 路线", "measure": "支付与登录链路闭环的应用数", "verify": "人工 + agent", "note": ""}], "running": [{"id": "r1", "name": "HelloWorld 启动", "desc": "安装、启动、窗口三步都有证据"}, {"id": "r2", "name": "更多 APK 上屏", "desc": "语料中的应用出现真实画面（截图证据）"}, {"id": "r3", "name": "功能测试", "desc": "菜单进入 6–7 级目录，功能完整"}], "codes": ["todo", "dev", "testing", "pass", "fail", "blocked", "done", "verified", "wontdo", "void"], "flows": [{"step": "安装", "android": ["and.pms"], "oh": ["oh.bms"], "rels": ["x.pkg"], "evidence": "BMS 返回码、安装记录、自包投影内容"}, {"step": "孵化与身份", "android": ["and.zygote", "and.env"], "oh": ["oh.appmgr", "oh.appspawn", "oh.token"], "rels": ["x.spawn", "x.identity"], "evidence": "spawn TLV、UID / tokenID、SELinux 域"}, {"step": "启动与附着", "android": ["and.rc", "and.ams"], "oh": ["oh.appmgr", "oh.ability"], "rels": ["x.life", "x.call"], "evidence": "AppLaunchData 附着回执、首个 Activity 生命周期"}, {"step": "窗口", "android": ["and.wms", "and.atms"], "oh": ["oh.window"], "rels": ["x.window"], "evidence": "窗口会话、token 与 frame"}, {"step": "上屏", "android": ["and.hwui", "and.libmc", "and.umd", "and.ohw", "and.buffer"], "oh": ["oh.rs"], "rels": ["x.abi", "x.gpu", "x.gfx", "x.buffer"], "evidence": "真实截图（不是只有进程或 Surface）"}, {"step": "输入与交互", "android": ["and.fw"], "oh": ["oh.mmi"], "rels": ["x.input"], "evidence": "操作前后截图、注入或真人确认"}, {"step": "前后台与退出", "android": ["and.rc", "and.ams"], "oh": ["oh.ability", "oh.power"], "rels": ["x.life", "x.power"], "evidence": "切后台再返回、force-stop 后重开"}, {"step": "系统能力", "android": ["and.fw", "and.media", "and.sensor"], "oh": ["oh.ans", "oh.pasteboard", "oh.storage", "oh.audio", "oh.sensor"], "rels": ["x.notify", "x.clip", "x.storage", "x.media", "x.sensor"], "evidence": "通知、剪贴板、文件、声音、传感器各自的行为证据"}], "cluster": {"hub": "Mac server 上的 Linux 虚拟机：黑板、outer-duty 锁、租约、证据库、采集器、全景", "minis": ["m01", "m02", "m03", "m04", "m05", "m06", "m07", "m08", "m09", "m10"], "devices_per": 10, "builds": [{"id": "build-01", "note": "现有 x86：基线与候选、外环复验构建"}, {"id": "build-02", "note": "新增 x86：车道增量构建"}, {"id": "build-0N", "note": "会议建议 2 台以上，按队列数据增配"}], "states": ["空闲", "占用", "异常", "重置中", "离线"], "reset": ["hdc 软重启", "重新上电（可编程供电 USB hub 或智能插座）", "标记离线，转人工"]}, "refs": [{"id": "A16", "name": "AOSP android-16.0.0_r4", "state": "当前基线"}, {"id": "A17", "name": "AOSP 17（具体版本待锁定）", "state": "升级目标，快照待接入"}], "changesets": [{"id": "U-A16-A17", "frm": "A16", "to": "A17", "status": "扫描中", "note": "条目均为示例，用来演示联动；实际内容以 agent 对两个平台参考快照的扫描结果为准。", "steps": [{"n": "扫描", "out": "变更集条目，每条附源码依据", "st": "进行中"}, {"n": "影响映射", "out": "契约矩阵上的复核带", "st": "未开始"}, {"n": "设计蓝本", "out": "第二外环对抗审查过的端到端设计", "st": "未开始"}, {"n": "实现与验证", "out": "按蓝本拆出的任务卡，在 a17 候选上复验", "st": "未开始"}], "items": [{"id": "U-A16-A17-0001", "title": "示例：Binder 调用方身份校验收紧", "basis": "待扫描", "affects": [["x.call", "身份与授权"], ["x.identity", "身份与授权"], ["x.call", "线程与异步"]], "need": "新增对象", "proposed": ["and.callerproxy"], "decision": "D-006", "walls": [], "status": "todo"}, {"id": "U-A16-A17-0002", "title": "示例：后台启动与前台服务限制", "basis": "待扫描", "affects": [["x.power", "状态与生命周期"], ["x.life", "状态与生命周期"]], "need": "无需新增，调整映射", "proposed": [], "decision": "D-006", "walls": [], "status": "todo"}, {"id": "U-A16-A17-0003", "title": "示例：进程隔离与 SELinux 域收紧", "basis": "待扫描", "affects": [["x.spawn", "身份与授权"], ["x.identity", "身份与授权"], ["x.abi", "ABI 与资源"]], "need": "新增进程", "proposed": ["oh.isohelper"], "decision": "D-006", "walls": [], "status": "todo"}]}], "scodes": {"todo": "未开发", "dev": "开发中", "testing": "测试中", "pass": "测试通过", "fail": "测试失败", "blocked": "阻塞中", "done": "已完成", "verified": "已校验", "wontdo": "不做", "void": "作废"}, "outcomes": [["派出条目", "dev"], ["ACK(#N done)", "done"], ["ACK(#N blocked)", "blocked"], ["ACK(#N wontdo)", "wontdo"], ["改判(作废 #N)", "void"], ["复验报告：测试中", "testing"], ["复验报告：通过 / 失败", "pass / fail"], ["外环 R2 记档(#N) 采认", "verified"]]}</script>
+<script>
+"use strict";
+const D=JSON.parse(document.getElementById('data').textContent);
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const NODE=new Map(D.nodes.map(n=>[n.id,n]));
+const REL=new Map(D.rels.map(r=>[r.id,r]));
+const DOM=new Map(D.domains.map(d=>[d.id,d]));
+const CAND=new Map(D.cands.map(c=>[c.id,c]));
+const CHGITEM=new Map();for(const c of D.changesets)for(const it of c.items)CHGITEM.set(it.id,{...it,cs:c.id});
+function itemsForRel(rid){const o=[];for(const it of CHGITEM.values())for(const [r,dim] of it.affects)if(r===rid)o.push({it,dim});return o}
+function itemsForNode(nid){const o=new Set();for(const it of CHGITEM.values()){if(it.proposed.includes(nid))o.add(it);for(const [r] of it.affects){const rel=REL.get(r);if(rel&&(rel.a.includes(nid)||rel.b.includes(nid)))o.add(it)}}return [...o]}
+const visibleNode=n=>!n.only||n.only===st.cand;
+const KINDN={control:'控制',callback:'回调',data:'数据',evidence:'证据'};
+const WS={open:'打开',progress:'处理中',crossed:'已越过'};
+const TYPES=['observation','wall','task','fix','verification','decision','knowledge','claim','device'];
+const BAD_KEYS=new Set(['__proto__','constructor','prototype']);
+const LS='nanhai-pano-v2-claims';
+const rIdx=r=>{const i=D.rounds.indexOf(r);return i<0?999:i};
+const st={cand:'composition07',sel:{t:'node',id:'oh.ans'},lens:'',kind:'',rev:'show',wf:'live'};
+
+/* claims */
+function validate(e,i,seen){
+ const errs=[];const at=`第 ${i} 行`;
+ if(e===null)return[`${at}：为 null`];
+ if(typeof e!=='object'||Array.isArray(e))return[`${at}：不是 JSON 对象`];
+ for(const k of Object.keys(e))if(BAD_KEYS.has(k))errs.push(`${at}：不允许的键 ${k}`);
+ if(errs.length)return errs;
+ if(typeof e.id!=='string'||!e.id.trim())errs.push(`${at}：缺少 id`);
+ else if(seen.has(e.id))errs.push(`${at}：id ${e.id} 重复`);
+ if(!TYPES.includes(e.type))errs.push(`${at}：type 必须是 ${TYPES.join(' / ')}`);
+ if(typeof e.actor!=='string'||!e.actor.trim())errs.push(`${at}：缺少 actor`);
+ if(typeof e.candidate!=='string'||!CAND.has(e.candidate))errs.push(`${at}：candidate 必须是已登记候选`);
+ else if(e.candidate==='legacy'||e.candidate==='tree')errs.push(`${at}：${e.candidate === 'legacy' ? '历史摘要' : '库存视图'}不接受新声明`);
+ if(e.rid!==undefined){if(typeof e.rid!=='string')errs.push(`${at}：rid 必须是字符串`);else{const p=e.rid.split(':')[0];if(e.rid.includes(':')&&typeof e.candidate==='string'&&p!==e.candidate)errs.push(`${at}：rid 前缀 ${p} 与 candidate ${e.candidate} 矛盾`);}}
+ if(e.status!==undefined){if(!D.codes.includes(e.status))errs.push(`${at}：status 必须是短码 ${D.codes.join(' / ')}`);else if(e.status==='verified')errs.push(`${at}：verified（已校验）只能由板采认快照产生，声明不能自填`);}
+ if(typeof e.id==='string'&&!/^(m(0[1-9]|10)|hub|b\d{2})-[a-z]+[a-z0-9]*-\d{8}-\d{4,}$/.test(e.id))errs.push(`${at}：声明 id 格式应为 <单元>-<角色>-<日期>-<序号>，如 m07-lanea-20261112-0042`);
+ if(e.task!==undefined&&!(typeof e.task==='string'&&/^(#\d+|T\d{5})$/.test(e.task)))errs.push(`${at}：task 应为黑板条目号 #212 或 T00212`);
+ if(e.lease!==undefined&&!(typeof e.lease==='string'&&/^LS\d{7}$/.test(e.lease)))errs.push(`${at}：lease 应为 LS 加 7 位数字`);
+ if(e.build!==undefined&&!(typeof e.build==='string'&&/^b\d{2}-\d{7}$/.test(e.build)))errs.push(`${at}：build 应为 <构建机>-<7 位>，如 b02-0000123`);
+ if(e.feature!==undefined&&!(typeof e.feature==='string'&&/^(API-(SS|NS)-\d{5}|APP-\d{5}(-M\d+(\.\d+)*)?)$/.test(e.feature)))errs.push(`${at}：feature 应为 API-SS-00123、API-NS-01234 或 APP-00042(-M1.3.2)`);
+ if(e.wall_id!==undefined&&!(typeof e.wall_id==='string'&&/^W\d{5}$/.test(e.wall_id)))errs.push(`${at}：wall_id 应为 W 加 5 位数字`);
+ if(e.issue_url!==undefined&&(typeof e.issue_url!=='string'||!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/issues\/\d+$/.test(e.issue_url)))errs.push(`${at}：issue_url 必须是 https://github.com/<org>/<repo>/issues/<号>`);
+ if(e.root_cause!==undefined&&!(typeof e.root_cause==='string'&&CHGITEM.has(e.root_cause)))errs.push(`${at}：root_cause 必须是已登记的升级变更条目`);
+ if(e.type!=='device'&&(!Array.isArray(e.node_ids)||!e.node_ids.length))errs.push(`${at}：node_ids 必须是非空数组`);
+ else if(Array.isArray(e.node_ids))for(const n of e.node_ids){if(typeof n!=='string'||!(NODE.has(n)||REL.has(n)))errs.push(`${at}：节点或契约 ${typeof n === 'string' ? n : '(非字符串)'} 未登记`);}
+ if(e.type==='device'&&!(typeof e.device==='string'&&/^m(0[1-9]|10)-d(0[1-9]|10)$/.test(e.device)))errs.push(`${at}：device 声明需要 device 字段，如 m07-d03`);
+ return errs;
+}
+function clean(e){const o={};for(const k of Object.keys(e))if(!BAD_KEYS.has(k))o[k]=e[k];o.accepted=false;o.review='待核验';return o}
+let local=[];
+(function load(){let raw=[];try{raw=JSON.parse(localStorage.getItem(LS)||'[]')}catch(e){raw=[]}
+ if(!Array.isArray(raw))raw=[];const seen=new Set();
+ for(const e of raw){const v=validate(e,0,seen);if(!v.length){seen.add(e.id);local.push(clean(e))}}})();
+const save=()=>{try{localStorage.setItem(LS,JSON.stringify(local.filter(e=>!e._shared)))}catch(e){}};
+/* shared claims store (Vercel) */
+const API='https://nanhai-panorama-api.vercel.app/api/claims', KS='nanhai-pano-key';
+const getKey=()=>{try{return localStorage.getItem(KS)||''}catch(e){return ''}};
+async function pullShared(){
+ try{const r=await fetch(API,{cache:'no-store'});const arr=await r.json();if(!Array.isArray(arr))throw 0;
+  const have=new Set(local.map(e=>e.id));let n=0;const seen=new Set();
+  for(const e of arr){if(have.has(e.id))continue;if(validate(e,0,seen).length)continue;seen.add(e.id);local.push({...clean(e),_shared:true,submitted_at:e.submitted_at});n++}
+  $('srvInfo').textContent=`共享声明库：${arr.length} 条`;if(n)render();
+ }catch(e){$('srvInfo').textContent='共享声明库：连不上，只用本地'}
+}
+async function pushShared(items){
+ const k=getKey();if(!k)return '';
+ try{const r=await fetch(API,{method:'POST',headers:{'content-type':'text/plain','x-panorama-key':k},body:items.map(x=>JSON.stringify(x)).join('\n')});const j=await r.json();
+  if(!r.ok)return `<div class="bad">共享库没收：${esc(j.error||r.status)}${j.details?'：'+esc(j.details.join('；')):''}</div>`;
+  for(const e of local)if(j.saved.includes(e.id))e._shared=true;save();pullShared();
+  return `<div class="good">已存入共享声明库 ${j.saved.length} 条${j.duplicate.length?`，${j.duplicate.length} 条 id 已存在未覆盖`:''}。</div>`;
+ }catch(e){return '<div class="bad">共享声明库连不上，声明只存在本浏览器。</div>'}
+}
+/* derived (official vs legacy only) */
+const isLegacy=()=>st.cand==='legacy';
+function wallsFor(id){return isLegacy()?D.walls.filter(w=>w.node===id||(w.rels||[]).includes(id)):[]}
+function liveWalls(id){return wallsFor(id).filter(w=>w.status!=='crossed')}
+function claimsFor(id){return local.filter(e=>Array.isArray(e.node_ids)&&e.node_ids.includes(id))}
+function relsOf(id){return D.rels.filter(r=>r.a.includes(id)||r.b.includes(id))}
+/* header */
+function header(){
+ const c=CAND.get(st.cand);
+ $('comp').textContent=D.meta.composition+'　目标：'+D.meta.goal+'，截止 '+D.meta.deadline;
+ $('candSel').innerHTML=D.cands.map(x=>`<option value="${esc(x.id)}"${x.id===st.cand?' selected':''}>${esc(x.name)}</option>`).join('');
+ $('candNote').textContent=c.note;
+ let m=`<div><b class="na">待接入</b><span>平台参考</span></div>`;
+ if(st.cand==='tree')m+=`<div><b class="na">不适用</b><span>库存视图</span></div>`;
+ else if(isLegacy()){const a=D.apps,f=x=>a.filter(x).length;
+  m+=[['已安装',f(x=>x.installed)],['进入进程',f(x=>x.process)],['内容上屏',f(x=>x.content)],['交互',f(x=>x.interaction)]].map(([k,v])=>`<div><b>${v}</b><span>${k}（历史声明）</span></div>`).join('');}
+ else m+=`<div><b class="na">未接入</b><span>当前候选正式明细</span></div>`;
+ m+=`<div><b class="na">未统计</b><span>完整功能</span></div><div><b>${D.meta.target}</b><span>目标款数</span></div>`;
+ $('metrics').innerHTML=m;
+ $('histKey').hidden=!isLegacy();
+}
+/* map */
+function lensMatch(item){return !st.lens||(item.lenses||[]).includes(st.lens)}
+function nodeVisible(n){
+ if(st.rev==='only'&&!n.rev)return false;
+ if(!lensMatch(n)){if(!(st.lens&&D.rels.some(r=>lensMatch(r)&&(r.a.includes(n.id)||r.b.includes(n.id)))))return false}
+ if(st.kind==='evidence')return n.domain==='ctl';
+ if(st.kind)return D.rels.some(r=>r.kind===st.kind&&(r.a.includes(n.id)||r.b.includes(n.id)));
+ return true;
+}
+function relVisible(r){if(st.rev==='only'&&!r.rev)return false;if(!lensMatch(r))return false;if(st.kind==='evidence')return false;if(st.kind&&r.kind!==st.kind)return false;return true}
+function tile(n){
+ const lw=liveWalls(n.id).filter(w=>w.node===n.id);const open=lw.filter(w=>w.status==='open').length,prog=lw.length-open;
+ const cl=claimsFor(n.id).length;
+ const ft=isLegacy()?(lw.length?`<span class="hot">${lw.length} 面历史墙</span>`:'无历史墙'):(st.cand==='tree'?'库存':'正式状态未接入');
+ const sel=st.sel.t==='node'&&st.sel.id===n.id;
+ return `<button class="tile ${n.design==='prop'?'prop':''} ${n.rev?'revd':''} ${nodeVisible(n)?'':'dim'}" data-n="${esc(n.id)}" aria-pressed="${sel}"><span class="notches">${isLegacy()?'<i></i>'.repeat(open)+'<i class="p"></i>'.repeat(prog):''}</span><span class="nm">${esc(n.name)}</span><span class="sb">${esc(n.sub)}</span><span class="ft">${ft}${cl?`　<span class="tag claim">${cl} 条声明</span>`:''}</span>${n.rev?`<span class="revtag">${esc(n.rev)}</span>`:''}</button>`;
+}
+function map(){
+ $('lensSeg').innerHTML=['',...D.lenses].map(l=>`<button data-l="${esc(l)}" aria-pressed="${st.lens===l}">${l?esc(l):'全部'}</button>`).join('');
+ document.querySelectorAll('#kindSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===st.kind));
+ document.querySelectorAll('#revSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.r===st.rev));
+ $('v-map').classList.toggle('hide-rev',st.rev==='hide');
+ const run=D.domains.filter(d=>d.kind==='runtime');
+ $('strata').innerHTML=run.map(d=>`<div class="band band-${d.id}"><div class="lab"><b>${esc(d.name)}</b>${esc(d.rule)}</div><div class="tiles">${D.nodes.filter(n=>n.domain===d.id&&visibleNode(n)).map(tile).join('')}</div></div>`).join('');
+ $('idx').innerHTML=`<h2>跨域契约索引（${D.rels.length} 条关系）</h2><p>关系索引，不是额外部署层，不持有运行状态，也不计入组件总数。点击查看两端与九个检查维度。</p><div class="rels">${D.rels.map(r=>{const sel=st.sel.t==='rel'&&st.sel.id===r.id;return `<button class="rel ${relVisible(r)?'':'dim'}" data-r="${esc(r.id)}" aria-pressed="${sel}">${esc(r.name)}<span class="kind">${KINDN[r.kind]}</span>${r.rev?` <span class="revtag" style="margin:0">${esc(r.rev)}</span>`:''}<span class="ep">${r.a.map(x=>esc(NODE.get(x).name)).join('、')} → ${r.b.map(x=>esc(NODE.get(x).name)).join('、')}</span></button>`}).join('')}</div>`;
+ const c=DOM.get('ctl');
+ $('ctl').innerHTML=`<div class="band"><div class="lab"><b>${esc(c.name)}</b>${esc(c.rule)}；证据关系从这里出发，不冒充运行调用</div><div class="tiles">${D.nodes.filter(n=>n.domain==='ctl').map(tile).join('')}</div></div>`;
+ drawer();
+}
+function wchip(w){return `<button class="chip ${w.status} lnk" style="text-decoration:none" data-w="${esc(w.id)}" title="${esc(w.sig)}">${esc(w.id)}</button>`}
+function nodeLink(id){const n=NODE.get(id);return n?`<button class="lnk" data-go="${esc(id)}">${esc(n.name)}</button>`:esc(id)}
+function relLink(id){const r=REL.get(id);return r?`<button class="lnk" data-gr="${esc(id)}">${esc(r.name)}</button>`:esc(id)}
+function claimBlock(id){const cl=claimsFor(id);return `<h3>待核验声明（${cl.length}）</h3>`+(cl.length?`<ul class="clist">${cl.slice(-6).reverse().map(e=>`<li><span><span class="tag claim">${esc(e.type)}</span> ${esc(e.text||'')}<br><span class="note">${esc(e.actor)}　${esc(e.candidate)}</span></span></li>`).join('')}</ul>`:'<p class="note">没有本地声明。</p>')}
+function wallBlock(id){
+ if(st.cand==='tree')return '<h3>墙</h3><p class="note">库存视图不适用验证。</p>';
+ if(!isLegacy())return `<h3>墙</h3><p class="note">当前候选的正式墙明细未接入，不等于没有墙。<button class="lnk" data-cand="legacy">查看历史回填摘要</button></p>`;
+ const ws=wallsFor(id);const prim=ws.filter(w=>w.node===id),ref=ws.filter(w=>w.node!==id);
+ return `<h3>历史墙（主归此处 ${prim.length}，经契约引用 ${ref.length}）</h3>`+(ws.length?`<ul class="clist">${[...prim,...ref].map(w=>`<li><span>${esc(w.sig)}<br><span class="note">${esc(w.apps.join('、'))}　<span class="tag hist">历史声明</span>${w.node!==id?'　主归 '+esc(NODE.get(w.node).name):''}</span></span>${wchip(w)}</li>`).join('')}</ul>`:'<p class="note">没有历史墙记录。</p>');
+}
+function drawer(){
+ let h='';
+ if(st.sel.t==='node'){
+  const n=NODE.get(st.sel.id),d=DOM.get(n.domain);
+  const rs=relsOf(n.id);const decs=D.decisions.filter(x=>x.nodes.includes(n.id));
+  const kn=isLegacy()?D.events.filter(e=>e.type==='knowledge'&&e.node_ids.includes(n.id)):[];
+  h=`<div class="mono id">${esc(n.id)}　${esc(d.name)}</div><h2>${esc(n.name)}</h2>
+  <div style="margin:6px 0 8px">${n.design==='prop'?'<span class="pill">拟议组件</span>':''}<span class="pill">${isLegacy()?'历史摘要视图':st.cand==='tree'?'库存视图':'正式状态未接入'}</span>${n.rev?`<span class="revtag">${esc(n.rev)}</span>`:''}</div>
+  <p style="margin:0;font-size:14px">${esc(n.desc)}</p>
+  <h3>运行状态所有权</h3><p style="margin:0;font-size:13.5px">${esc(n.owns)}</p><p class="note" style="margin:4px 0 0">这是运行时谁持有什么状态，与任务认领无关。</p>
+  ${n.lenses.length?`<h3>能力透镜</h3><div>${n.lenses.map(l=>`<span class="pill">${esc(l)}</span>`).join('')}</div>`:''}
+  ${n.domain==='ctl'?'<h3>证据关系</h3><p class="note" style="margin:0">控制面通过证据指向运行节点，不属于运行调用链。</p>':`<h3>跨域契约（${rs.length}）</h3>${rs.length?`<ul class="clist">${rs.map(r=>`<li><span>${relLink(r.id)}</span><span class="kind">${KINDN[r.kind]}</span></li>`).join('')}</ul>`:'<p class="note">没有登记的跨域关系。</p>'}`}
+  ${n.domain==='ctl'?'':wallBlock(n.id)}
+  ${decs.length?`<h3>决策</h3><ul class="clist">${decs.map(x=>`<li><span><span class="mono">${esc(x.id)}</span> ${esc(x.title)}<br><span class="note">${esc(x.text)}</span></span><span class="chip">${esc(x.state)}</span></li>`).join('')}</ul>`:''}
+  ${kn.length?`<h3>知识文档（历史路径）</h3><ul class="clist">${kn.map(e=>`<li><span class="mono">${esc(e.path)}</span><span class="tag">本仓未定位</span></li>`).join('')}</ul>`:''}
+  ${(()=>{const its=itemsForNode(n.id);return its.length?`<h3>升级变更条目（${its.length}）</h3><ul class="clist">${its.map(it=>`<li><span><a class="lnk" href="#upgrade">${esc(it.id)}</a> ${esc(it.title)}</span><span class="tag up">${esc(D.scodes[it.status])}</span></li>`).join('')}</ul><p class="note">${st.cand==='a17'?'当前为 a17 候选：相关契约维度需复核。':'切换到 a17 候选查看复核范围。'}</p>`:''})()}
+  ${claimBlock(n.id)}`;
+ }else{
+  const r=REL.get(st.sel.id);
+  h=`<div class="mono id">${esc(r.id)}　跨域契约</div><h2>${esc(r.name)}</h2>
+  <div style="margin:6px 0 8px"><span class="pill">${KINDN[r.kind]}关系</span>${r.lenses.map(l=>`<span class="pill">${esc(l)}</span>`).join('')}${r.rev?`<span class="revtag">${esc(r.rev)}</span>`:''}</div>
+  <p style="margin:0;font-size:14px">${esc(r.note)}</p>
+  <h3>两端</h3><p style="margin:0;font-size:13.5px">${r.a.map(nodeLink).join('、')} → ${r.b.map(nodeLink).join('、')}</p>
+  <p class="note" style="margin:4px 0 0">契约索引不持有运行状态；状态归属看两端节点。</p>
+  <h3>九个检查维度</h3><table class="dimtab">${D.dims.map(k=>{const rv=itemsForRel(r.id).filter(x=>x.dim===k);return `<tr><td>${esc(k)}</td><td>${r.dims[k]?esc(r.dims[k]):'<span class="note">未登记</span>'}${rv.length?`<br><span class="tag up">${st.cand==='a17'?'a17 需复核':'升级影响'}：${rv.map(x=>esc(x.it.id)).join('、')}</span>`:''}</td></tr>`}).join('')}</table>
+  <p class="note">已描述只代表写出了约定，不代表已验证。</p>
+  ${wallBlock(r.id)}${claimBlock(r.id)}`;
+ }
+ $('drawer').innerHTML=h;
+}
+/* empty state */
+function emptyCard(what){
+ if(st.cand==='tree')return `<div class="empty"><h2>库存视图不适用验证</h2><p>tree 只列出组件库存，没有${what}的验证口径。</p><button class="btn ghost" data-cand="composition07">切换到 composition07</button></div>`;
+ const legacyCount=what==='墙'?D.walls.length:what==='应用'?D.apps.length:D.events.length;
+ return `<div class="empty"><h2>当前候选的${what}明细尚未接入</h2><p>${esc(st.cand)} 的正式数据需要采集器核对证据并经板采认后才会出现。尚未接入不等于零结果。</p><p class="note">历史回填摘要保留了 ${legacyCount} 条${what}记录，未绑定 RID，只作历史声明。</p><button class="btn" data-cand="legacy">切换到历史回填摘要</button></div>`;
+}
+function wallsView(){
+ const v=$('v-walls');
+ if(!isLegacy()){v.innerHTML=emptyCard('墙');return}
+ let ws=D.walls.slice();if(st.wf==='live')ws=ws.filter(w=>w.status!=='crossed');else if(st.wf!=='all')ws=ws.filter(w=>w.status===st.wf);
+ ws.sort((a,b)=>(a.status==='crossed')-(b.status==='crossed')||b.apps.length-a.apps.length||rIdx(b.last)-rIdx(a.last));
+ v.innerHTML=`<div class="bar"><span class="tag hist">历史声明</span><span>墙主归修复落地的运行端点，并引用相关跨域契约；状态是 V1 回填时记录的声明，不是本候选的验证结论。</span></div>
+ <div class="bar"><span class="seg" role="group" aria-label="墙状态" id="wf">${[['live','未越过'],['open','打开'],['progress','处理中'],['crossed','已越过'],['all','全部']].map(([k,t])=>`<button data-f="${k}" aria-pressed="${st.wf===k}">${t}</button>`).join('')}</span></div>
+ <div class="tw"><table class="t"><thead><tr><th>墙</th><th>首错签名</th><th>主归端点</th><th>引用契约</th><th>根因</th><th>受阻应用</th><th>记录状态</th><th>首见 → 最近</th></tr></thead><tbody>${ws.map(w=>`<tr id="w-${esc(w.id)}"><td class="mono">${esc(w.id)}${w.alias?`<br><span class="note">原 ${esc(w.alias)}</span>`:''}</td><td>${esc(w.sig)}<br><span class="note">${esc(w.note)}</span></td><td>${nodeLink(w.node)}</td><td>${(w.rels||[]).map(relLink).join('、')||'<span class="note">—</span>'}</td><td>${w.root?`<a class="lnk" href="#upgrade">${esc(w.root)}</a>`:'<span class="note">—</span>'}</td><td>${esc(w.apps.join('、'))}</td><td><span class="chip ${w.status}">${WS[w.status]}</span></td><td class="mono">${esc(w.first)} → ${esc(w.last)}</td></tr>`).join('')||'<tr><td colspan="8" class="note">这个筛选下没有记录。</td></tr>'}</tbody></table></div>`;
+}
+function appsView(){
+ const v=$('v-apps');
+ if(!isLegacy()){v.innerHTML=emptyCard('应用');return}
+ const L=['installed','process','content'];
+ v.innerHTML=`<div class="bar"><span class="tag hist">历史声明</span><span>${esc(D.meta.legacy_note)}</span></div><div class="bar"><span>会议定义的“跑起来”：安装 → 启动 → 窗口上屏 → 交互 → 菜单深度 6–7 级。历史数据没有菜单深度记录。</span></div>
+ <div class="tw"><table class="t"><thead><tr><th>应用</th><th>口径（安装 / 进程 / 上屏 / 交互）</th><th>菜单深度</th><th>当时的墙</th><th>当时记录的范围与边界</th></tr></thead><tbody>${D.apps.map(a=>`<tr><td>${esc(a.name)}</td><td><span class="stg">${L.map(k=>`<i class="${a[k]?'on':''}"></i>`).join('')}<i class="${a.interaction==='human'?'h':a.interaction?'on':''}"></i></span></td><td class="note">未记录</td><td>${a.wall?`<span class="mono">${esc(a.wall)}</span>`:'<span class="note">—</span>'}</td><td class="note">${esc(a.summary)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function contractsView(){
+ const v=$('v-contracts');
+ const filled=r=>D.dims.filter(k=>r.dims[k]).length;
+ v.innerHTML=`<div class="doc" style="margin-bottom:18px"><p>“Android API 名称对应 OH 名称”不足以表达契约。每条跨域关系按九个维度检查；下表只区分“已描述”和“未登记”。正式数据未接入，因此没有任何格子标为已验证。${st.cand==='a17'?'当前为 a17 候选，橙色“需复核”是升级变更集影响到的维度。':'切换到 a17 候选可以看到升级变更集带来的复核带。'}</p></div>
+ <div class="tw"><table class="t mx"><thead><tr><th>关系</th><th>类型</th>${D.dims.map(k=>`<th style="font-weight:500">${esc(k)}</th>`).join('')}<th>已描述</th></tr></thead><tbody>${D.rels.map(r=>`<tr><td><button class="lnk" data-gr="${esc(r.id)}">${esc(r.name)}</button></td><td class="note">${KINDN[r.kind]}</td>${D.dims.map(k=>{const rv=st.cand==='a17'&&itemsForRel(r.id).some(x=>x.dim===k);return rv?'<td class="c r">需复核</td>':(r.dims[k]?'<td class="c d">已描述</td>':'<td class="c u">未登记</td>')}).join('')}<td class="mono">${filled(r)} / ${D.dims.length}</td></tr>`).join('')}</tbody></table></div>
+ <div class="doc" style="margin-top:22px"><h2>三个讲解示例</h2>
+ <p><b>包信息：</b>BMS 安装记录 → 启动期自包投影 → Android PMS 消费，不是每次查询都向 BMS RPC。</p>
+ <p><b>生命周期：</b>OH 持有 Ability 记录与前后台；同进程 Service 有本地状态，不是 OH Ability 的一对一替换。“OH 是权威”必须限定到具体的宿主状态。</p>
+ <p><b>图形：</b>窗口、buffer/fence、libmc、OHW provider 与 RS 合成是不同环节；有进程、有 Surface、真正截图上屏是三种证据，零拷贝、GPU 性能与首帧延迟尚未证明。</p></div>`;
+}
+function claimsView(){
+ {const sh=local.filter(e=>e._shared).length,lo=local.length-sh;$('localInfo').textContent=local.length?`共 ${local.length} 条待核验声明：共享声明库 ${sh} 条，只在本浏览器 ${lo} 条。它们只出现在节点详情和下表，不改变任何正式状态。`:'还没有声明。';}
+ $('claimList').innerHTML=local.length?`<h2 style="font-size:16px;font-weight:600;margin:0 0 8px">待核验声明</h2><div class="tw" style="margin-bottom:22px"><table class="t"><thead><tr><th>id</th><th>类型</th><th>执行者</th><th>候选 / RID</th><th>节点或契约</th><th>内容</th></tr></thead><tbody>${local.slice().reverse().map(e=>`<tr><td class="mono">${esc(e.id)}</td><td><span class="tag claim">${esc(e.type)}</span>${e.authority?' <span class="tag warn">自填 authority 不采信</span>':''}</td><td>${esc(e.actor)}</td><td class="mono">${esc(e.candidate)}<br>${esc(e.rid||'')}</td><td>${(e.node_ids||[]).map(x=>NODE.has(x)?nodeLink(x):relLink(x)).join('、')||esc(e.device||'')}</td><td>${esc(e.text||'')}</td></tr>`).join('')}</tbody></table></div>`:'';
+ if(isLegacy()){
+  const es=D.events.slice().sort((a,b)=>rIdx(b.round)-rIdx(a.round));
+  $('evArea').innerHTML=`<div class="bar"><span class="tag hist">历史声明</span><span>V1 回填事件 ${es.length} 条，没有精确时间与 RID。</span></div><div class="tw"><table class="t"><thead><tr><th>轮次</th><th>类型</th><th>执行者</th><th>节点</th><th>内容</th></tr></thead><tbody>${es.map(e=>`<tr><td class="mono">${esc(e.round||'')}</td><td><span class="tag">${esc(e.type)}</span></td><td>${esc(e.actor)}</td><td>${e.node_ids.map(nodeLink).join('、')}</td><td>${esc(e.text||e.path||'')}${e.note?` <span class="tag">${esc(e.note)}</span>`:''}</td></tr>`).join('')}</tbody></table></div>`;
+ }else $('evArea').innerHTML=emptyCard('事件');
+}
+function schemaView(){
+ $('v-schema').innerHTML=`<h2>追溯编号与状态码</h2>
+<p>追溯编号由功能编号、agent 任务编号、机器与设备编号、状态码、OH 错误码组成，例如 <span class="mono">API-SS-00123 · T00212 (#212) · m07-d03 · composition07:652b · 测试中 · NH:AMS:0071</span>；组合编号只用于显示，不存储。状态码共十个：${D.codes.map(c=>D.scodes[c]+'（'+c+'）').join('、')}；verified（已校验）只能由板采认快照产生。数据里存英文短码，页面显示中文。</p>
+<p>agent 默认留下的证据：截屏、JSON、spec 验证结果。每条声明在 evidence 里注明类型、路径与 sha256。</p>
+<pre>{"id":"hub-outer-20261112-0001","type":"task","actor":"外环","candidate":"composition07",
+ "feature":"API-SS-00123","task":"#212","machine":"m07","device":"m07-d03",
+ "lease":"LS0000123","build":"b02-0000123","stage":"s0","status":"dev",
+ "verify_by":"agent | human | cts","error":"NH:AMS:0071","issue_url":"https://github.com/&lt;org&gt;/&lt;repo&gt;/issues/123",
+ "node_ids":["oh.ans","x.notify"],
+ "evidence":[{"kind":"screenshot | json | spec","path":"…","sha256":"…"}]}</pre>
+<h2>V3.2：编号与 octoloop 定式</h2>
+<ul><li>任务号就是黑板条目号：板上继续写 <span class="mono">#212</span>，显示为 <span class="mono">T00212</span>；分支沿用 <span class="mono">task/212</span>。</li>
+<li>状态码改为英文短码，新增 wontdo（不做）与 void（作废），与 ACK 和外环改判一一对应。</li>
+<li>声明 id 为 <span class="mono">&lt;单元&gt;-&lt;角色&gt;-&lt;日期&gt;-&lt;序号&gt;</span>，序号按角色永久递增；租约 <span class="mono">LS</span> 加 7 位；构建任务 <span class="mono">&lt;构建机&gt;-&lt;7 位&gt;</span>；功能为 <span class="mono">API-SS / API-NS / APP</span> 编号。</li>
+<li>历史墙号改为 <span class="mono">W&lt;5 位&gt;</span>，原编号保留为别名。</li>
+<li>错误码分 <span class="mono">OH:&lt;模块&gt;:&lt;原始码&gt;</span> 与项目自定义的 <span class="mono">NH:&lt;模块&gt;:&lt;4 位&gt;</span>。</li></ul>
+<h2>V3.1：升级变更集</h2>
+<ul><li>控制面新增“平台参考与升级变更集”节点；新增 a17 候选。</li>
+<li>升级类问题主归变更集，每个条目记录源码依据、影响的契约与维度、需要新增的对象/线程/进程、设计决策和根因墙。</li>
+<li>a17 候选下，契约矩阵中受影响的格子显示“需复核”；拟议节点只在 a17 候选中出现。</li>
+<li>墙增加根因字段；声明可带 <span class="mono">root_cause</span>，必须指向已登记条目。</li>
+<li>U-A16-A17 的三个条目均为示例，实际内容以扫描结果为准。</li></ul>
+<h2>V3 相对 V2 的修订（依据 2026-11-10 沙盘会议记录）</h2>
+<ul><li>新增“目标与阶段”：截止 2027-01-31，阶段 0 API 开发到阶段 3.3 支付，每个阶段写明目标、度量和验证方式；“跑起来”分三级。</li>
+<li>新增“流程对照”：安装、孵化、启动、窗口、上屏、交互、前后台、系统能力八步，Android 侧与 OH 侧一一对应。</li>
+<li>新增“任务中心”：追溯编号、八个状态码、GitHub issue 链接、待人工验证队列；“已校验”不接受声明自填。</li>
+<li>新增“集群”：每台 Mac mini 挂 10 台 D600、车道跑测复验同机；构建机 2 台以上；D600 三级自动恢复。</li>
+<li>应用矩阵增加菜单深度列（目标 6–7 级）。</li></ul>
+<h2>V2 相对 V1 的修订</h2>
+<ul><li>V1 的五层混用了运行位置、适配职责和状态权威三种分类标准。V2 改为按运行域给每个组件唯一主归属；跨域契约改为关系索引；开发与证据控制面单列。</li>
+<li>OHKit、libmc 归入 Android 应用进程；新增 OHW provider、buffer backend、厂商用户态驱动、appspawn、AccessToken 五个运行端点。</li>
+<li>V1 的“契约”字符串混有接口、场景、构建、观察和研究项，现称登记标签，不作为 API 分母。</li>
+<li>本地事件改为待核验声明，不再能推进任何正式状态；修复了自填 authority 即可越过、特殊键可使页面崩溃的问题。</li>
+<li>V1 回填的 34 款应用、37 面墙、102 条事件隔离为历史回填摘要。</li>
+<li>页面不依赖外部字体或 CDN，可离线打开。</li></ul>
+<p class="note">修订依据：《Alex Zhang 原型的 MECE 与契约修订 V2》（2026-11-10，绑定 255fa60）。</p>
+<h2>四类数据</h2>
+<div class="tw"><table class="t"><thead><tr><th>类别</th><th>必须锁定</th><th>当前</th></tr></thead><tbody>
+<tr><td class="mono">platform_reference</td><td>manifest、子仓 commit、blob/source hash、提取器版本与 argv、include/exclude、单位、公式、逐项清单</td><td>待接入（null）</td></tr>
+<tr><td class="mono">project_adaptation</td><td>Android/OH 端点、映射方式、状态所有者、来源与等价关系、构建输出、RID</td><td>本页契约索引为草稿</td></tr>
+<tr><td class="mono">verified_behavior</td><td>APK hash、场景、时间、证据 path/hash/pointer、板采认</td><td>未接入</td></tr>
+<tr><td class="mono">unknown</td><td>明示未知，不填猜测值</td><td>—</td></tr></tbody></table></div>
+<h2>合法的 n / m</h2>
+<p>分子分母必须同参考集、同快照、同单位、同候选，范围明确，并写清是“已评估”还是某一级“已验证”。编译目标数、输出数、文件或代码行数、墙数量都不是 API 完成数。1000 款是目标，不是已测范围。</p>
+<h2>墙的归属规则</h2>
+<p>一面墙主归修复落地的运行端点，同时引用相关跨域契约。例如通知渠道的身份判定主归“通知 / Toast”，引用“通知与 Toast”“身份与授权”两条契约。</p>
+<h2>声明格式</h2>
+<pre>{
+  "id": "lane07-0001",              // 必填，同批次与本地均不得重复
+  "type": "fix",                     // observation | wall | task | fix | verification | decision | knowledge | claim
+  "actor": "lane-07 / codex",
+  "candidate": "composition07",      // 必须是已登记的正式候选
+  "rid": "composition07:652b2064…",  // 可选；前缀必须与 candidate 一致
+  "node_ids": ["and.ams", "x.xapp"], // 运行节点或契约 id，必须已登记
+  "evidence": [{"path": "…", "sha256": "…"}],
+  "text": "…"
+}</pre>
+<p>不接受 null 行、非对象、<span class="mono">__proto__</span> / <span class="mono">constructor</span> / <span class="mono">prototype</span> 键、历史摘要或库存视图作为候选。读入本地存储时重新校验并过滤无效声明。导出时每行带 <span class="mono">accepted: false</span>。</p>
+<h2>正式状态从哪里来</h2>
+<p>采集器读取结构化板的采认记录，核对证据路径与 hash、RID 与候选是否一致，产出固定快照；页面只从快照着色和计数。这条接线尚未实现，因此当前候选显示为“未接入”。</p>`;
+}
+function tnum(x){if(!x)return 'T?';const n=String(x).replace(/^#|^T/,'');return 'T'+n.padStart(5,'0')+' (#'+String(Number(n))+')'}
+function trace(e){return [e.feature||'feature?',tnum(e.task),e.device||e.machine||'m?',e.rid||'',D.scodes[e.status]||e.status||'?',e.error||''].filter(Boolean).join(' · ')}
+function goalsView(){
+ const off=st.cand!=='legacy';
+ $('v-goals').innerHTML=`<div class="doc"><p><b>${esc(D.meta.goal)}，截止 ${esc(D.meta.deadline)}。</b>每个阶段的数值都要来自采集器快照，并按同一参考集、同一候选计算；正式数据接入前统一显示“待接入”，不是零。</p></div>
+ <div class="stages">${D.stages.map(s=>`<div class="stage"><div class="note">${esc(s.name)}</div><h3>${esc(s.title)}</h3><div>${esc(s.target)}</div><div class="k">度量</div><div>${esc(s.measure)}</div><div class="k">谁来验证</div><div>${esc(s.verify)}</div><div class="k">当前</div><div class="v">待接入</div>${s.note?`<div class="k">${esc(s.note)}</div>`:''}</div>`).join('')}</div>
+ <h2 style="font-size:16px;font-weight:600;margin:0 0 6px">“跑起来”的三级定义</h2>
+ <div class="tw"><table class="t"><thead><tr><th>级别</th><th>定义</th><th>验证方式</th><th>当前候选</th></tr></thead><tbody>${D.running.map((r,i)=>`<tr><td>${esc(r.name)}</td><td>${esc(r.desc)}</td><td class="note">${i<2?'agent 验证安装与启动，截图确认上屏':'人工点击；后续考虑 agent 自动化与物理触摸'}</td><td class="note">${off?'待接入':'历史摘要：见应用矩阵'}</td></tr>`).join('')}</tbody></table></div>
+ <h2 style="font-size:16px;font-weight:600;margin:22px 0 6px">状态码</h2>
+ <div class="ladder">${D.codes.slice(0,8).map((c,i)=>`<span class="s ${c==='verified'?'fin':''}">${esc(D.scodes[c])} <span class="mono note">${c}</span></span>${i<7?'<span class="ar">→</span>':''}`).join('')}</div><div class="ladder"><span class="note">终止状态：</span>${['wontdo','void'].map(c=>`<span class="s">${esc(D.scodes[c])} <span class="mono note">${c}</span></span>`).join('')}</div>
+ <p class="note" style="max-width:80ch">数据里存英文短码，页面显示中文。“阻塞中”可以出现在任何阶段；“测试失败”退回“开发中”。verified 只能由外环板采认后的快照产生；wontdo 对应 ACK(#N wontdo)，void 对应外环改判作废。</p>
+ <div class="tw" style="max-width:640px"><table class="t"><thead><tr><th>octoloop 里的结论</th><th>状态码</th></tr></thead><tbody>${D.outcomes.map(([a,b])=>`<tr><td class="mono">${esc(a)}</td><td class="mono">${esc(b)}</td></tr>`).join('')}</tbody></table></div>
+ <h2 style="font-size:16px;font-weight:600;margin:22px 0 6px">给人看的交付</h2>
+ <p style="max-width:80ch;font-size:14px">设计文档、需求文档、测试结果（CTS 报告）。全景页面上的每个阶段和状态，最终都要能落到这三份交付中的某一处。</p>`;
+}
+function flowsView(){
+ const nn=ids=>ids.map(nodeLink).join('、'),rr=ids=>ids.map(relLink).join('、');
+ const v=$('v-flows');
+ v.innerHTML=`<div class="doc" style="margin-bottom:14px"><p>按过程把 Android 侧与 OH 侧一一对应。每一步都写清两端端点、经过的契约和应该留下的证据；状态来自当前候选的快照。</p></div>
+ <div class="tw"><table class="t flowt"><thead><tr><th>#</th><th>过程</th><th>Android 侧</th><th>契约</th><th>OH 侧</th><th>应留证据</th><th>状态</th></tr></thead><tbody>${D.flows.map((f,i)=>`<tr><td class="mono">${i+1}</td><td><b>${esc(f.step)}</b></td><td>${nn(f.android)}</td><td>${rr(f.rels)}</td><td>${nn(f.oh)}</td><td class="note">${esc(f.evidence)}</td><td class="note">${st.cand==='tree'?'不适用':'待接入'}</td></tr>`).join('')}</tbody></table></div>
+ <p class="note" style="margin-top:10px">HelloWorld 启动对应第 1–4 步加第 5 步的真实截图；“更多 APK 上屏”对应第 5 步；功能测试从第 6 步开始。</p>`;
+}
+function upgradeView(){
+ const c=D.changesets[0];const ref=id=>D.refs.find(r=>r.id===id);
+ const aff=it=>it.affects.map(([r,dim])=>`${relLink(r)}<span class="note"> · ${esc(dim)}</span>`).join('<br>');
+ $('v-upgrade').innerHTML=`<div class="doc" style="margin-bottom:14px"><p><b>升级类问题主归“平台参考与升级变更集”，不当作单独的墙。</b>平台从 ${esc(ref(c.frm).name)} 升到 ${esc(ref(c.to).name)} 时，扫描两个快照之间的变更，每一项是一个条目；条目映射到受影响的契约维度，需要新增的对象、线程或进程作为拟议节点进入注册表，升级中撞到的墙通过“根因”指回条目。</p></div>
+ <div class="empty" style="border-left-color:var(--notch2)"><h2>${esc(c.id)}：${esc(c.status)}</h2><p>${esc(c.note)}</p><button class="btn ghost" data-cand="a17">切换到 a17 候选看复核带</button></div>
+ <h2 style="font-size:16px;font-weight:600;margin:0 0 8px">四步流程</h2>
+ <div class="ladder">${c.steps.map((s,i)=>`<span class="s">${i+1}. ${esc(s.n)}：${esc(s.out)}　<span class="note">${esc(s.st)}</span></span>${i<c.steps.length-1?'<span class="ar">→</span>':''}`).join('')}</div>
+ <p class="note" style="max-width:80ch">第 3 步沿用 octoloop 的纪律：安全/基建类任务蓝本先行，先由第二外环出对抗审查过的设计蓝本，再拆实现卡。</p>
+ <h2 style="font-size:16px;font-weight:600;margin:18px 0 8px">条目（${c.items.length}，示例）</h2>
+ <div class="tw"><table class="t"><thead><tr><th>编号</th><th>条目</th><th>源码依据</th><th>影响契约 · 维度</th><th>需要新增</th><th>拟议节点</th><th>设计</th><th>根因墙</th><th>状态</th></tr></thead><tbody>${c.items.map(it=>`<tr><td class="mono">${esc(it.id)}</td><td>${esc(it.title)} <span class="tag demo">示例</span></td><td class="note">${esc(it.basis)}</td><td>${aff(it)}</td><td>${esc(it.need)}</td><td>${it.proposed.length?it.proposed.map(x=>`<button class="lnk" data-gocand="${esc(x)}">${esc(NODE.get(x).name)}</button>`).join('、'):'<span class="note">—</span>'}</td><td class="mono">${esc(it.decision)}</td><td class="note">${it.walls.length?esc(it.walls.join('、')):'暂无'}</td><td><span class="tag up">${esc(D.scodes[it.status])}</span></td></tr>`).join('')}</tbody></table></div>
+ <p class="note" style="margin-top:10px">拟议节点只在 a17 候选的全景里出现。墙通过 <span class="mono">root_cause</span> 字段指向条目；声明里填写未登记的条目号会被拒绝。</p>`;
+}
+function tasksView(){
+ const ts=local.filter(e=>e.type==='task');
+ const human=ts.filter(e=>e.verify_by==='human');
+ const row=e=>`<tr><td><span class="trace">${esc(trace(e))}</span></td><td>${esc(e.text||'')}</td><td class="note">${esc((D.stages.find(s=>s.id===e.stage)||{}).name||'—')}</td><td>${(e.node_ids||[]).map(x=>NODE.has(x)?nodeLink(x):relLink(x)).join('、')}</td><td><span class="tag claim">${esc(D.scodes[e.status]||'—')}</span></td><td class="note">${esc(e.verify_by||'—')}</td><td>${e.issue_url?`<a href="${esc(e.issue_url)}" target="_blank" rel="noopener noreferrer">issue</a>`:'<span class="note">—</span>'}</td></tr>`;
+ const head='<thead><tr><th>追溯编号</th><th>内容</th><th>阶段</th><th>节点 / 契约</th><th>状态码</th><th>验证</th><th>GitHub</th></tr></thead>';
+ $('v-tasks').innerHTML=`<div class="doc" style="margin-bottom:14px"><p>全景状态台同时是任务分发中心：每张任务卡对应一个 GitHub issue，需要人验证的任务单独排队。追溯编号由 <span class="trace">功能编号 · 任务号 · 设备 · 候选 · 状态 · 错误码</span> 拼成，只用于显示；任务号就是黑板条目号。</p></div>
+ <div class="empty"><h2>正式任务数据尚未接入</h2><p>正式任务来自黑板与 GitHub issue 的同步，由采集器写入快照。下面只显示本浏览器中的待核验任务声明，可在“声明与事件”页载入示例查看效果。</p></div>
+ <h2 style="font-size:16px;font-weight:600;margin:0 0 8px">待人工验证（${human.length}）</h2>
+ ${human.length?`<div class="tw" style="margin-bottom:20px"><table class="t">${head}<tbody>${human.map(row).join('')}</tbody></table></div>`:'<p class="note">没有需要人工验证的任务声明。</p>'}
+ <h2 style="font-size:16px;font-weight:600;margin:16px 0 8px">全部任务声明（${ts.length}）</h2>
+ ${ts.length?`<div class="tw"><table class="t">${head}<tbody>${ts.map(row).join('')}</tbody></table></div>`:'<p class="note">没有任务声明。</p>'}`;
+}
+function clusterView(){
+ const c=D.cluster;
+ $('v-cluster').innerHTML=`<div class="doc" style="margin-bottom:14px"><p>每台 Mac mini 是一个完整的生命周期单元：车道、跑测、复验都在本机完成，挂 ${c.devices_per} 台 D600，实时上报到 hub。健康数据由巡检与设备监控写入快照，接入前显示为未接入。</p></div>
+ <div class="bar"><span>设备状态</span>${c.states.map(s=>`<span class="tag">${esc(s)}</span>`).join('')}<span class="key"><i class="sw" style="border:1.5px solid var(--na);border-radius:50%"></i>未接入</span></div>
+ <div class="mini" style="margin-bottom:12px;border-left:4px solid var(--sel)"><b>hub</b><div class="lanes">${esc(c.hub)}</div></div>
+ <div class="cl">${c.minis.map(m=>`<div class="mini"><b>${esc(m)}</b><span class="note">　健康：未接入</span><div class="dots" aria-label="${esc(m)} 的 ${c.devices_per} 台 D600">${Array.from({length:c.devices_per},(_,i)=>`<i title="${esc(m)}-d${String(i+1).padStart(2,'0')}"></i>`).join('')}</div><div class="lanes">车道、跑测、复验同机</div></div>`).join('')}</div>
+ <h2 style="font-size:16px;font-weight:600;margin:22px 0 8px">构建机</h2>
+ <div class="cl">${c.builds.map(b=>`<div class="mini"><b>${esc(b.id)}</b><div class="lanes">${esc(b.note)}</div><div class="note">队列：未接入</div></div>`).join('')}</div>
+ <h2 style="font-size:16px;font-weight:600;margin:22px 0 8px">D600 自动恢复</h2>
+ <ol style="font-size:14px;max-width:80ch">${c.reset.map(s=>`<li>${esc(s)}</li>`).join('')}</ol>
+ <p class="note" style="max-width:80ch">每一级都要留下记录：触发原因、执行动作、恢复后的健康检查结果。设备恢复期间租约暂停，不把这段时间里的失败归因为墙。</p>`;
+}
+
+/* claims io */
+async function ingest(text,demo){
+ const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);const ok=[],errs=[];const seen=new Set(local.map(e=>e.id));
+ lines.forEach((l,ix)=>{let e;try{e=JSON.parse(l)}catch(x){errs.push(`第 ${ix+1} 行：不是合法 JSON`);return}
+  const v=validate(e,ix+1,seen);if(v.length)errs.push(...v);else{seen.add(e.id);ok.push(clean(e))}});
+ if(ok.length){local.push(...ok);save();render()}
+ const srv=(ok.length&&!demo)?await pushShared(ok):'';
+ $('msgs').innerHTML=(ok.length?`<div class="good">已记录 ${ok.length} 条待核验声明，正式状态不变。</div>`:'')+srv+errs.map(x=>`<div class="bad">${esc(x)}</div>`).join('')+(!ok.length&&!errs.length?'<div class="bad">没有可提交的内容：每行放一个 JSON 声明。</div>':'');
+}
+const DEMO=[
+ {id:'m07-lanea-20261112-0001',type:'wall',actor:'lane-07 / octoscode',candidate:'composition07',rid:'composition07:demo',node_ids:['and.ams','x.xapp'],text:'示例：FCM 注册时 PendingIntent 创建者包解析为空'},
+ {id:'m03-laneb-20261112-0001',type:'fix',actor:'lane-03 / codex',candidate:'composition07',node_ids:['oh.ans','x.notify','x.identity'],text:'示例：渠道权威改按 tokenID 与安装记录比对'},
+ {id:'m05-lanea-20261112-0001',type:'verification',actor:'lane-05 / claude-code',candidate:'composition07',authority:'outer-duty',node_ids:['and.pms'],text:'示例：车道自填 authority 声称越过，页面不采信'},
+ {id:'hub-outer-20261112-0001',type:'task',actor:'外环 / claude-code',candidate:'composition07',feature:'API-SS-00123',task:'#212',machine:'m07',device:'m07-d03',lease:'LS0000123',stage:'s0',status:'dev',error:'NH:AMS:0071',verify_by:'agent',node_ids:['oh.ans','x.notify'],text:'示例：通知渠道身份判定'},
+ {id:'hub-outer-20261112-0002',type:'task',actor:'外环 / claude-code',candidate:'composition07',feature:'APP-00042-M1.3.2',task:'#213',machine:'m03',device:'m03-d07',stage:'s2',status:'testing',verify_by:'human',error:'OH:BMS:示例',node_ids:['and.wms','x.window'],text:'示例：设置页二级菜单需要真人点击确认'},
+ {id:'m09-lanea-20261112-0001',type:'task',actor:'lane-m09-a / codex',candidate:'composition07',feature:'API-SS-00124',task:'#214',machine:'m09',build:'b02-0000123',status:'verified',node_ids:['and.pms'],text:'示例：车道自填“已校验”，会被拒绝'}];
+const dl=(name,text)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+/* routing */
+const views=['goals','map','flows','contracts','upgrade','tasks','walls','apps','cluster','claims','schema'];
+function route(){let v=location.hash.slice(1);if(!views.includes(v))v='goals';for(const x of views)$('v-'+x).hidden=x!==v;document.querySelectorAll('nav a').forEach(a=>a.setAttribute('aria-current',a.dataset.v===v?'page':'false'))}
+function render(){header();goalsView();map();flowsView();contractsView();upgradeView();tasksView();wallsView();appsView();clusterView();claimsView()}
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-n]');if(t){st.sel={t:'node',id:t.dataset.n};map();if(innerWidth<1000)$('drawer').scrollIntoView({block:'start'});return}
+ const r=e.target.closest('[data-r]');if(r&&r.closest('#idx')){st.sel={t:'rel',id:r.dataset.r};map();if(innerWidth<1000)$('drawer').scrollIntoView({block:'start'});return}
+ const g=e.target.closest('[data-go]');if(g){st.sel={t:'node',id:g.dataset.go};location.hash='map';map();return}
+ const gr=e.target.closest('[data-gr]');if(gr){st.sel={t:'rel',id:gr.dataset.gr};location.hash='map';map();return}
+ const gc=e.target.closest('[data-gocand]');if(gc){st.cand='a17';st.sel={t:'node',id:gc.dataset.gocand};location.hash='map';render();return}
+ const cd=e.target.closest('[data-cand]');if(cd){st.cand=cd.dataset.cand;render();return}
+ const l=e.target.closest('[data-l]');if(l){st.lens=l.dataset.l;map();return}
+ const k=e.target.closest('[data-k]');if(k){st.kind=k.dataset.k;map();return}
+ const rv=e.target.closest('#revSeg [data-r]');if(rv){st.rev=rv.dataset.r;map();return}
+ const f=e.target.closest('[data-f]');if(f){st.wf=f.dataset.f;wallsView();return}
+ const w=e.target.closest('[data-w]');if(w){st.wf='all';location.hash='walls';wallsView();setTimeout(()=>{const row=document.getElementById('w-'+w.dataset.w);if(row){row.scrollIntoView({block:'center'});row.style.outline='2px solid var(--sel)';setTimeout(()=>row.style.outline='',1600)}},30)}
+});
+$('candSel').onchange=e=>{st.cand=e.target.value;render()};
+$('doImport').onclick=()=>ingest($('paste').value);
+$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(ingest);e.target.value=''};
+$('demo').onclick=()=>ingest(DEMO.map(x=>JSON.stringify(x)).join('\n'),true);
+$('exp').onclick=()=>dl('panorama-claims.jsonl',local.map(({_shared,...x})=>JSON.stringify({...x,accepted:false})).join('\n'));
+$('clr').onclick=()=>{local=local.filter(e=>e._shared);save();$('msgs').innerHTML='<div class="good">本地声明已清除，共享声明库不受影响。</div>';render()};
+$('pkey').value=getKey();$('pkey').onchange=e=>{try{localStorage.setItem(KS,e.target.value.trim())}catch(x){}};
+addEventListener('hashchange',route);
+schemaView();render();route();pullShared();
+</script>
+</body>
+</html>
