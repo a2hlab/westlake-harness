@@ -59,8 +59,9 @@ EFFORT = {
     "L": "weeks: port or build a subsystem or bridge",
     "OH": "needs an OpenHarmony platform change (policy, kernel, system ability): outside Westlake",
     "verify": "implemented according to source; run the conformance probe before trusting it",
+    "policy": "out of scope by project policy: the app's own protection is observed, never worked around",
 }
-_EFFORT_ORDER = ["none", "verify", "XS", "S", "M", "L", "OH"]
+_EFFORT_ORDER = ["none", "verify", "XS", "S", "M", "L", "OH", "policy"]
 
 # Confidence ladder for a row's provider verdict.
 STATIC = "static"                  # read from APK + provider source only
@@ -378,6 +379,27 @@ def package_manager_rows(scan: dict[str, Any], facts: dict[str, Any], pm: dict[s
             provider="ApplicationInfo.splitSourceDirs populated" if check["present"] else "splitSourceDirs left empty",
             provider_source=check["source"], app_evidence=", ".join(facts["splits"]),
             shim="populate splitNames/splitSourceDirs from the installed split set",
+        ))
+    split_components = (scan.get("apk") or {}).get("feature_split_components") or {}
+    if split_components:
+        # Chrome declares its launcher and 48 more activities in its "chrome" split. Parsed from the
+        # base APK alone, ChromeTabbedActivity started with no theme and no split, and
+        # SemanticColorUtils found its theme attribute unset.
+        check = semantics.get("split_manifests_parsed", {"present": False, "source": None})
+        total = sum(sum(counts.values()) for counts in split_components.values())
+        rows.append(_row(
+            "package-manager", "pm:split-components", f"Components declared in feature split manifests ({total})",
+            oh_touchpoint="none (Westlake's package registry)",
+            verdict="supplied" if check["present"] else "missing", shim_class="C0" if check["present"] else "C6",
+            effort="verify" if check["present"] else "S", confidence=STATIC,
+            provider=("each split's manifest is parsed into the package, its components taking the split's name"
+                      if check["present"] else
+                      "the base APK's manifest alone: a split's components are unknown, and an activity "
+                      "declared there starts with no theme and no split"),
+            provider_source=check["source"],
+            app_evidence="; ".join(f"{name}: " + ", ".join(f"{n} {kind}" for kind, n in counts.items() if n)
+                                   for name, counts in sorted(split_components.items())),
+            shim="parse each split's manifest into the package as the cluster parse does",
         ))
     providers = [c for c in facts["components"] if c["kind"] == "provider" and not c["process"]]
     if providers:
@@ -1423,9 +1445,43 @@ def silent_load_rows(scan: dict[str, Any], model: dict[str, Any],
     return rows
 
 
+def runtime_handle_scope(runtime: dict[str, Any] | None, library: str) -> set[str]:
+    """The names a lookup by the handle of the runtime's copy of library finds. musl's dlsym with a
+    library handle searches the library and then its dependencies, breadth first, so a name that any
+    library in that closure exports is found: the runtime's libandroid.so defines 48 entry points and
+    reaches AChoreographer_* through libhwui.so's dependency liboh_hwui_shim.so. Only the runtime's
+    own libraries are walked, so a name only an OH system library exports is not counted."""
+    if not runtime:
+        return set()
+    bridge = {lib.get("soname") or lib["name"]: lib for lib in runtime.get("bridge_libraries", [])}
+    seen, queue, symbols = {library}, [library], set()
+    while queue:
+        lib = bridge.get(queue.pop(0))
+        if lib is None:
+            continue
+        symbols |= set(lib.get("exported_symbols", []))
+        for dep in lib.get("needed", []):
+            if dep in bridge and dep not in seen:
+                seen.add(dep)
+                queue.append(dep)
+    return symbols
+
+
+def android_namespace_targets(rows: list[dict[str, Any]]) -> set[str]:
+    """Libraries the launch args route to the Android namespace (--android-native-target)."""
+    targets: set[str] = set()
+    for row in rows:
+        args = row.get("launch_args") or []
+        targets |= {value for flag, value in zip(args[0::2], args[1::2]) if flag == "--android-native-target"}
+    return targets
+
+
 def runtime_resolved_rows(scan: dict[str, Any], ndk_cov: dict[str, Any] | None,
                           shim_exports: set[str] | None = None,
-                          answered: dict[str, str] | None = None) -> list[dict[str, Any]]:
+                          answered: dict[str, str] | None = None,
+                          runtime: dict[str, Any] | None = None,
+                          namespace_libs: list[dict[str, Any]] | None = None,
+                          routed: set[str] | None = None) -> list[dict[str, Any]]:
     """Platform entry points an app reaches by name at runtime, which the provider does not supply.
 
     A dlopen/dlsym pair declares nothing: the name is a string, so the library never records that
@@ -1442,21 +1498,46 @@ def runtime_resolved_rows(scan: dict[str, Any], ndk_cov: dict[str, Any] | None,
 
     answered: libraries whose dlopen from app code the bionic shim answers with its own handle
     (libOpenSLES.so, libaaudio.so), so a lookup by that handle finds what the shim exports.
+
+    runtime, namespace_libs, routed: a name the handle's own search finds is not a gap. A library in
+    the default namespace opens the runtime's copy, whose dependencies are searched too (see
+    runtime_handle_scope), which is how AChoreographer_* is found. A library routed to the Android
+    namespace (routed: launch targets, and libraries the app writes at run time) opens that
+    namespace's copy where it has one, and that copy is all the lookup searches.
     """
     if not ndk_cov:
         return []
     surface = {entry["symbol"]: entry for entry in ndk_cov.get("symbols", [])}
     if not surface:
         return []
+    namespace_copies = {lib.get("soname") or lib["name"]: set(lib.get("exported_symbols", []))
+                        for lib in namespace_libs or []}
+    scopes: dict[tuple[str, bool], set[str]] = {}
+
+    def found_by_handle(library: str, in_namespace: bool, candidate: str) -> bool:
+        key = (library, in_namespace and library in namespace_copies)
+        if key not in scopes:
+            scopes[key] = namespace_copies[library] if key[1] else runtime_handle_scope(runtime, library)
+        return candidate in scopes[key]
+
     by_library: dict[str, set[str]] = defaultdict(set)
     importers: dict[str, set[str]] = defaultdict(set)
     for elf in ohresolve.target_elfs(scan):
         name = elf.get("soname") or Path(elf["name"]).name
+        in_namespace = (name in (routed or set()) or Path(elf["name"]).name in (routed or set())
+                        or elf.get("origin") == "unpacked")
         for candidate in elf.get("runtime_symbol_candidates", []):
             entry = surface.get(candidate)
             if entry is None or entry.get("status") == "oh":
                 continue
-            if entry.get("library") in (answered or {}) and candidate in (shim_exports or set()):
+            library = entry.get("library", "unknown")
+            # A by-handle answer needs the runtime's copy's handle: a library in the Android
+            # namespace opens that namespace's own copy, which the shim does not answer.
+            namespace_copy = in_namespace and library in namespace_copies
+            if (library in (answered or {}) and candidate in (shim_exports or set())
+                    and not (namespace_copy and library in RUNTIME_HANDLE_ANSWERED)):
+                continue
+            if found_by_handle(library, in_namespace, candidate):
                 continue
             by_library[entry.get("library", "unknown")].add(candidate)
             importers[entry.get("library", "unknown")].add(name)
@@ -1568,20 +1649,34 @@ def apply_probe_results(gap_map: dict[str, Any], results: dict[str, Any]) -> Non
                 row["provider"] = result["finding"]
 
 
+def packaged_graph(scan: dict[str, Any]) -> tuple[dict[str, str], dict[str, set[str]]]:
+    """The packaged libraries by file name: each file's SONAME (its own name when it has none), and
+    the packaged files its DT_NEEDED names load. The launcher routes files by name, and a name it
+    cannot find stops the launch: TikTok's libeffect_plugin.so has the SONAME libeffect.so, and r77
+    and r82 never launched it ("Android namespace target is not a pinned APK DSO"). A needed name is
+    the file of that name first, else a file with that SONAME: Duolingo packages libmain.so and
+    libduolingounity.so, both with the SONAME libmain.so, and its libunity.so needs the file libmain.so."""
+    packaged = ohresolve.packaged_elfs(scan)
+    sonames: dict[str, str] = {}
+    files: dict[str, str] = {}
+    for elf in packaged:
+        base = elf["name"].rsplit("/", 1)[-1]
+        sonames.setdefault(base, elf.get("soname") or base)
+        files[base] = base
+    for base, soname in sonames.items():
+        files.setdefault(soname, base)
+    needed: dict[str, set[str]] = {}
+    for elf in packaged:
+        needed.setdefault(elf["name"].rsplit("/", 1)[-1], set()).update(
+            files.get(name, name) for name in elf.get("needed", []))
+    return sonames, needed
+
+
 def packaged_dependents(scan: dict[str, Any], names: list[str]) -> list[str]:
     """The packaged libraries among names, and every packaged library whose DT_NEEDED graph reaches
     one, as file names: what a launcher routing names to the Android namespace must route together,
     or a dependent left in the default namespace loads a second copy of the routed library there."""
-    packaged = ohresolve.packaged_elfs(scan)
-    files: dict[str, str] = {}
-    for elf in packaged:
-        base = elf["name"].rsplit("/", 1)[-1]
-        files[base] = base
-    for elf in packaged:
-        base = elf["name"].rsplit("/", 1)[-1]
-        files.setdefault(elf.get("soname") or base, base)
-    needed = {elf["name"].rsplit("/", 1)[-1]: {files.get(name, name) for name in elf.get("needed", [])}
-              for elf in packaged}
+    _, needed = packaged_graph(scan)
     reach = {name for name in names if name in needed}
     grew = True
     while grew:
@@ -1728,6 +1823,52 @@ def own_intent_rows(scan: dict[str, Any], model: dict[str, Any]) -> list[dict[st
     )]
 
 
+# The intents an app starts for another app to handle (scanner.external_intent_families), by family:
+# what the row covers, what answers it on an Android phone, and what in the app's code shows it.
+EXTERNAL_INTENT_ROWS = {
+    "view-web": ("Web links opened in another app (ACTION_VIEW with an http(s) URL)", "a browser",
+                 "names ACTION_VIEW and http(s) URLs",
+                 "fossify notes (calibration flow fnotes-link: its GitHub link opened nothing)"),
+    "share": ("Sharing with another app (ACTION_SEND, Intent.createChooser)", "a share target",
+              "names ACTION_SEND or calls Intent.createChooser",
+              "markor (calibration flow markor-share: no share sheet came up)"),
+    "pick-document": ("The system document picker (OPEN_DOCUMENT, GET_CONTENT, CREATE_DOCUMENT)",
+                      "a document picker", "names OPEN_DOCUMENT, GET_CONTENT, CREATE_DOCUMENT or OPEN_DOCUMENT_TREE",
+                      "keepassdx (calibration flow keepassdx-open: no picker came up to open a database)"),
+    "system-screen": ("Screens of Android's own apps: Settings (android.settings.* actions), VPN consent "
+                      "(VpnService.prepare)", "Settings and the system's own dialogs",
+                      "names android.settings.* actions or calls VpnService.prepare",
+                      "aat, Clock, LuxAlarm, stims, WiFiAnalyzer and socks5 (r90, build 119: each died when "
+                      "its start of one threw ActivityNotFoundException)"),
+}
+
+
+def external_intent_rows(scan: dict[str, Any]) -> list[dict[str, Any]]:
+    """Intents the app starts for another app to handle: a web link, a share, the system document
+    picker, a screen of Android's own apps (Settings, VPN consent). An Android phone always has
+    something to answer them. Here it is whatever OH ability the intent's Want resolves to on the
+    device. When nothing does, a web link or a share throws ActivityNotFoundException; the document
+    picker and Android's own screens, which every Android device has and apps start unguarded, open
+    nothing (from build 120; they threw before). The framework-contracts probe's intent:* lines
+    measure what the device has; the board has none of the four."""
+    rows = []
+    for family in scan["inventory"].get("external_intents") or []:
+        if family not in EXTERNAL_INTENT_ROWS:
+            continue
+        item, handler, evidence, seen = EXTERNAL_INTENT_ROWS[family]
+        rows.append(_row(
+            "app-framework", "intent:" + family, item,
+            oh_touchpoint="bundle manager QueryAbilityInfos for the Want the intent maps to, then StartAbility",
+            verdict="unverified", shim_class="CU", effort="verify", confidence=STATIC,
+            provider=f"whatever OH ability handles the intent's Want on the device ({handler} on Android); "
+                     "the framework-contracts probe measures it",
+            app_evidence="the app's code " + evidence,
+            seen_blocking=[seen],
+            shim=f"{handler} the app can reach: an OH one through the intent's Want, or one in process",
+        ))
+    return rows
+
+
 def post_create_rows(scan: dict[str, Any], model: dict[str, Any]) -> list[dict[str, Any]]:
     """The app's own activity code in onPostCreate or onRestoreInstanceState (scanner.after_start_overrides),
     which Android calls after onStart from the pending actions its launch marked. A provider that
@@ -1855,6 +1996,29 @@ def recreate_rows(scan: dict[str, Any], model: dict[str, Any]) -> list[dict[str,
         app_evidence="the app calls Activity.recreate",
         seen_blocking=["antennapod (calibration flow antennapod-theme: the dark theme was chosen and the screens stayed light)"],
         shim="give in-process activities tokens that are not local Binders",
+    )]
+
+
+def toast_rows(scan: dict[str, Any], model: dict[str, Any]) -> list[dict[str, Any]]:
+    """Toasts: Toast.show() hands the toast to the notification service, which has SystemUI draw a
+    text toast, or the toast's own TN draw one with a view of its own. A provider that does not
+    answer those calls shows none: an app's "copied", "saved" or "no browser found" says nothing
+    (Fossify Notes' "no browser found" for its GitHub link, calibration flow fnotes-link)."""
+    called = set(scan["inventory"].get("platform_method_names", {}).get("Landroid/widget/Toast;", []))
+    if "show" not in called or model.get("shown") is None:
+        return []
+    shown = bool(model["shown"])
+    return [_row(
+        "app-framework", "wm:toast", "Toasts (Toast.makeText, Toast.show)",
+        oh_touchpoint="an application window over the activity: OH's own toast window is a system window",
+        verdict="supplied" if shown else "missing", shim_class="C0" if shown else "C9",
+        effort="verify" if shown else "S", confidence=STATIC,
+        provider=("the in-process notification service queues toasts and shows each in a window of its own"
+                  if shown else "the notification service answers no toast: none is ever shown"),
+        provider_source=model.get("source"),
+        app_evidence="the app calls Toast.show",
+        seen_blocking=["fossify notes (calibration flow fnotes-link: its \"no browser found\" toast never showed)"],
+        shim="queue toasts as NotificationManagerService does and show each as SystemUI does (ToastPresenter)",
     )]
 
 
@@ -2784,19 +2948,20 @@ _SEARCHED_BEFORE_APP = ("/system/lib64/", "/vendor/lib64/")
 
 
 def shadowed_libraries(scan: dict[str, Any], board_paths: list[str]) -> tuple[dict[str, str], list[str]]:
-    """Packaged libraries a board library of the same name wins over, and the APK libraries whose
-    DT_NEEDED graph reaches one: those must load in an isolated namespace to get the APK's copy."""
+    """Packaged libraries a board library of the same name wins over (by SONAME), and the APK
+    libraries whose DT_NEEDED graph reaches one, as file names: those must load in an isolated
+    namespace to get the APK's copy. Each file is its own node: Insta360 packages libmarsxlog.so and
+    libmarsxlogg.so, both with the SONAME libmarsxlog.so, and a graph by SONAME routed the first file
+    only. libmarsxlogg.so, left in the default namespace, bound OH's libc++_shared.so (std::__n1, not
+    the NDK's std::__ndk1) and failed to relocate std::runtime_error's constructor."""
     board: dict[str, str] = {}
     for path in board_paths:
         if path.startswith(_SEARCHED_BEFORE_APP):
             board.setdefault(path.rsplit("/", 1)[-1], path)
-    needed: dict[str, set[str]] = {}
     # Packaged only: a library the app writes at run time loads in the Android namespace already.
-    for elf in ohresolve.packaged_elfs(scan):
-        name = elf.get("soname") or elf["name"].rsplit("/", 1)[-1]
-        needed.setdefault(name, set()).update(elf.get("needed", []))
-    shadowed = {name: board[name] for name in needed if name in board}
-    reach = set(shadowed)
+    sonames, needed = packaged_graph(scan)
+    shadowed = {soname: board[soname] for soname in sonames.values() if soname in board}
+    reach = {base for base, soname in sonames.items() if soname in board}
     grew = True
     while grew:
         grew = False
@@ -2850,6 +3015,8 @@ def bionic_loader_model(westlake_root: Path | None, manifest_root: Path | None =
             "android_relr_shim": find("framework/webview-shim/android_relocs.c", "wl_write_loadable_copy("),
             "null_entries_launcher": find("tools/probe_source_app.py", "def init_array_sanitized(", manifest_root),
             "funopen_unbuffered": find("framework/webview-shim/webview_bionic_shim.c", "setvbuf(file, NULL, _IONBF, 0)"),
+            "libgen_bionic": find("framework/webview-shim/webview_bionic_shim.c", "static int westlake_dirname_r("),
+            "dt_init_shim": find("framework/webview-shim/webview_bionic_shim.c", "static void westlake_run_dt_inits("),
             "apk_member_redirect": find("framework/webview-shim/webview_bionic_shim.c", 'strstr(filename, ".apk!/lib/")'),
             "open_by_name": find("framework/webview-shim/webview_bionic_shim.c", "westlake_open_lib_by_name("),
             "written_shares_packaged": find("framework/webview-shim/webview_bionic_shim.c",
@@ -2867,19 +3034,7 @@ def native_loading_rows(facts: dict[str, Any], scan: dict[str, Any], launcher_ex
     elfs = ohresolve.target_elfs(scan)
     packaged = ohresolve.packaged_elfs(scan)
     unpacked = [elf for elf in elfs if elf.get("origin") == "unpacked"]
-    shadowed, targets = shadowed_libraries(scan, board_paths or [])
-    # The graph is by DT_NEEDED name (the SONAME), but the launcher routes files by name, and a name it
-    # cannot find stops the launch: TikTok's libeffect_plugin.so is libeffect.so, and r77 and r82
-    # never launched it ("Android namespace target is not a pinned APK DSO").
-    # A file's own name first: Duolingo packages libmain.so and libduolingounity.so, both with the
-    # SONAME libmain.so, and its libunity.so needs the file libmain.so.
-    files: dict[str, str] = {}
-    for elf in packaged:
-        base = elf["name"].rsplit("/", 1)[-1]
-        files[base] = base
-    for elf in packaged:
-        base = elf["name"].rsplit("/", 1)[-1]
-        files.setdefault(elf.get("soname") or base, base)
+    shadowed, targets = shadowed_libraries(scan, board_paths or [])   # file names, as the launcher routes
     if shadowed:
         option = namespace_option or {"present": False, "source": None}
         rows.append(_row(
@@ -2893,7 +3048,7 @@ def native_loading_rows(facts: dict[str, Any], scan: dict[str, Any], launcher_ex
             app_evidence=f"{len(targets)} APK libraries reach them through DT_NEEDED",
             shim=f"load these {len(targets)} libraries in the isolated Android namespace so DT_NEEDED picks the APK's copy "
                  "(e.g. NDK libc++_shared is std::__ndk1; OH's is not): " + " ".join(targets),
-            launch_args=[arg for name in targets for arg in ("--android-native-target", files.get(name, name))],
+            launch_args=[arg for name in targets for arg in ("--android-native-target", name)],
         ))
         # In that namespace libandroid.so is the WebView shim's, whose AAsset* go through a companion
         # (libwestlake_asset_bridge.so) to the framework's asset manager. React Native loads its
@@ -2921,6 +3076,12 @@ def native_loading_rows(facts: dict[str, Any], scan: dict[str, Any], launcher_ex
     resolvers = sorted({elf.get("soname") or Path(elf["name"]).name for elf in packaged
                         if NETWORK_ABI_IMPORTS & {name.split("@")[0] for name in
                                                   elf.get("undefined_symbols", []) + elf.get("undefined_weak_symbols", [])}})
+    # The launcher routes by file name, and a SONAME can differ from it (libw.so in Kling's
+    # libw543.so, libcrypto.so.1.1 in Amap's libcrypto.so): naming the SONAME made the launcher
+    # refuse the whole launch (4 of the HK top 100).
+    resolver_files = sorted({Path(elf["name"]).name for elf in packaged
+                             if NETWORK_ABI_IMPORTS & {name.split("@")[0] for name in
+                                                       elf.get("undefined_symbols", []) + elf.get("undefined_weak_symbols", [])}})
     if resolvers:
         option = (namespace_option or {}).get("net") or {"present": False, "source": None}
         rows.append(_row(
@@ -2936,7 +3097,7 @@ def native_loading_rows(facts: dict[str, Any], scan: dict[str, Any], launcher_ex
             app_evidence=f"{len(resolvers)} APK libraries import getaddrinfo",
             seen_blocking=["hacki (batch-12), fixed by the launch args", "fdroid2 (batch-14), fixed by the launch args"],
             shim="route these libraries through the network ABI translation: " + " ".join(resolvers),
-            launch_args=[arg for name in resolvers for arg in ("--android-native-net-target", name)],
+            launch_args=[arg for name in resolver_files for arg in ("--android-native-net-target", name)],
         ))
     # funopen: the bionic shim supplies it over OH's fopencookie. A buffered cookie FILE on OH is
     # refilled by calling the reader with the FILE's own buffer, which cookieread also uses for its
@@ -2960,6 +3121,35 @@ def native_loading_rows(facts: dict[str, Any], scan: dict[str, Any], launcher_ex
             app_evidence=f"{len(funopen_users)} APK libraries import funopen",
             seen_blocking=["facebook, instagram, messenger (superpack: could not extract file from archive)"],
             shim="keep funopen FILEs unbuffered on OH, buffering inside the cookie",
+        ))
+    # dirname and basename: Bionic's never write to their argument (an answer in a buffer of the
+    # thread's own); musl's write a NUL into it, so a caller that passes a literal faults and one that
+    # reuses its path finds it cut short. musl has no __gnu_basename, Bionic's name for a GNU basename.
+    def imports(elf: dict[str, Any]) -> set[str]:
+        return {n.split("@")[0] for n in elf.get("undefined_symbols", []) + elf.get("undefined_weak_symbols", [])}
+    libgen_users = sorted({elf.get("soname") or Path(elf["name"]).name for elf in elfs
+                           if imports(elf) & {"dirname", "basename"}})
+    gnu_users = sorted({elf.get("soname") or Path(elf["name"]).name for elf in elfs
+                        if "__gnu_basename" in imports(elf)})
+    if libgen_users or gnu_users:
+        fixed = (loader or {}).get("libgen_bionic")
+        names = libgen_users or gnu_users
+        rows.append(_row(
+            "native-loading", "abi:libgen",
+            f"dirname and basename callers ({', '.join(names[:4])}" + (" ..." if len(names) > 4 else "") + ")",
+            oh_touchpoint="OH musl dirname/basename write a NUL into the path they are given; "
+                          "__gnu_basename is not defined",
+            verdict="supplied" if fixed else "missing", shim_class="C2", effort="verify" if fixed else "XS",
+            confidence=STATIC,
+            provider=("the bionic shim answers Android callers with Bionic's dirname and basename (a buffer of "
+                      "the thread's own, the path untouched) and defines __gnu_basename"
+                      if fixed else "musl's: the caller's path is cut short; __gnu_basename importers do not load"),
+            provider_source=fixed,
+            app_evidence=(f"{len(libgen_users)} APK libraries import dirname or basename"
+                          + (f", {len(gnu_users)} __gnu_basename ({', '.join(gnu_users[:3])})" if gnu_users else "")),
+            seen_blocking=["where winds meet (SEGV_ACCERR: dirname wrote into a string literal)",
+                           "kling ai, nordvpn, vivavideo (__gnu_basename)"],
+            shim="Bionic's libgen for Android callers; __gnu_basename",
         ))
     if not facts["extract_native_libs"] and packaged:
         rows.append(_row(
@@ -3170,6 +3360,64 @@ def native_loading_rows(facts: dict[str, Any], scan: dict[str, Any], launcher_ex
             shim="renumber DT_ANDROID_RELR/RELRSZ/RELRENT to DT_RELR/RELRSZ/RELRENT (same encoding); "
                  "OH's musl applies DT_RELR and DT_ANDROID_RELA itself",
         ))
+    # DT_INIT (scanner.legacy_init): OH's musl never calls it. A library whose only start-up it is never
+    # starts; one with an .init_array too runs that alone, in an order bionic never uses.
+    only_init = sorted({elf.get("soname") or Path(elf["name"]).name for elf in elfs
+                        if (elf.get("dt_init") or {}).get("init_array_entries") == 0})
+    init_and_array = sorted({elf.get("soname") or Path(elf["name"]).name for elf in elfs
+                             if (elf.get("dt_init") or {}).get("init_array_entries", 0) > 0})
+    if only_init:
+        shim_fix = loader.get("dt_init_shim")
+        rows.append(_row(
+            "native-loading", "load:dt-init",
+            f"Libraries whose only start-up is DT_INIT ({', '.join(only_init[:4])}"
+            + (" ..." if len(only_init) > 4 else "") + ")",
+            oh_touchpoint="OH musl dynamic linker: built for arm64 with NO_LEGACY_INITFINI, never calls DT_INIT",
+            verdict="supplied" if shim_fix else "missing", shim_class="C3", effort="verify" if shim_fix else "S",
+            confidence=STATIC,
+            provider=("the bionic shim calls DT_INIT after the load, before the handle is returned"
+                      if shim_fix else "none: the library's start-up never runs"),
+            provider_source=shim_fix,
+            app_evidence=f"{len(only_init)} APK libraries have DT_INIT and an empty .init_array",
+            seen_blocking=["stella sora, survivor.io, zen word (SIGILL in libunity.so: its DT_INIT runs "
+                           "libu8t.so's unpacker; the code stayed encrypted)",
+                           "garena aov (libBqCCS.so, the same shape over libanort.so)"],
+            shim="call DT_INIT after the load and before returning the handle: for a library with no "
+                 ".init_array that is bionic's order",
+        ))
+    if init_and_array:
+        rows.append(_row(
+            "native-loading", "load:dt-init-order",
+            f"Libraries with DT_INIT and an .init_array ({', '.join(init_and_array[:4])}"
+            + (" ..." if len(init_and_array) > 4 else "") + ")",
+            oh_touchpoint="OH musl dynamic linker: runs the .init_array, never DT_INIT (bionic: DT_INIT first)",
+            verdict="missing", shim_class="C3", effort="M", confidence=STATIC,
+            provider="none: DT_INIT never runs; calling it after the .init_array would be an order bionic never uses",
+            app_evidence=f"{len(init_and_array)} APK libraries have both",
+            shim="stage the library with its .init_array tags renamed so musl runs neither, then call DT_INIT "
+                 "and the array in bionic's order after the load",
+        ))
+    # R_AARCH64_IRELATIVE (scanner.irelative_relocations): OH's musl does not apply IFUNC relocations
+    # and fails the load, where bionic calls each resolver and writes its answer.
+    ifunc = {}
+    for elf in elfs:
+        if elf.get("irelative_relocations"):
+            name = elf.get("soname") or Path(elf["name"]).name
+            ifunc[name] = max(ifunc.get(name, 0), elf["irelative_relocations"])
+    if ifunc:
+        names = sorted(ifunc)
+        rows.append(_row(
+            "native-loading", "load:irelative",
+            f"Libraries with IFUNC relocations ({', '.join(names[:4])}" + (" ..." if len(names) > 4 else "") + ")",
+            oh_touchpoint="OH musl dynamic linker: rejects R_AARCH64_IRELATIVE (\"unsupported relocation type "
+                          "1032\"), so the library does not load",
+            verdict="missing", shim_class="C3", effort="M", confidence=STATIC,
+            provider="none: the library does not load",
+            app_evidence=f"{len(names)} APK libraries carry {sum(ifunc.values())} R_AARCH64_IRELATIVE relocations",
+            seen_blocking=["edge (libtelclient.so: UnsatisfiedLinkError binding the application)"],
+            shim="apply them as bionic does before the library's constructors run: call each resolver with the "
+                 "device's hwcaps and write its answer where the relocation points",
+        ))
     return rows
 
 
@@ -3278,10 +3526,47 @@ def sandbox_rows(scan: dict[str, Any], policy: dict[str, Any]) -> list[dict[str,
     return rows
 
 
+def process_policy_rows(scan: dict[str, Any], policy: dict[str, Any]) -> list[dict[str, Any]]:
+    """ptrace within the app's own domain. Crash reporters (Crashlytics NDK, APMInsight, Unity, Sentry,
+    xCrash) fork a dumper that attaches to the app when it crashes, and some protections attach at start:
+    FIFA Mobile's watchdog child attaches to the game and, refused, makes the game end itself. Android
+    allows untrusted_app_all self:process ptrace; OH's normal_hap does not (the policy as loaded)."""
+    rule = (policy.get("process") or {}).get("ptrace_self")
+    if not rule or rule["oh"].get("allowed", True):
+        return []
+    users = sorted({elf.get("soname") or Path(elf["name"]).name for elf in ohresolve.target_elfs(scan)
+                    if "ptrace" in set(elf.get("undefined_symbols", []))})
+    if not users:
+        return []
+    return [_row(
+        "sandbox-policy", "policy:ptrace-self",
+        f"ptrace on the app's own processes ({', '.join(users[:4])}" + (" ..." if len(users) > 4 else "") + ")",
+        oh_touchpoint=f"SELinux {policy['oh']['domain']} → itself: process ptrace",
+        verdict="denied", shim_class="C4", effort="OH", confidence=STATIC,
+        provider=f"OH kernel policy denies it; Android allows it ({rule['android']['source_rule']})",
+        provider_source=rule["oh"].get("query"),
+        app_evidence=f"{len(users)} libraries import ptrace",
+        seen_blocking=["fifa mobile (its watchdog child attaches to the game; refused, the game crashes itself)"],
+        shim=rule["fix"],
+    )]
+
+
 # Known SDKs whose behaviour depends on the device rather than on API presence.
 _ENV_SDKS = [
     ("libakamaibmp.so", "Akamai Bot Manager", "device fingerprinting; self-traps (SIGILL) on unexpected environments"),
     ("com.forter", "Forter fraud SDK", "device fingerprinting via WiFi/telephony/build properties"),
+]
+
+# Code protection the project observes but does not work around: what it does on Westlake is read
+# from the outside (the board's crash reports and stalls), never by taking it apart.
+_PROTECTED_SDKS = [
+    ("libpairipcore.so", "PairIP",
+     "Play's automatic integrity protection: its native VM (com.pairip.VMRunner) runs before the app's "
+     "own code. On the board it ends the app at start (SIGSEGV, SIGBUS or SIGABRT in libpairipcore.so on "
+     "the <pre-initialize> thread) or holds the main thread in VMRunner.executeVM",
+     ["of the 69 HK corpus apps packaging it that ran in the 1000-app round (build 179), 58 crashed "
+      "at start right after loading it (the last library loaded each time; the fault frame names it "
+      "in 30, the others have no backtrace), 5 hung in VMRunner.executeVM, 6 drew"]),
 ]
 
 
@@ -3302,6 +3587,7 @@ def external_rows(facts: dict[str, Any], scan: dict[str, Any], refused: dict[str
     rows = []
     for dep in contracts.external_dependencies(facts, set(scan["inventory"].get("platform_method_names", {}))):
         firebase = dep["dependency"].startswith("Firebase")
+        licensing = dep["dependency"] == "Store license check"
         suffix = dep["evidence"].split()[0].rsplit(".", 1)[-1] if firebase else ""
         rows.append(_row(
             "external-deps", "dep:" + dep["dependency"].lower().replace(" ", "-") + (f":{suffix}" if suffix else ""),
@@ -3309,7 +3595,12 @@ def external_rows(facts: dict[str, Any], scan: dict[str, Any], refused: dict[str
             oh_touchpoint="none: no Google services on OH", verdict="absent" if not firebase else "partial",
             shim_class="C5", effort="M" if not firebase else "verify", confidence=STATIC,
             app_evidence=dep["evidence"], provider=dep["oh_status"],
-            shim=("decide per feature: truthful 'unavailable' result, or an OH-backed replacement (push, maps, auth)"
+            seen_blocking=(["grok, allbrowser, crushie, transitnow, quickdoc (hk top 100 on build 120: nothing answered "
+                            "the bind, the check retried and the app never drew; all five drew on build 123, which "
+                            "hosts microG's Companion in the app's process)"] if licensing else None),
+            shim=("a licensing service of its own must answer the bind, or the check retries and then shows its own "
+                  "error screen instead of the app (microG's Companion answers it; see the device round)" if licensing else
+                  "decide per feature: truthful 'unavailable' result, or an OH-backed replacement (push, maps, auth)"
                   if not firebase else "component discovery is local (see pm:component-metadata); GMS-backed components degrade"),
         ))
     names = {c["name"] for c in facts["components"]} | {e.get("soname", "") for e in ohresolve.target_elfs(scan)}
@@ -3327,6 +3618,37 @@ def external_rows(facts: dict[str, Any], scan: dict[str, Any], refused: dict[str
                 shim=("confirm the app degrades cleanly without it, and whether its backend then rejects the session" if refusal else
                       "capture its inputs on the Android baseline; decide load/refuse and what identity to present"),
             ))
+    files = {e["name"].rsplit("/", 1)[-1] for e in ohresolve.target_elfs(scan)}
+    for marker, sdk, observed, seen in _PROTECTED_SDKS:
+        found = sorted(n for n in names | files if n and marker in n)
+        if found:
+            rows.append(_row(
+                "external-deps", f"protect:{sdk.lower()}", f"{sdk} code protection",
+                oh_touchpoint="none: the app's own protection layer, which judges the environment it runs in",
+                verdict="blocked", shim_class="CU", effort="policy", confidence=OBSERVED,
+                app_evidence=", ".join(found[:4]), provider=observed, seen_blocking=seen,
+                shim="none: anti-tamper and code protection are observed from outside, not taken apart or bypassed",
+            ))
+    counts: dict[str, int] = {}
+    for elf in ohresolve.target_elfs(scan):
+        if elf.get("unreadable_symbols"):
+            name = elf.get("soname") or elf["name"].rsplit("/", 1)[-1]
+            counts[name] = max(counts.get(name, 0), elf["unreadable_symbols"])   # an APK can carry two copies
+    unreadable = sorted(((count, name) for name, count in counts.items()), key=lambda item: (-item[0], item[1]))
+    if unreadable:
+        rows.append(_row(
+            "external-deps", "protect:unreadable-symbols",
+            f"{len(unreadable)} {'library' if len(unreadable) == 1 else 'libraries'} with unreadable symbol tables",
+            oh_touchpoint="none: the library's own packing or encryption, undone by its protector at run time",
+            verdict="unverified", shim_class="CU", effort="verify", confidence=STATIC,
+            app_evidence=", ".join(f"{name} ({count} names)" for count, name in unreadable[:6]),
+            provider="binary junk where the dynamic symbol names belong: an encrypted or packed table, as Bangcle's "
+                     "libsecexe.so and the game shields over libil2cpp.so, libunity.so and libcocos.so ship. What these "
+                     "libraries import can't be read before their protector restores the table, so they are left out "
+                     "of the native-symbol rows",
+            shim="judge them on the board: the loader's and the crash reports' first run show what they need once "
+                 "unpacked; their protection itself is observed, not taken apart",
+        ))
     return rows
 
 
@@ -3354,10 +3676,22 @@ def bionic_shim_staged_libraries(westlake_root: Path) -> list[str]:
     return sorted(names - {"libwebview_bionic_shim.so"})
 
 
+# Libraries whose shim answer comes through the handle of the runtime's copy, not the dlopen:
+# westlake_libandroid_by_handle answers only a handle whose search reaches the runtime's
+# libandroid.so, so the Android namespace's own copy (the WebView's) is not answered.
+RUNTIME_HANDLE_ANSWERED = frozenset({"libandroid.so"})
+
+
 def shim_answered_libraries(westlake_root: Path) -> dict[str, str]:
-    """Libraries whose dlopen from app code the shim answers with its own handle, and where: a lookup
-    by that handle finds the shim's exports first (libOpenSLES.so's adapter, libaaudio.so's AAudio).
-    Other basename checks in the shim's dlopen redirect elsewhere and are not counted."""
+    """Libraries whose lookups by handle from app code find the shim's exports, and where.
+
+    - The shim answers the dlopen with its own handle, so a lookup by that handle finds the shim's
+      exports first (libOpenSLES.so's adapter, libaaudio.so's AAudio). Other basename checks in the
+      shim's dlopen redirect elsewhere and are not counted.
+    - libandroid.so: the handle is the runtime's copy, which holds part of the NDK library, and the
+      shim's dlsym answers a name that copy lacks with the shim's own definition
+      (westlake_libandroid_by_handle). Yandex Browser's ASharedMemory_create and Naver Whale's
+      ASurfaceControl entry points were looked up that way."""
     shim = westlake_root / "framework/webview-shim/webview_bionic_shim.c"
     if not shim.exists():
         return {}
@@ -3369,6 +3703,10 @@ def shim_answered_libraries(westlake_root: Path) -> dict[str, str]:
         if "real_dlopen(self.dli_fname" in text[check.end():end]:
             line = text.count("\n", 0, check.start()) + 1
             answered[check.group(1)] = f"framework/webview-shim/webview_bionic_shim.c:{line}"
+    fallback = re.search(r"^static void \*westlake_libandroid_by_handle\(", text, re.M)
+    if fallback and "westlake_libandroid_by_handle(real, handle, name)" in text:
+        line = text.count("\n", 0, fallback.start()) + 1
+        answered["libandroid.so"] = f"framework/webview-shim/webview_bionic_shim.c:{line}"
     return answered
 
 
@@ -3926,28 +4264,12 @@ def android_namespace_rows(scan: dict[str, Any], rows: list[dict[str, Any]],
     declared: dict[str, set[str]] = defaultdict(set)
     for item in ndk_cov["symbols"]:
         declared[item["library"]].add(item["symbol"])
-    targets = set()
-    for row in rows:
-        args = row.get("launch_args") or []
-        targets |= {value for flag, value in zip(args[0::2], args[1::2]) if flag == "--android-native-target"}
+    targets = android_namespace_targets(rows)
     app_written = any(row["id"] == "load:app-storage-exec" for row in rows)
     written = {elf["name"] for elf in ohresolve.target_elfs(scan) if elf.get("origin") == "unpacked"}
     if not targets and not app_written:
         return []
     bridge = {lib.get("soname") or lib["name"]: lib for lib in runtime.get("bridge_libraries", [])}
-
-    def runtime_closure(name: str) -> set[str]:
-        seen, queue, symbols = {name}, [name], set()
-        while queue:
-            lib = bridge.get(queue.pop())
-            if lib is None:
-                continue
-            symbols |= set(lib.get("exported_symbols", []))
-            for dep in lib.get("needed", []):
-                if dep in bridge and dep not in seen:
-                    seen.add(dep)
-                    queue.append(dep)
-        return symbols
 
     elfs = ohresolve.target_elfs(scan)
     packaged = set()
@@ -3958,7 +4280,7 @@ def android_namespace_rows(scan: dict[str, Any], rows: list[dict[str, Any]],
         name = lib.get("soname") or lib["name"]
         if name not in bridge:
             continue
-        unreachable = (runtime_closure(name) & declared.get(name, set())) - set(lib.get("exported_symbols", [])) - packaged
+        unreachable = (runtime_handle_scope(runtime, name) & declared.get(name, set())) - set(lib.get("exported_symbols", [])) - packaged
         importers: dict[str, set[str]] = defaultdict(set)
         routed = harvested = False
         for elf in elfs:
@@ -4081,11 +4403,13 @@ def build_map(
                                    contracts.shim_versioned_definitions(westlake_root))
             + task_root_rows(scan, contracts.activity_client_model(westlake_root))
             + own_intent_rows(scan, contracts.own_intent_model(westlake_root))
+            + external_intent_rows(scan)
             + post_create_rows(scan, contracts.launch_start_model(westlake_root))
             + permission_request_rows(scan, contracts.permission_request_model(westlake_root))
             + activity_result_rows(scan, contracts.activity_result_model(westlake_root))
             + launch_lifecycle_rows(scan, contracts.launch_lifecycle_model(westlake_root))
             + recreate_rows(scan, contracts.recreate_model(westlake_root))
+            + toast_rows(scan, contracts.toast_model(westlake_root))
             + host_permission_rows(facts, contracts.host_permission_model(westlake_root), westlake_root)
             + ce_storage_rows(scan, contracts.ce_storage_model(westlake_root))
             + feature_rows(scan, contracts.feature_claims_model(westlake_root), aosp_services, westlake_services)
@@ -4116,14 +4440,16 @@ def build_map(
             + silent_load_rows(scan, native_load_short_circuit(westlake_root.parent / "art-build"),
                                runtime_libraries)
             + stub_native_rows(scan, stub_native_model(westlake_root.parent / "art-build", westlake_root))
-            + runtime_resolved_rows(scan, ndk_cov, bionic_shim_exports(westlake_root),
-                                    shim_answered_libraries(westlake_root))
-            + sandbox_rows(scan, policy) + external_rows(facts, scan, refused_libraries(westlake_root)))
+            + sandbox_rows(scan, policy) + process_policy_rows(scan, policy) + external_rows(facts, scan, refused_libraries(westlake_root)))
     # The interposition row's routing first: the libraries it routes meet the Android namespace's
     # libandroid.so too, which android_namespace_rows checks.
     rows += interposition_rows(scan, runtime_index, rows, launcher_namespace_option(manifest_root))
     rows += android_namespace_rows(scan, rows, android_namespace_libs, runtime_index,
                                    bionic_shim_exports(westlake_root), ndk_cov)
+    # Lookups by name, resolved in the namespace each library loads in, which the routing decides.
+    rows += runtime_resolved_rows(scan, ndk_cov, bionic_shim_exports(westlake_root),
+                                  shim_answered_libraries(westlake_root), runtime_index,
+                                  android_namespace_libs, android_namespace_targets(rows))
     if ledger:
         apply_ledger(rows, ledger)
     # Rows that describe the provider rather than the app (scope "provider": the same for every

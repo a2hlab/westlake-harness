@@ -150,6 +150,51 @@ class FirstBlocker(unittest.TestCase):
             "[UNCAUGHT] thread='main' java.lang.IllegalStateException: Required value was null.\n"),
             ("app-framework", "uncaught on main: IllegalStateException: Required value was null."))
 
+    def test_a_name_ending_in_abort_is_not_an_abort(self) -> None:
+        """Boehm GC's GC_LOOP_ON_ABORT, in the shim's log of the environment variables an app asked for."""
+        from westlake_gap import lifecycle
+        asked = ("[WESTLAKE-WEBVIEW-BIONIC] getenv GC_LOOP_ON_ABORT: unset, asked by "
+                 "/data/local/tmp/asx/lib/arm64-v8a/libil2cpp.so\n")
+        self.assertEqual(lifecycle.first_blocker(asked), (None, None))
+        self.assertEqual(lifecycle.first_blocker("F libc: ABORT: something went wrong\n"),
+                         ("native-crash", "abort: something went wrong"))
+
+    def test_the_abort_message_is_the_blocker_and_its_frames_say_where(self) -> None:
+        """Friday Night Funkin': libc++abi's uncaught std::invalid_argument on SDLThread. ART's report of
+        the SIGABRT came after it, with no frames; the shim's frames climb past libc++abi."""
+        from westlake_gap import evidence, lifecycle
+        asx = "/data/local/tmp/asx/lib/arm64-v8a/"
+        text = ("kRegJNI loop done\n"
+                "[WESTLAKE-WEBVIEW-BIONIC] abort message: terminating due to uncaught exception of type "
+                "St16invalid_argument\n"
+                "[WESTLAKE-ABORT-FRAMES] tid=0x4886 #0x1 %slibc++_shared.so+0xc5f40 #0x2 %slibc++_shared.so+0xc5e10"
+                " #0x3 %slibc++_shared.so+0xc4f1c #0x4 %slibc++_shared.so+0x8a01c #0x5 %slibvlc.so+0x1005e88"
+                " #0x6 %slibvlc.so+0xf00a10\n" % ((asx,) * 6)
+                + "Fatal signal 6 (SIGABRT), code -6 (SI_TKILL)\nThread: 18554 \"SDLThread\"\n"
+                "Registers:\n    x30: 0x0000007fa6969560\n     sp: 0x0000007ed368a4a0     pc: 0x0000007fa69bd344\n")
+        self.assertEqual(lifecycle.first_blocker(text),
+                         ("native-crash", "abort: terminating due to uncaught exception of type St16invalid_argument"))
+        frames = evidence.abort_frames(text)
+        self.assertEqual([(f["depth"], f["library"]) for f in frames][3:5], [(4, "libc++_shared.so"), (5, "libvlc.so")])
+        self.assertEqual(evidence.abort_origin(frames)["offset"], "0x1005e88")
+        maps = "7fa6800000-7fa6b00000 r-xp 00000000 fd:00 1 /system/lib/ld-musl-aarch64.so.1\n"
+        s = lifecycle.score("fnf", text)
+        lifecycle.add_evidence(s, text, maps)
+        self.assertEqual(s.blocker, "abort: terminating due to uncaught exception of type St16invalid_argument "
+                                    "(from libvlc.so+0x1005e88)")
+        self.assertEqual(len(s.abort_frames), 6)
+        # A terminate handler or a C++ runtime inside an app library starts the chain: the origin is past it.
+        midland = [{"library": n, "offset": o} for n, o in (("libbugsnag-ndk.so", "0xf5fd0"), ("libbugsnag-ndk.so", "0xf5e94"),
+                                                            ("libc++.so", "0xae114"), ("libhermes.so", "0x173450"))]
+        self.assertEqual(evidence.abort_origin(midland)["library"], "libhermes.so")
+        pairip = [{"library": "libpairipcore.so", "offset": o} for o in ("0x1ccc8", "0x2ad2c")]
+        self.assertEqual(evidence.abort_origin(pairip)["offset"], "0x1ccc8")
+        # Without the frames (an older shim), the abort is still placed where its signal landed.
+        bare = text.replace(text[text.index("[WESTLAKE-ABORT-FRAMES]"):text.index("Fatal signal")], "")
+        s = lifecycle.score("fnf", bare)
+        lifecycle.add_evidence(s, bare, maps)
+        self.assertTrue(s.blocker.endswith("St16invalid_argument in ld-musl-aarch64.so.1+0x1bd344"), s.blocker)
+
     def test_an_activity_that_closed_itself_off_screen(self) -> None:
         from westlake_gap import evidence
         resumed = ("10-04 04:24:13.864 1 2 I C00f00/OH_ACCAdapter: activityResumed: OnDrawListener attached, FG "
@@ -193,6 +238,34 @@ class Evidence(unittest.TestCase):
         s = lifecycle.score("app", "kRegJNI loop done\n" + self.CRASH)
         lifecycle.add_evidence(s, "kRegJNI loop done\n" + self.CRASH, self.MAPS)
         self.assertEqual(s.blocker, "SIGSEGV on thread EGLThread in libGLES_mali.z.so+0x34de28")
+
+    def test_a_fault_in_the_runtime_is_named_by_its_caller(self) -> None:
+        """A SIGSEGV in musl's strlen says only that a pointer was bad. The shim's frame walk for the
+        same thread names the game library that passed it; ART and Java frames are passed over."""
+        from westlake_gap import evidence, lifecycle
+        asx = "/data/local/tmp/asx/"
+        witness = ("[WESTLAKE-SIGNAL-WITNESS] signal=0xb code=0x1 tid=0x72a0 thread=GameThread pc=0x7fab8d6c10 "
+                   "x30=0x7fab8d1850 at /system/lib/ld-musl-aarch64.so.1+0x97c10 insn=0xa9400c02 next=0xb200c3e8 "
+                   "from /system/lib/ld-musl-aarch64.so.1+0x92850 x0=0x1\n"
+                   "[WESTLAKE-SIGNAL-FRAMES] tid=0x72a0 #0x1 /system/lib/ld-musl-aarch64.so.1+0x8f3cc"
+                   " #0x2 %slibart.so+0xed49e4 #0x3 %sboot/boot.oat+0x212158 #0x4 %slib/arm64-v8a/libgame.so+0x1234\n"
+                   % (asx, asx, asx))
+        crash = ('Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR) fault addr 0x0\nThread: 29344 "GameThread"\n'
+                 "Registers:\n    x30: 0x0000007fab8d1850\n     sp: 0x0000007e9774ed20     pc: 0x0000007fab8d6c10\n")
+        maps = "7fab83f000-7fab900000 r-xp 00000000 fd:00 1 /system/lib/ld-musl-aarch64.so.1\n"
+        text = "kRegJNI loop done\n" + witness + crash
+        event = evidence.signal_witnesses(text, maps)[0]
+        self.assertEqual([f["library"] for f in event["frames"]],
+                         ["ld-musl-aarch64.so.1", "libart.so", "boot.oat", "libgame.so"])
+        self.assertEqual(evidence.first_app_frame(event["frames"])["offset"], "0x1234")
+        s = lifecycle.score("game", text)
+        lifecycle.add_evidence(s, text, maps)
+        self.assertEqual(s.blocker, "SIGSEGV on thread GameThread in ld-musl-aarch64.so.1+0x97c10 (from libgame.so+0x1234)")
+        # Nothing but the runtime and Java under it (a library load from Java): the blocker stays as it was.
+        java_only = text.replace(" #0x4 %slib/arm64-v8a/libgame.so+0x1234" % asx, "")
+        s = lifecycle.score("game", java_only)
+        lifecycle.add_evidence(s, java_only, maps)
+        self.assertEqual(s.blocker, "SIGSEGV on thread GameThread in ld-musl-aarch64.so.1+0x97c10")
 
     def test_stalled_main_thread_becomes_the_blocker(self) -> None:
         from westlake_gap import lifecycle
@@ -513,6 +586,131 @@ class Evidence(unittest.TestCase):
                          ("ld-musl-aarch64.so.1", "0xbc548", "0xf4ccffcc"))
         self.assertEqual(witness["caller"]["library"], "libstartup.so")
 
+
+    def test_a_witness_that_is_the_logs_last_word_names_the_death(self) -> None:
+        """1688 (com.alibaba.wireless): the log ends on the shim's witness of a SIGSEGV in musl's
+        loader, then its frame walk; no crash dump, no hilog report. NBA 2K: its audio thread's
+        witness, then other threads' lines, then that thread's frame walk as the last line."""
+        from westlake_gap import evidence, lifecycle
+        asx = "/data/local/tmp/asx/"
+        witness = ("[WESTLAKE-SIGNAL-WITNESS] signal=0xb code=0x1 tid=0x4cad thread=launcher-0 pc=0x7fa8758c10 "
+                   "x30=0x7fa8753850 at /system/lib/ld-musl-aarch64.so.1+0x97c10 insn=0xa9400c02 next=0xb200c3e8 "
+                   "from /system/lib/ld-musl-aarch64.so.1+0x92850 x0=0x768\n")
+        frames = ("[WESTLAKE-SIGNAL-FRAMES] tid=0x4cad #0x1 /system/lib/ld-musl-aarch64.so.1+0x8f3cc"
+                  " #0x2 %swebview-t-lib/libwebview_bionic_shim.so+0x14ad4 #0x3 %slibart.so+0xed49e4\n" % (asx, asx))
+        text = "kRegJNI loop done\n[SOURCE-NATIVE-LOAD] path=%slib/arm64-v8a/libx.so\n" % asx + witness + frames
+        self.assertEqual(evidence.final_witness(text)["thread"], "launcher-0")
+        s = lifecycle.score("wireless", text)
+        lifecycle.add_evidence(s, text, None)
+        self.assertEqual((s.blocker_category, s.blocker),
+                         ("native-crash", "SIGSEGV on thread launcher-0 at ld-musl-aarch64.so.1+0x97c10 "
+                                          "(from ld-musl-aarch64.so.1+0x92850) (the log's last words: no crash dump, "
+                                          "no hilog report)"))
+        # Other threads' lines between the witness and its frame walk: still the last word.
+        between = "".join("[WL-VULKAN] vkGetInstanceProcAddr(vkFn%d): no function\n" % i for i in range(20))
+        late = "kRegJNI loop done\n" + witness.replace("launcher-0", "VCAUDIO3") + between + frames
+        self.assertEqual(evidence.final_witness(late)["thread"], "VCAUDIO3")
+        # Survived: the app went on logging (a library probing the CPU catches its own SIGILL).
+        survived = text + "".join("[WESTLAKE-VSYNC] dispatchVsync #%d\n" % i for i in range(4))
+        self.assertIsNone(evidence.final_witness(survived))
+        s = lifecycle.score("wireless", survived)
+        lifecycle.add_evidence(s, survived, None)
+        self.assertNotEqual(s.blocker_category, "native-crash")
+        # A frame walk for another thread does not extend the witness.
+        other = text.replace("tid=0x4cad #0x1", "tid=0x1234 #0x1") + "a\nb\nc\n"
+        self.assertIsNone(evidence.final_witness(other))
+
+    def test_a_process_that_killed_itself(self) -> None:
+        """Didi: its privacy module's timer called Process.killProcess(myPid()); Westlake logs the
+        Java stack before the SIGKILL, and nothing else reports the death."""
+        from westlake_gap import evidence, lifecycle
+        stack = ("java.lang.Throwable: [WESTLAKE-KILL] the process sends itself signal 9\n"
+                 "\tat android.os.Process.sendSignal(Native Method)\n"
+                 "[WESTLAKE-WEBVIEW-BIONIC] property ro.product.model=X\n"
+                 "\tat android.os.Process.killProcess(Unknown Source:2)\n"
+                 "\tat com.didi.sdk.privacy.e.run(src:5)\n"
+                 "\tat java.util.TimerThread.mainLoop(Unknown Source:116)\n")
+        self.assertEqual(evidence.self_kill(stack),
+                         {"frames": ["android.os.Process.sendSignal(Native Method)",
+                                     "android.os.Process.killProcess(Unknown Source:2)",
+                                     "com.didi.sdk.privacy.e.run(src:5)",
+                                     "java.util.TimerThread.mainLoop(Unknown Source:116)"],
+                          "first_app_frame": "com.didi.sdk.privacy.e.run(src:5)"})
+        text = "kRegJNI loop done\n" + stack
+        s = lifecycle.score("didi", text)
+        lifecycle.add_evidence(s, text, None)
+        self.assertEqual((s.blocker_category, s.blocker),
+                         ("self-kill", "it killed its own process from com.didi.sdk.privacy.e.run(src:5)"))
+        # SIGQUIT to itself asks for a thread dump; the process lives on.
+        self.assertIsNone(evidence.self_kill(stack.replace("signal 9", "signal 3")))
+        # An activity that finished itself first is the better account (Unity kills in onDestroy).
+        hilog = ("10-05 08:30:20.900   942   942 I C00f00/AppSpawnX: Child process started, pid=1\n"
+                 "10-05 08:30:22.380   942   967 I C00f00/OH_ACCAdapter: activityResumed: OnDrawListener attached "
+                 "(token=android.os.Binder@1)\n"
+                 "10-05 08:30:22.500   942   967 I C00f00/OH_ACCAdapter: finishActivity: no OH ability; "
+                 "local destroy scheduled for android.os.Binder@1\n"
+                 "10-05 08:30:23.191   942   967 W C00f00/OH_ACCAdapter: activityResumed (first-frame timeout): no OH token mapping\n")
+        s = lifecycle.score("pokemon", text)
+        s.screen = "host"
+        lifecycle.add_evidence(s, text, None, None, hilog)
+        self.assertEqual(s.blocker_category, "self-finish")
+        self.assertIsNotNone(s.self_kill)
+
+
+    def test_self_exit_names_the_last_library(self):
+        """A process that calls exit() runs OH's static destructors: the IPC skeleton stops its threads
+        and the window manager goes away, in the app's own hilog. Nothing else reports it."""
+        from westlake_gap import evidence, lifecycle
+        text = ("kRegJNI loop done\n"
+                "[SOURCE-NATIVE-LOAD] path=/data/local/tmp/asx/lib/arm64-v8a/libc++_shared.so search=x\n"
+                "[SOURCE-NATIVE-LOAD] path=/data/local/tmp/asx/lib/arm64-v8a/libgame.so search=x\n"
+                "[WESTLAKE-SIGNAL-INSTALL] oh signal=31 flags=0x1c000004 handler=0x1 caller=0x2\n")
+        hilog = ("11-11 01:41:45.827 25621 25621 I C00f00/AppSpawnX: Child process started, pid=25621\n"
+                 "11-11 01:41:46.365 25621 25641 I C04204/WMSScb: window_manager.cpp ~WindowManager: destroyed, "
+                 "userId: -1\n"
+                 "11-11 01:41:46.426 25621 25641 I C057c1/ProcessSkeleton: NotifyChildThreadStop: waiting 3 child "
+                 "threads to exit\n")
+        self.assertEqual(evidence.self_exit(hilog, text), {"after_s": 0.5, "last_library": "libgame.so"})
+        s = lifecycle.score("game", text)
+        lifecycle.add_evidence(s, text, None, None, hilog)
+        self.assertEqual((s.blocker_category, s.blocker),
+                         ("self-exit", "it exited by itself 0.5 s after starting, with no crash; "
+                                       "the last library it loaded was libgame.so"))
+        # A process the harness ends at the close of its window logs no clean-up.
+        quiet = hilog.split("\n")[0] + "\n11-11 01:42:20.000 25621 25621 I C00f00/X: still here\n"
+        self.assertIsNone(evidence.self_exit(quiet, text))
+        # Clean-up long before the log ends is not how the process ended.
+        later = hilog + "11-11 01:41:50.000 25621 25621 I C00f00/X: still here\n"
+        self.assertIsNone(evidence.self_exit(later, text))
+        # Across midnight.
+        wrapped = hilog.replace("01:41:45.827", "23:59:59.827").replace("01:41:46", "00:00:00")
+        self.assertEqual(evidence.self_exit(wrapped, text)["after_s"], 0.5)
+
+    def test_touch_before_finish_is_not_the_app(self):
+        """The board forwards real touches: a release just before the last activity finished means a tap
+        closed it, and the row is marked disturbed instead of the app finishing itself."""
+        from westlake_gap import evidence, lifecycle
+        text = "kRegJNI loop done\n"
+        hilog = ("11-10 15:08:07.000   942   942 I C00f00/AppSpawnX: Child process started, pid=1\n"
+                 "11-10 15:08:26.339   942   967 I C00f00/OH_ACCAdapter: activityResumed: OnDrawListener attached "
+                 "(token=adapter.core.ActivityToken@2)\n"
+                 "11-10 15:08:38.202   942   967 I C00f00/MotionEvent-aosp: [DIAG] nativeGetAction -> 1 (ptrs=1)\n"
+                 "11-10 15:08:38.204   942   967 I C00f00/OH_ACCAdapter: finishActivity: no OH ability; "
+                 "local destroy scheduled for adapter.core.ActivityToken@2\n")
+        finished = evidence.self_finish(hilog)
+        self.assertEqual(finished["touched_ms_before"], 2)
+        s = lifecycle.score("keeta", text)
+        s.screen = "host"
+        lifecycle.add_evidence(s, text, None, None, hilog)
+        self.assertEqual(s.blocker_category, "touched")
+        self.assertFalse(s.blocking)
+        # A touch long before the finish is not what closed it.
+        early = hilog.replace("15:08:38.202", "15:08:30.000")
+        self.assertNotIn("touched_ms_before", evidence.self_finish(early))
+        s = lifecycle.score("keeta", text)
+        s.screen = "host"
+        lifecycle.add_evidence(s, text, None, None, early)
+        self.assertEqual(s.blocker_category, "self-finish")
 
 if __name__ == "__main__":
     unittest.main()

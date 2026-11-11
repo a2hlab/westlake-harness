@@ -92,9 +92,16 @@ _BLOCKERS = (
      "system-services", "{0}"),
     (_HELD_BACK_BLOCKER, "app-framework", "{0}"),
     # r77: 29 of 48 stopped apps matched none of the above although their logs say why.
-    (re.compile(r"ABORT: \S*/hwui/\S*?(\w+)\.cpp ([^\n]{0,70})"),
+    # ABORT as a word: a name that ends in it (Boehm GC's GC_LOOP_ON_ABORT, in a log of the environment
+    # variables an app asked for) is not an abort.
+    # The message a library set just before it called abort(), as the bionic shim prints it: libc++abi's
+    # uncaught exception, "Pure virtual function called!", a -fno-exceptions length_error. It comes
+    # before the SIGABRT's report, whose frames are empty, and says what failed.
+    (re.compile(r"\[WESTLAKE-WEBVIEW-BIONIC\] abort message: ([^\n]{1,90})"),
+     "native-crash", "abort: {0}"),
+    (re.compile(r"(?<!\w)ABORT: \S*/hwui/\S*?(\w+)\.cpp ([^\n]{0,70})"),
      "graphics", "hwui {0}: {1}"),
-    (re.compile(r"ABORT: ([^\n/][^\n]{0,79})"),
+    (re.compile(r"(?<!\w)ABORT: ([^\n/][^\n]{0,79})"),
      "native-crash", "abort: {0}"),
     (re.compile(r"java\.lang\.UnsatisfiedLinkError: ([^\n]{0,100})"),
      "native-loading", "{0}"),
@@ -146,11 +153,15 @@ class Score:
     startup: dict | None = None
     root_cause: dict | None = None
     self_finish: dict | None = None
+    final_witness: dict | None = None
+    self_kill: dict | None = None
+    self_exit: dict | None = None
     buffer_requests: dict | None = None
     null_services: list | None = None
     dlsym_failures: list | None = None
     service_refusals: list | None = None
     service_failures: list | None = None
+    abort_frames: list | None = None
 
     def as_dict(self) -> dict:
         return {k: v for k, v in self.__dict__.items()
@@ -336,6 +347,22 @@ def screen_state(image: Path, hosts: list[Path] | None = None) -> str | None:
     return _against(pixels, page)
 
 
+def _witness_where(witness: dict) -> str:
+    """Where a witnessed signal was raised: " at lib+offset", and " (from lib+offset)" for its caller.
+    A fault inside the runtime (musl's strlen) is named by who called into it."""
+    from . import evidence
+    if "library" not in witness["pc"]:
+        return ""
+    where = " at %s+%s" % (witness["pc"]["library"], witness["pc"]["offset"])
+    caller = witness["caller"] if "library" in witness["caller"] else None
+    if witness["pc"]["library"] in evidence.RUNTIME_CODE \
+            and (caller is None or caller["library"] in evidence.RUNTIME_CODE):
+        caller = evidence.first_app_frame(witness.get("frames", [])) or caller
+    if caller:
+        where += " (from %s+%s)" % (caller["library"], caller["offset"])
+    return where
+
+
 def add_evidence(s: Score, text: str, maps_text: str | None, cppcrash_text: str | None = None,
                  hilog_text: str | None = None) -> None:
     """What a run left beside the log (see evidence.py): OH's crash dump of the process, a native
@@ -423,20 +450,41 @@ def add_evidence(s: Score, text: str, maps_text: str | None, cppcrash_text: str 
             signal["witness"] = witness
         if s.blocker is None or s.blocker_category == "stall" or not s.blocking:
             s.blocker_category, s.blocking = "native-crash", True
-            where = ""
-            if witness and "library" in witness["pc"]:
-                where = " at %s+%s" % (witness["pc"]["library"], witness["pc"]["offset"])
-                if "library" in witness["caller"]:
-                    where += " (from %s+%s)" % (witness["caller"]["library"], witness["caller"]["offset"])
             s.blocker = "%s on %s%s (hilog only, no crash dump)%s" % (
                 signal["signal"], "thread " + (witness or signal).get("thread", "") if (witness or signal).get("thread")
-                else "tid %d" % signal["tid"], where,
+                else "tid %d" % signal["tid"], _witness_where(witness) if witness else "",
                 ", right after: " + signal["after"] if "after" in signal else "")
+    # Neither a dump nor hilog reports the death, and the log ends on the shim's witness of a signal:
+    # that signal ended it (1688 in musl's loader while it loaded a library; NBA 2K's audio thread).
+    final = evidence.final_witness(text, maps_text) if not dump and not signal else None
+    if final:
+        s.final_witness = final
+        s.fatal = max(s.fatal, 1)
+        if s.blocker is None or s.blocker_category in ("stall", "no-frame") or not s.blocking:
+            s.blocker_category, s.blocking = "native-crash", True
+            s.blocker = "%s on thread %s%s (the log's last words: no crash dump, no hilog report)" % (
+                final["signal"], final["thread"], _witness_where(final))
+    aborted = s.blocker_category == "native-crash" and (s.blocker or "").startswith("abort: ")
+    frames = evidence.abort_frames(text)
+    if frames:
+        s.abort_frames = frames
+        origin = evidence.abort_origin(frames)
+        # Where the abort was asked for, past libc++abi and the shim: musl's raise, where the
+        # SIGABRT itself lands, is the same for every abort.
+        if aborted and origin:
+            s.blocker += " (from %s+%s)" % (origin["library"], origin["offset"])
     if maps_text and s.fatal:
         s.crash_site = evidence.crash_site(text, maps_text)
-        if s.crash_site and s.blocker_category == "native-crash":
+        if s.crash_site and s.blocker_category == "native-crash" and not (aborted and frames):
             pc = s.crash_site["pc"]
             s.blocker += " in %s+%s" % (pc["library"], pc["offset"])
+            # In the runtime, the shim's frame walk for the same thread names the caller.
+            if pc["library"] in evidence.RUNTIME_CODE and "tid" in s.crash_site:
+                walked = next((w for w in evidence.signal_witnesses(text, maps_text)
+                               if w["tid"] == s.crash_site["tid"] and w.get("frames")), None)
+                origin = evidence.first_app_frame(walked["frames"]) if walked else None
+                if origin:
+                    s.blocker += " (from %s+%s)" % (origin["library"], origin["offset"])
     thread = evidence.main_thread(text)
     if thread:
         s.main_thread = thread
@@ -452,10 +500,35 @@ def add_evidence(s: Score, text: str, maps_text: str | None, cppcrash_text: str 
         s.self_finish = finished
         # An activity that finished itself drew nothing because it left: its first-frame report times
         # out too, so a no-frame reading gives way to what it did (Fossify Messages).
-        if s.blocker is None or s.blocker_category in ("stall", "no-frame") or not s.blocking:
+        if "touched_ms_before" in finished:
+            # Not the app: a touch on the board's screen closed it, so the run says nothing about it.
+            if s.blocker is None or s.blocker_category in ("stall", "no-frame") or not s.blocking:
+                s.blocker_category, s.blocking = "touched", False
+                s.blocker = ("a touch on the board's screen %d ms before its last activity finished closed it: "
+                             "the run was disturbed" % finished["touched_ms_before"])
+        elif s.blocker is None or s.blocker_category in ("stall", "no-frame") or not s.blocking:
             s.blocker_category, s.blocking = "self-finish", True
             s.blocker = "its last activity finished itself%s after resuming, and nothing replaced it" % (
                 " %d ms" % finished["after_ms"] if "after_ms" in finished else "")
+    # It sent itself SIGKILL: no dump, no exit status, no finish the window manager saw. Who asked is
+    # what to explain (an activity finishing itself first is the better account, and comes first).
+    killed = evidence.self_kill(text)
+    if killed:
+        s.self_kill = killed
+        if s.blocker is None or s.blocker_category in ("stall", "no-frame") or not s.blocking:
+            s.blocker_category, s.blocking = "self-kill", True
+            s.blocker = "it killed its own process" + (
+                " from %s" % killed["first_app_frame"] if killed["first_app_frame"] else "")
+    # It called exit(): OH's exit-time clean-up ran and no signal ended it. The library it loaded last
+    # is the lead (Clash of Clans: its own, which had just set its signal handlers).
+    exited = evidence.self_exit(hilog_text, text) if hilog_text and not dump and not signal and not final else None
+    if exited:
+        s.self_exit = exited
+        if s.blocker is None or s.blocker_category in ("stall", "no-frame") or not s.blocking:
+            s.blocker_category, s.blocking = "self-exit", True
+            s.blocker = "it exited by itself %.1f s after starting, with no crash%s" % (
+                exited["after_s"],
+                "; the last library it loaded was " + exited["last_library"] if "last_library" in exited else "")
 
 
 def score_paths(paths: list[Path]) -> list[Score]:

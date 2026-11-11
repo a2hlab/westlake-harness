@@ -6,7 +6,30 @@
 
     <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="34" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Android 14 requires it of an app whose job asks for a network (svc:jobscheduler). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Package visibility: the intent:* lines ask what handles these on the device. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.OPEN_DOCUMENT" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="android.settings.APPLICATION_DETAILS_SETTINGS" />
+            <data android:scheme="package" />
+        </intent>
+        <package android:name="com.android.vpndialogs" />
+    </queries>
 
     <application
         android:allowBackup="false"
@@ -24,6 +47,7 @@
 
         <!-- The answers the package manager's queries must find: one of each kind, by its own action. -->
         <activity android:name=".ResultActivity" android:exported="false" />
+        <activity android:name=".TrampolineActivity" android:exported="false" />
         <activity android:name=".LifecycleActivity" android:exported="false" />
         <activity android:name=".RecreateActivity" android:exported="false" />
         <activity android:name=".KeyboardActivity" android:exported="false" />

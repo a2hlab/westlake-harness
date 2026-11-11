@@ -3,15 +3,20 @@ package org.westlake.probe.media;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
+import android.graphics.SurfaceTexture;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioTrack;
+import android.media.Image;
 import android.media.ImageReader;
 import android.media.MediaCodec;
+import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMetadataRetriever;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.util.Log;
 import android.view.Surface;
 import android.widget.TextView;
@@ -21,6 +26,8 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Media contracts, measured on the provider.
@@ -34,7 +41,9 @@ import java.nio.ByteBuffer;
  *
  * then "[WL-CONTRACT] done". The checks run off the main thread, as apps decode, and each is
  * independent: one failing does not stop the next. media:decode-file, a whole decode through
- * MediaExtractor and MediaCodec, has no row of its own.
+ * MediaExtractor and MediaCodec, media:decode-surface, the same decode rendered into a Surface
+ * (as every video player does), and media:decode-audio, the AAC track decoded to PCM by the
+ * decoder MediaCodecList finds for it (as ExoPlayer finds its decoders), have no row of their own.
  */
 public class MainActivity extends Activity {
     private static final String TAG = "WL-CONTRACT";
@@ -69,15 +78,19 @@ public class MainActivity extends Activity {
     }
 
     private void runAll() {
-        File clip;
+        File clip, large;
         try {
             clip = copyAsset("clip.mp4");
+            large = copyAsset("clip-320.mp4");
         } catch (Throwable t) {
-            line("probe:media-contracts", "FAIL", "could not stage clip.mp4: " + t);
+            line("probe:media-contracts", "FAIL", "could not stage the clips: " + t);
             line("done", "", "");
             return;
         }
         final String path = clip.getPath();
+        // 160x120 is below the smallest size some hardware decoders take, so the larger clip is the
+        // one that reaches a hardware decoder where the device has one.
+        final String largePath = large.getPath();
         check("jni:android.media.MediaMetadataRetriever", () -> {
             MediaMetadataRetriever retriever = new MediaMetadataRetriever();
             try {
@@ -126,17 +139,10 @@ public class MainActivity extends Activity {
                 codec.release();
             }
         });
-        check("media:decode-file", () -> decodeVideo(path));
-        check("jni:android.media.ImageReader", () -> {
-            ImageReader reader = ImageReader.newInstance(160, 120, ImageFormat.YUV_420_888, 2);
-            try {
-                Surface surface = reader.getSurface();
-                if (surface == null || !surface.isValid()) throw new IllegalStateException("no valid surface");
-                return "YUV_420_888 reader, valid surface, maxImages=" + reader.getMaxImages();
-            } finally {
-                reader.close();
-            }
-        });
+        check("media:decode-file", () -> decodeVideo(path, null));
+        check("media:decode-hw", () -> decodeVideo(largePath, null));
+        check("media:decode-surface", () -> decodeToSurface(largePath));
+        check("jni:android.media.ImageReader", () -> decodeToImageReader(largePath));
         check("jni:android.media.AudioTrack", () -> {
             int rate = 48000;
             int min = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
@@ -158,11 +164,150 @@ public class MainActivity extends Activity {
                 track.release();
             }
         });
+        // Last, so that a decoder that takes the process down cannot cost the other rows a result.
+        check("media:decode-audio", () -> decodeAudio(path));
         line("done", "", "");
     }
 
-    /** Decodes the clip's video track with MediaCodec into ByteBuffers, as players without a surface do. */
-    private static String decodeVideo(String path) throws Throwable {
+    /**
+     * Decodes the clip's audio track (a 1 kHz AAC tone) to PCM through MediaCodec's input and
+     * output ByteBuffers, with the decoder MediaCodecList names for the track's format: the way
+     * ExoPlayer finds a decoder, which no app gets by asking for the type alone.
+     */
+    private static String decodeAudio(String path) throws Throwable {
+        MediaExtractor extractor = new MediaExtractor();
+        MediaCodec codec = null;
+        try {
+            extractor.setDataSource(path);
+            MediaFormat format = null;
+            for (int i = 0; i < extractor.getTrackCount(); i++) {
+                MediaFormat f = extractor.getTrackFormat(i);
+                if (f.getString(MediaFormat.KEY_MIME).startsWith("audio/")) {
+                    extractor.selectTrack(i);
+                    format = f;
+                    break;
+                }
+            }
+            if (format == null) throw new IllegalStateException("no audio track");
+            String name = new MediaCodecList(MediaCodecList.REGULAR_CODECS).findDecoderForFormat(format);
+            if (name == null) throw new IllegalStateException("MediaCodecList has no decoder for " + format);
+            codec = MediaCodec.createByCodecName(name);
+            codec.configure(format, null, null, 0);
+            codec.start();
+            MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+            long pcm = 0;
+            boolean inputDone = false;
+            long deadline = System.currentTimeMillis() + 8000;
+            while (System.currentTimeMillis() < deadline) {
+                if (!inputDone) {
+                    int in = codec.dequeueInputBuffer(10000);
+                    if (in >= 0) {
+                        int size = extractor.readSampleData(codec.getInputBuffer(in), 0);
+                        if (size < 0) {
+                            codec.queueInputBuffer(in, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                            inputDone = true;
+                        } else {
+                            codec.queueInputBuffer(in, 0, size, extractor.getSampleTime(), 0);
+                            extractor.advance();
+                        }
+                    }
+                }
+                int out = codec.dequeueOutputBuffer(info, 10000);
+                if (out >= 0) {
+                    ByteBuffer buffer = codec.getOutputBuffer(out);
+                    if (buffer != null && info.size > 0) {
+                        buffer.limit(info.offset + info.size);
+                        buffer.position(info.offset);
+                        pcm += buffer.remaining();
+                    }
+                    codec.releaseOutputBuffer(out, false);
+                    if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) break;
+                }
+            }
+            MediaFormat output = codec.getOutputFormat();
+            codec.stop();
+            if (pcm == 0) throw new IllegalStateException("decoder " + name + " produced no PCM in 8 s");
+            if (!output.containsKey(MediaFormat.KEY_SAMPLE_RATE) || !output.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
+                throw new IllegalStateException("decoder " + name + " decoded " + pcm + " bytes but its output format is "
+                        + output);
+            }
+            return "decoder=" + name + " pcm=" + pcm + " " + output.getInteger(MediaFormat.KEY_SAMPLE_RATE) + " Hz "
+                    + output.getInteger(MediaFormat.KEY_CHANNEL_COUNT) + " ch";
+        } finally {
+            if (codec != null) codec.release();
+            extractor.release();
+        }
+    }
+
+    /**
+     * Decodes the clip's video track into a Surface over a SurfaceTexture, rendering each frame, and
+     * waits for the SurfaceTexture to report one: the path a player's SurfaceView or TextureView takes.
+     */
+    private static String decodeToSurface(String path) throws Throwable {
+        HandlerThread thread = new HandlerThread("decode-surface");
+        thread.start();
+        SurfaceTexture texture = new SurfaceTexture(false);
+        Surface surface = new Surface(texture);
+        CountDownLatch frame = new CountDownLatch(1);
+        try {
+            texture.setOnFrameAvailableListener(t -> frame.countDown(), new Handler(thread.getLooper()));
+            String decoded = decodeVideo(path, surface);
+            if (!frame.await(3, TimeUnit.SECONDS)) {
+                throw new IllegalStateException(decoded + " but the SurfaceTexture saw no frame in 3 s");
+            }
+            return decoded + " frameAvailable";
+        } finally {
+            surface.release();
+            texture.release();
+            thread.quitSafely();
+        }
+    }
+
+    /**
+     * Decodes the clip's video track into an ImageReader's Surface and reads one image back as
+     * YUV_420_888: the path thumbnailers, scanners and frame-processing apps take.
+     */
+    private static String decodeToImageReader(String path) throws Throwable {
+        HandlerThread thread = new HandlerThread("decode-imagereader");
+        thread.start();
+        ImageReader reader = ImageReader.newInstance(320, 240, ImageFormat.YUV_420_888, 4);
+        CountDownLatch available = new CountDownLatch(1);
+        try {
+            Surface surface = reader.getSurface();
+            if (surface == null || !surface.isValid()) throw new IllegalStateException("no valid surface");
+            reader.setOnImageAvailableListener(r -> available.countDown(), new Handler(thread.getLooper()));
+            String decoded = decodeVideo(path, surface);
+            if (!available.await(3, TimeUnit.SECONDS)) {
+                throw new IllegalStateException(decoded + " but the reader reported no image in 3 s");
+            }
+            Image image = reader.acquireLatestImage();
+            if (image == null) throw new IllegalStateException(decoded + " but acquireLatestImage gave null");
+            try {
+                Image.Plane[] planes = image.getPlanes();
+                if (planes.length != 3) throw new IllegalStateException(planes.length + " planes");
+                ByteBuffer luma = planes[0].getBuffer();
+                long sum = 0;
+                int count = 0;
+                for (int i = 0; i < luma.remaining(); i += 97, count++) sum += luma.get(i) & 0xff;
+                long mean = count > 0 ? sum / count : 0;
+                if (mean == 0) throw new IllegalStateException("the luma plane is all zero");
+                return decoded + " image " + image.getWidth() + "x" + image.getHeight() + " planes=3 yStride="
+                        + planes[0].getRowStride() + " uvPixelStride=" + planes[1].getPixelStride()
+                        + " meanY=" + mean;
+            } finally {
+                image.close();
+            }
+        } finally {
+            reader.close();
+            thread.quitSafely();
+        }
+    }
+
+    /**
+     * Decodes the clip's video track with MediaCodec, into ByteBuffers as players without a surface do,
+     * or rendered into surface when one is given.
+     */
+    private static String decodeVideo(String path, Surface surface) throws Throwable {
         MediaExtractor extractor = new MediaExtractor();
         MediaCodec codec = null;
         try {
@@ -179,7 +324,7 @@ public class MainActivity extends Activity {
             if (format == null) throw new IllegalStateException("no video track");
             codec = MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME));
             String name = codec.getName();
-            codec.configure(format, null, null, 0);
+            codec.configure(format, surface, null, 0);
             codec.start();
             MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
             int frames = 0;
@@ -202,7 +347,7 @@ public class MainActivity extends Activity {
                 int out = codec.dequeueOutputBuffer(info, 10000);
                 if (out >= 0) {
                     if (info.size > 0) frames++;
-                    codec.releaseOutputBuffer(out, false);
+                    codec.releaseOutputBuffer(out, surface != null);
                     if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) break;
                 }
             }
