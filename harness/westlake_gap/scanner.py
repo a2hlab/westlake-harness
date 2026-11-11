@@ -32,6 +32,7 @@ from .native import (
     abi_from_archive_name,
     abi_from_machine,
     library_filename,
+    readable_symbol,
     recover_jni_registration_entries,
 )
 from .nativeprov import attribute_unresolved_imports, resolve_native_imports
@@ -175,10 +176,7 @@ def dex_blobs(path: Path) -> Iterator[tuple[str, bytes]]:
         with zipfile.ZipFile(path) as archive:
             if path.suffix.lower() in {".xapk", ".apkm"}:
                 for apk_name in _ordered_inner_apks(archive):
-                    info = archive.getinfo(apk_name)
-                    if info.file_size > 1024 * 1024 * 1024:
-                        raise ValueError(f"refusing oversized inner APK {apk_name}: {info.file_size} bytes")
-                    with zipfile.ZipFile(io.BytesIO(archive.read(apk_name))) as inner:
+                    with _inner_zip(archive, apk_name) as inner:
                         for name in sorted(
                             (name for name in inner.namelist() if DEX_NAME_RE.search(name)),
                             key=lambda name: (len(name), name),
@@ -201,11 +199,25 @@ def dex_blobs(path: Path) -> Iterator[tuple[str, bytes]]:
         raise ValueError(f"{path} is neither a DEX nor a valid APK/JAR/ZIP") from exc
 
 
+def _inner_zip(archive: zipfile.ZipFile, name: str) -> zipfile.ZipFile:
+    """An APK nested in an .xapk/.apkm. Small ones are read into memory; a large one (a game's 1-3 GB
+    Unity or install-time asset pack) is read in place through the seekable entry stream, which costs
+    nothing extra when the entry is stored, as bundles store their APKs."""
+    if archive.getinfo(name).file_size <= 256 * 1024 * 1024:
+        return zipfile.ZipFile(io.BytesIO(archive.read(name)))
+    return zipfile.ZipFile(archive.open(name))
+
+
 def _ordered_inner_apks(archive: zipfile.ZipFile) -> list[str]:
+    """The bundle's APKs, base first. The bundle's manifest names the base with id "base" and may
+    list it anywhere: a dating app's put three config splits before it, and the scan read the first
+    split's manifest as the app's (no activities, so no launch)."""
     names = [name for name in archive.namelist() if name.lower().endswith(".apk")]
     try:
         manifest = json.loads(archive.read("manifest.json"))
-        ordered = [item["file"] for item in manifest.get("split_apks", []) if item.get("file") in names]
+        entries = [item for item in manifest.get("split_apks", []) if item.get("file") in names]
+        ordered = ([item["file"] for item in entries if item.get("id") == "base"]
+                   + [item["file"] for item in entries if item.get("id") != "base"])
         return ordered + sorted(set(names) - set(ordered))
     except (KeyError, ValueError, TypeError, json.JSONDecodeError):
         return sorted(names, key=lambda name: ("config." in name or "split" in name, name))
@@ -339,6 +351,17 @@ def _android_relocation_tags(readelf_text: str) -> list[str]:
     return sorted(name for tag, name in ANDROID_RELOCATION_TAGS.items() if tag in found)
 
 
+def legacy_init(readelf_text: str) -> dict[str, Any]:
+    """DT_INIT, which bionic's linker calls before a library's .init_array and OH's musl never calls
+    (built for arm64 with NO_LEGACY_INITFINI), with the number of .init_array entries beside it: for
+    a library whose only start-up is DT_INIT (packed games' libunity.so, whose DT_INIT runs the
+    unpacker) the library never starts at all."""
+    if not re.search(r"^\s*0x0*c\s+\(INIT\)", readelf_text, re.M):
+        return {}
+    size = re.search(r"\(INIT_ARRAYSZ\)\s+(\d+)", readelf_text)
+    return {"dt_init": {"init_array_entries": int(size[1]) // 8 if size else 0}}
+
+
 _VERSIONED_IMPORT = re.compile(r"\sUND\s+([A-Za-z_][\w.$]*)@([A-Za-z_]\w*)")
 
 
@@ -416,6 +439,50 @@ def art_internal_names(raw: bytes) -> dict[str, Any]:
 
 
 _PACKED_RELOCATION_TAGS = {0x6000000F, 0x60000010, 0x60000011, 0x60000012}  # DT_ANDROID_REL{,SZ}, RELA{,SZ}
+
+
+R_AARCH64_IRELATIVE = 1032
+
+
+def irelative_relocations(raw: bytes) -> dict[str, int]:
+    """R_AARCH64_IRELATIVE relocations in a library's RELA and PLT tables: an IFUNC, whose resolver the
+    loader calls to pick the implementation. Bionic applies them; OH's musl rejects the library with
+    "unsupported relocation type 1032", so it does not load (Edge's libtelclient.so). Relocations in
+    Android's packed format are not decoded here. Empty for any other library."""
+    if raw[:4] != b"\x7fELF" or raw[4] != 2 or raw[5] != 1 or int.from_bytes(raw[0x12:0x14], "little") != 183:
+        return {}
+    u64 = lambda at: int.from_bytes(raw[at:at + 8], "little")
+    phoff, count = u64(0x20), int.from_bytes(raw[0x38:0x3A], "little")
+    loads, dynamic = [], None
+    for index in range(count):
+        header = phoff + index * 56
+        kind = int.from_bytes(raw[header:header + 4], "little")
+        if kind == 1:
+            loads.append((u64(header + 16), u64(header + 8), u64(header + 32)))
+        elif kind == 2:
+            dynamic = (u64(header + 8), u64(header + 32))
+    if dynamic is None:
+        return {}
+    tags: dict[int, int] = {}
+    for position in range(dynamic[0], min(dynamic[0] + dynamic[1], len(raw) - 15), 16):
+        tag = u64(position)
+        if tag == 0:
+            break
+        tags.setdefault(tag, u64(position + 8))
+    tables = [(tags[7], tags[8])] if 7 in tags and 8 in tags else []
+    if 23 in tags and 2 in tags and tags.get(20, 7) == 7:      # DT_JMPREL of DT_RELA entries
+        tables.append((tags[23], tags[2]))
+    found = 0
+    view = memoryview(raw)
+    for vaddr, size in tables:
+        start = next((offset + vaddr - base for base, offset, length in loads if base <= vaddr < base + length), None)
+        if start is None:
+            continue
+        end = min(start + size, len(raw))
+        end -= (end - start) % 24
+        found += sum(1 for _, info, _ in struct.iter_unpack("<QQq", view[start:end])
+                     if info & 0xFFFFFFFF == R_AARCH64_IRELATIVE)
+    return {"irelative_relocations": found} if found else {}
 
 
 def null_array_entries(raw: bytes) -> dict[str, int] | None:
@@ -749,6 +816,12 @@ def read_elf(
         exports, undefined, undefined_weak = _dynamic_symbols(raw)
         if exports is None:
             exports, undefined, undefined_weak = _dynamic_symbols_from_text(text)
+        # Junk names from an encrypted or packed dynamic table are counted, not kept as symbols.
+        unreadable = sum(1 for name in (*exports, *undefined, *undefined_weak) if not readable_symbol(name))
+        if unreadable:
+            exports = {name for name in exports if readable_symbol(name)}
+            undefined = {name for name in undefined if readable_symbol(name)}
+            undefined_weak = {name for name in undefined_weak if readable_symbol(name)}
         registration_entries, registration_error = recover_jni_registration_entries(raw)
         machine_abi = abi_from_machine(machine)
         record = {
@@ -764,7 +837,9 @@ def read_elf(
             "build_id": build_id,
             "needed": needed,
             "android_relocation_tags": _android_relocation_tags(text),
+            **legacy_init(text),
             "null_array_entries": null_array_entries(raw),
+            **irelative_relocations(raw),
             **packed_init_entries(raw),
             **art_internal_names(raw),
             **signal_lookups(raw, set(undefined) | set(undefined_weak)),
@@ -778,6 +853,7 @@ def read_elf(
             "exported_symbols": sorted(exports),
             "undefined_symbols": sorted(undefined),
             "undefined_weak_symbols": sorted(undefined_weak),
+            "unreadable_symbols": unreadable,
             "runtime_symbol_candidates": runtime_symbol_candidates(
                 raw, set(exports or ()) | set(undefined) | set(undefined_weak)),
             "jni_exports": sorted(name for name in exports if name.startswith("Java_")),
@@ -980,6 +1056,8 @@ class DexInventory:
     native_methods: list[dict[str, Any]] = field(default_factory=list)
     superclasses: dict[str, str] = field(default_factory=dict)
     own_intent_names: set[str] = field(default_factory=set)
+    # What the app's code starts for another app to handle (external_intent_families).
+    external_intents: set[str] = field(default_factory=set)
     # Android's SQLite collations the app's SQL names (COLLATE UNICODE / LOCALIZED / PHONEBOOK).
     sql_collations: set[str] = field(default_factory=set)
     # Classes defining one of AFTER_START_CALLBACKS, with which ones.
@@ -994,6 +1072,32 @@ def sql_collations(strings: Iterable[str]) -> set[str]:
     Fossify Notes reads its notes "ORDER BY title COLLATE UNICODE"."""
     return {m.group(1).upper() for text in strings if "OLLATE" in text.upper()
             for m in _SQL_COLLATION.finditer(text)}
+
+
+# Intents an app starts for another app to handle, by family: the action strings the app's code names
+# (Intent.ACTION_* constants are inlined as strings). A web link is ACTION_VIEW with an http(s) URL in
+# the code; a share is ACTION_SEND or a call to Intent.createChooser; a screen of Android's own apps
+# is a Settings action (android.settings.*) or a call to VpnService.prepare, which names the VPN
+# consent (external_intent_families).
+EXTERNAL_INTENT_ACTIONS = {
+    "share": frozenset({"android.intent.action.SEND", "android.intent.action.SEND_MULTIPLE"}),
+    "pick-document": frozenset({"android.intent.action.OPEN_DOCUMENT", "android.intent.action.GET_CONTENT",
+                                "android.intent.action.CREATE_DOCUMENT",
+                                "android.intent.action.OPEN_DOCUMENT_TREE"}),
+}
+
+
+def external_intent_families(strings: Iterable[str]) -> set[str]:
+    """Which EXTERNAL_INTENT_ACTIONS families, whether a web link ("view-web"), and whether a screen of
+    Android's Settings ("system-screen"), the app's code names. What answers them is the device's: a
+    browser, a share target, a document picker, Android's own apps."""
+    texts = set(strings)
+    found = {family for family, actions in EXTERNAL_INTENT_ACTIONS.items() if texts & actions}
+    if "android.intent.action.VIEW" in texts and any(t.startswith(("http://", "https://")) for t in texts):
+        found.add("view-web")
+    if any(t.startswith("android.settings.") for t in texts):
+        found.add("system-screen")
+    return found
 
 
 def named_filter_targets(strings: Iterable[str], targets: dict[str, list[str]]) -> set[str]:
@@ -1071,6 +1175,7 @@ def inventory_dex(path: Path, filter_targets: dict[str, list[str]] | None = None
         if filter_targets:
             result.own_intent_names |= named_filter_targets(strings, filter_targets)
         result.sql_collations |= sql_collations(strings)
+        result.external_intents |= external_intent_families(strings)
         for c in dex.get_classes():
             result.defined_classes.add(str(c.get_name()))
             # Kept for the activity hierarchy: which engine base class a launch activity extends.
@@ -1630,6 +1735,42 @@ def wallpaper_activities(apk: Any) -> list[str]:
         return []
 
 
+def _app_label(apk: Any) -> str | None:
+    try:
+        return apk.get_app_name()
+    except Exception:
+        return None
+
+
+def _feature_splits(archive: zipfile.ZipFile, names: list[str]) -> dict[str, Any]:
+    """The bundle's feature splits (manifest attribute isFeatureSplit), parsed, by split name."""
+    ns = "{http://schemas.android.com/apk/res/android}"
+    found: dict[str, Any] = {}
+    for name in names:
+        try:
+            split = APK(archive.read(name), raw=True, skip_analysis=False)   # True leaves the manifest unread
+            manifest = split.get_android_manifest_xml()
+            if str(manifest.get(ns + "isFeatureSplit")).lower() == "true":
+                found[manifest.get("split") or name] = split
+        except Exception:
+            continue
+    return found
+
+
+def _split_components(feature_splits: dict[str, Any]) -> dict[str, dict[str, int]]:
+    """What each feature split's own manifest declares, by split, for the splits that declare any.
+    The package manager merges these with the split's name, and a registry that parses the base APK
+    alone does not know them."""
+    found: dict[str, dict[str, int]] = {}
+    for split_name, part in sorted(feature_splits.items()):
+        counts = {kind: len(getter() or []) for kind, getter in (
+            ("activities", part.get_activities), ("services", part.get_services),
+            ("receivers", part.get_receivers), ("providers", part.get_providers))}
+        if any(counts.values()):
+            found[split_name] = counts
+    return found
+
+
 def apk_metadata(path: Path) -> dict[str, Any]:
     quiet_androguard()
     base = {
@@ -1642,6 +1783,7 @@ def apk_metadata(path: Path) -> dict[str, Any]:
         return {**base, "package": path.stem, "manifest_available": False}
     try:
         container: dict[str, Any] = {}
+        feature_splits: dict[str, Any] = {}
         if path.suffix.lower() == ".apk":
             apk = APK(str(path), skip_analysis=False)
         else:
@@ -1654,10 +1796,12 @@ def apk_metadata(path: Path) -> dict[str, Any]:
                 if not inner_names:
                     raise ValueError("bundle contains no APK files")
                 apk = APK(archive.read(inner_names[0]), raw=True, skip_analysis=False)
+                feature_splits = _feature_splits(archive, inner_names[1:])
                 container = {
                     "container_format": path.suffix.lower().lstrip("."),
                     "split_apks": inner_names,
                     "split_count": len(inner_names),
+                    "feature_splits": sorted(feature_splits),
                     "container_manifest": {
                         key: xmanifest.get(key)
                         for key in ("xapk_version", "package_name", "version_code", "version_name", "split_configs")
@@ -1674,26 +1818,33 @@ def apk_metadata(path: Path) -> dict[str, Any]:
         files = apk.get_files() or []
         native_entries = [name for name in files if name.startswith("lib/") and name.endswith(".so")]
         abis = sorted({name.split("/", 2)[1] for name in native_entries if name.count("/") >= 2})
+        # Components a feature split declares are the app's, as the package manager merges them:
+        # Chrome's launcher and 48 more activities are in its "chrome" split (Brave's, 71 more).
+        parts = [apk, *feature_splits.values()]
+        activity_names = sorted({name for part in parts for name in (part.get_activities() or [])})
         return {
             **base,
             **container,
             "manifest_available": True,
             "package": apk.get_package(),
-            "app_name": apk.get_app_name(),
+            # The label alone, when androguard cannot read the resource table (newer encodings): five
+            # apps lost their whole manifest record, launcher included, to that one failure.
+            "app_name": _app_label(apk),
             "version_code": apk.get_androidversion_code(),
             "version_name": apk.get_androidversion_name(),
             "min_sdk": apk.get_min_sdk_version(),
             "target_sdk": apk.get_target_sdk_version(),
             # A launcher entry may be an <activity-alias>: no class has its name, and what
             # starts is its targetActivity (Organic Maps, Element, Gallery, Fennec).
-            "main_activities": _launch_targets(apk),
+            "main_activities": sorted({target for part in parts for target in _launch_targets(part)}),
             "activity_filter_targets": activity_filter_targets(apk),
             "wallpaper_activities": wallpaper_activities(apk),
-            "activities": len(apk.get_activities() or []),
-            "activity_names": sorted(apk.get_activities() or []),
-            "services": len(apk.get_services() or []),
-            "receivers": len(apk.get_receivers() or []),
-            "providers": len(apk.get_providers() or []),
+            "activities": len(activity_names),
+            "activity_names": activity_names,
+            "services": sum(len(part.get_services() or []) for part in parts),
+            "receivers": sum(len(part.get_receivers() or []) for part in parts),
+            "providers": sum(len(part.get_providers() or []) for part in parts),
+            "feature_split_components": _split_components(feature_splits),
             "permissions": sorted(apk.get_permissions() or []),
             "features": sorted(apk.get_features() or []),
             "signing_certificate_sha256": sorted(certificates),
@@ -1714,7 +1865,7 @@ def apk_elf_inventory(path: Path) -> list[dict[str, Any]]:
     else:
         with zipfile.ZipFile(path) as outer:
             for apk_name in _ordered_inner_apks(outer):
-                with zipfile.ZipFile(io.BytesIO(outer.read(apk_name))) as inner:
+                with _inner_zip(outer, apk_name) as inner:
                     _append_elf_records(inner, f"{apk_name}!", records)
     return records
 
@@ -1807,9 +1958,8 @@ def _read_archive_member(path: Path, record: dict[str, Any]) -> bytes | None:
             inner = record.get("split_apk")
             if not inner:
                 return archive.read(entry)
-            with archive.open(inner) as stream:
-                with zipfile.ZipFile(io.BytesIO(stream.read())) as nested:
-                    return nested.read(entry)
+            with _inner_zip(archive, inner) as nested:
+                return nested.read(entry)
     except (KeyError, OSError, zipfile.BadZipFile):
         return None
 
@@ -2233,6 +2383,11 @@ def scan_apk(
             "feature_queries": inventory.feature_queries,
             "nonnull_casts": inventory.nonnull_casts,
             "own_intent_names": sorted(inventory.own_intent_names),
+            "external_intents": sorted(inventory.external_intents
+                                       | ({"share"} if any(owner == "Landroid/content/Intent;" and name == "createChooser"
+                                                          for owner, name, _ in inventory.method_refs) else set())
+                                       | ({"system-screen"} if any(owner == "Landroid/net/VpnService;" and name == "prepare"
+                                                                  for owner, name, _ in inventory.method_refs) else set())),
             "sql_collations": sorted(inventory.sql_collations),
             "after_start_overrides": after_start_overrides(identity.get("activity_names") or [],
                                                            inventory.superclasses, inventory.after_start_callbacks),

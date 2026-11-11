@@ -199,3 +199,56 @@ def _find_android_d8() -> str | None:
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BundleManifests(unittest.TestCase):
+    """How a bundle's APKs are read: the base first, whatever order the bundle lists them in."""
+
+    def test_the_base_is_read_first_wherever_the_bundle_lists_it(self) -> None:
+        import io
+        import json
+        from westlake_gap.scanner import _ordered_inner_apks
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            for name in ("config.arm64_v8a.apk", "config.xxhdpi.apk", "com.example.app.apk"):
+                archive.writestr(name, b"")
+            archive.writestr("manifest.json", json.dumps({"split_apks": [
+                {"file": "config.arm64_v8a.apk", "id": "config.arm64_v8a"},
+                {"file": "config.xxhdpi.apk", "id": "config.xxhdpi"},
+                {"file": "com.example.app.apk", "id": "base"},
+            ]}))
+        with zipfile.ZipFile(buffer) as archive:
+            self.assertEqual(_ordered_inner_apks(archive),
+                             ["com.example.app.apk", "config.arm64_v8a.apk", "config.xxhdpi.apk"])
+
+    def test_components_each_feature_split_declares(self) -> None:
+        from westlake_gap.scanner import _split_components
+
+        class Split:
+            def __init__(self, activities=(), services=(), receivers=(), providers=()):
+                self.get_activities = lambda: list(activities)
+                self.get_services = lambda: list(services)
+                self.get_receivers = lambda: list(receivers)
+                self.get_providers = lambda: None   # androguard answers None for none
+
+        found = _split_components({"chrome": Split(["a.Tabbed", "a.Settings"], ["a.Sync"], ["a.Boot"]),
+                                   "on_demand": Split(services=["a.Download"]),
+                                   "assets_only": Split()})
+        self.assertEqual(found, {"chrome": {"activities": 2, "services": 1, "receivers": 1, "providers": 0},
+                                 "on_demand": {"activities": 0, "services": 1, "receivers": 0, "providers": 0}},
+                         "a split that declares nothing is left out")
+
+    def test_an_unreadable_label_costs_only_the_label(self) -> None:
+        from westlake_gap.scanner import _app_label
+
+        class Unreadable:
+            def get_app_name(self):
+                raise ValueError("unpack requires a buffer of 2 bytes")
+
+        class Readable:
+            def get_app_name(self):
+                return "Example"
+
+        self.assertIsNone(_app_label(Unreadable()))
+        self.assertEqual(_app_label(Readable()), "Example")

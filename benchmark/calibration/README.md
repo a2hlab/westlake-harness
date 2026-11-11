@@ -318,6 +318,113 @@ alarm to a receiver in the probe's manifest, both 1.5 s ahead. It fails on build
 arrives in 8 s) and passes on build 112. `pm:call:queryBroadcastReceivers` passes as well: the
 package manager now resolves the app's own receivers. 242 corpus apps schedule alarms.
 
+## Build 113: jobs run
+
+Westlake's job scheduler accepted every job and ran none. Westlake #42 runs them in process while
+the app runs, as JobSchedulerService does. A job starts once its minimum latency has passed and
+its constraints are met, or at its deadline. It is started through its service's JobServiceEngine
+and finishes as the app says. Rescheduled jobs back off, periodic ones come back each window, and
+work given through `enqueue` reaches the job. The network constraint matches the active network.
+Jobs that wait for the device to be idle or for content changes run only at their deadline,
+because nothing sees either. Jobs last as long as the app's process.
+
+The seventeen flows score as on build 112: fourteen confirmed, no false alarms, three misses
+(precision 1.0, recall 0.62; `results-build113.json`, SELinux enforcing). No flow drives a job,
+so the regression set is where jobs show:
+
+- It draws 22 of 24, as on build 112.
+- Ten of its apps scheduled 53 jobs, 44 of them WorkManager's.
+- Jobs ran in six apps, 18 starts in all, and none failed to bind or start: WorkManager's job
+  service in AntennaPod, Nextcloud, Noice, Reddit and X, and Firebase's transport job in Reddit,
+  Telegram and X.
+- The jobs F-Droid, Tusky and Gallery scheduled wait for the device to be idle or for new photos,
+  and did not run.
+
+The framework-contracts probe's `svc:jobscheduler` line checked only that a job due at once runs.
+It now also schedules a job 1.5 s ahead that needs a network, which must be pending until it runs,
+run no sooner than 1.5 s with its network, and no longer be pending once done, and work through
+`enqueue`. It fails on build 112 (the first job never runs) and passes on build 113. 216 corpus
+apps use JobScheduler.
+
+## Build 114: starts that leave the app
+
+A start that left the app reported success when nothing handled it. From a worker thread it was
+posted and answered success. From the main thread it returned OH's refusal code (2097205), which
+is positive, and Android reads any positive start result as success. Westlake #43 resolves such a
+start first, as ActivityStarter does. When no OH ability handles the intent, the app gets
+`ActivityNotFoundException`, and nothing is handed to OH, which answers a failed implicit start with
+a dead-end dialog. A chooser never throws, as Android's always opens: when nothing handles what it
+wraps, nothing opens. A text share that nothing handles still has its text put on the clipboard.
+
+On the board nothing handles a web link, a share or the document picker. The framework-contracts
+probe's new `intent:view-web`, `intent:share` and `intent:pick-document` lines report all three
+absent. The three start flows now answer as an app does on an Android device without the
+handler, and they still fail:
+
+- KeePassDX shows its own message that a file manager handling OPEN_DOCUMENT is needed. Before,
+  nothing happened at all. The flow's check now also requires that the start was not refused,
+  since the message changes the screen as a picker would.
+- Fossify Notes catches the exception for its GitHub link and shows a toast, which Westlake does not
+  display: no toast is shown.
+- Markor's share opens nothing.
+
+The seventeen flows score as on build 113: fourteen confirmed, no false alarms, three misses
+(precision 1.0, recall 0.62; `results-build114.json`, SELinux enforcing). Build 103's regression set
+draws 23 of 24: Reddit drew this run, as it does on some runs, and Toutiao stops as always. No app's
+launch hit an unresolved start.
+
+The gap map gains a row per intent family the app's code names: `intent:view-web` (ACTION_VIEW
+with an http(s) URL), `intent:share` (ACTION_SEND or Intent.createChooser) and
+`intent:pick-document` (OPEN_DOCUMENT, GET_CONTENT, CREATE_DOCUMENT, OPEN_DOCUMENT_TREE). The
+device measurement decides each. Of 371 corpus apps, 324 name a web link, 288 a share and 296 the
+picker. The batch-2 plan's three start flows match these rows through `intent:*`. On the build-114
+maps of the batch's seven apps, the plan, unchanged, predicts 8 of the 9 outcomes, in sample
+(`batch2-backtest-build114.json`). Only `fnotes-copy-paste`, a long press, has no row.
+
+## Build 119: toasts shown
+
+No toast was ever shown. `Toast.show()` hands a toast to the notification service, and Westlake's
+in-process service answered no toast call. Fossify Notes' "no browser found" after build 114 refused
+its link said nothing; so did every app's "copied" or "saved". Westlake #44 queues toasts as
+NotificationManagerService does and draws a text toast as SystemUI does, in a window over the
+activity that takes neither touches nor focus.
+
+Three things showed up on the way, each on the board:
+
+- OH moves its focus to every new window, so the activity lost window focus while a toast showed,
+  as an editor under a dropdown would lose its keyboard. Westlake's focus bridge now keeps focus
+  with the window under a window that cannot take it.
+- The toast inflated through the activity's layout inflater was restyled by the app's view factories:
+  Fossify's toast text came out nearly white on a white frame. It is now made with the
+  application's inflater in Material's theme, light or dark by the night mode.
+- Toasts show at the bottom of the screen, under the keyboard when the keyboard is up: OH's keyboard
+  is a window of OH's own, above the app's.
+
+A new flow, `fnotes-toast`, shares an empty note in Fossify Notes and checks that the app's "Cannot
+share empty text" shows at the bottom of the screen. It was added with the fix, after a run by
+hand: its prediction is not blind. The eighteen flows score fifteen confirmed, no false alarms and
+three misses (precision 1.0, recall 0.62; `results-build119.json`, SELinux enforcing). Build 103's
+regression set draws 22 of 24: Reddit stops where it does on most runs, and Toutiao as always.
+
+The framework-contracts probe's new `wm:toast` line shows a text toast and checks its callbacks, its
+duration and that the activity keeps focus. It fails on build 114 (no toast) and passes on build
+119. The gap map's new `wm:toast` row covers apps that call Toast.show: 282 of 371 corpus apps.
+
+## Build 120: r90's regressions
+
+r90, the first full round after build 114, found seven apps that died on a start that threw: screens
+of Settings, VPN consent and the document picker, which every Android device has and apps start
+unguarded (the r90 record). Westlake #45 has such a start open nothing, as before build 114, and
+drops a result for a caller that has finished. The eighteen flows score as on build 119: fifteen
+confirmed, no false alarms, three misses (`results-build120.json`, SELinux enforcing).
+`keepassdx-open` fails differently: on build 119 the refused start brought up KeePassDX's own "a file
+manager is required" dialog, and on build 120 its button opens nothing.
+
+Correction (2026-10-23): the corpus counts for the `intent:*` rows and `wm:toast`, as first
+recorded with builds 114, 119 and 120, missed 24 of the 30 commercial apps. Those ship as XAPK
+bundles, and the count script did not open the APKs nested in them (the harness's own scanner
+does). Every count above is now over all 371 apps.
+
 ## What the calibration says about the gap map
 
 Each miss is a contract no row describes, or a row that reads supplied while the flow fails;
@@ -336,11 +443,12 @@ whose scans reference the API behind the contract.
 | **Ordinary dialogs are placed and dimmed.** Fossify Clock's timer dialog is centred and the screen behind it dimmed | `wm:window-placement` broken, `wm:dim-behind` missing | 318 | done in build 106: the probe's failure was where the app was told its dialog sat (the top left), not where it was drawn; each window's configuration now has the display's bounds and the line passes. The dim was drawn already: the prediction read `wm:dim-behind` from maps older than the dim layer |
 | **Enter closes the keyboard.** Fossify Notes gets no new line: the board keyboard's Enter reaches the bridge as "hide" | `jni:android.view.KeyCharacterMap` broken (another cause) | 154 handle the keyboard's action key; 306 use `EditText` | a contract line (the action key reaches the editor as a newline or an editor action) and the bridge's Enter |
 | **No long press.** Text cannot be selected, so nothing is copied | `svc:clipboard` supplied; no row for how touch reaches the app | 280 set long-press listeners | stream a held finger in tap mode (the touch forwarder); a row for the launch's touch mode |
-| **Starts go nowhere.** A web link, a share and the system picker report success and open nothing | no rows for other apps' activities (the plan's layer 1 is not built) | 274 call `Intent.createChooser`; 217 use `DocumentsContract` | answer `ActivityNotFoundException` when nothing handles a start (plan gap 1); the picker and share mapped to OH's (gap 2) |
+| **Starts go nowhere.** A web link, a share and the system picker report success and open nothing | no rows for other apps' activities (the plan's layer 1 is not built) | 324 name a web link, 288 a share, 296 the document picker, 285 a screen of Android's own apps | done in build 114 for gap 1: an unresolved start throws ActivityNotFoundException (`am:start-unresolved`), and the rows `intent:view-web`, `intent:share`, `intent:pick-document` read absent on the board. From build 120 the screens every Android device has (Settings, VPN consent, the pickers) open nothing instead, as apps start them unguarded (r90), with the row `intent:system-screen`. Still open, gap 2: OH's picker and share, which need the host application to pass the picker's result back |
+| **No toast is shown.** Fossify Notes' "no browser found" after its link is refused never shows | nothing: no row for toasts | 282 call `Toast.show` | done in build 119: toasts queued and shown in process, the row `wm:toast`, a contract line, and the flow `fnotes-toast` |
 | **Android executables cannot run.** Termux's bootstrap fails | nothing: no row for an app's own programs | 146 start processes | a row for executables that need Android's linker |
 | **No status-bar service.** Chrono dies when its timer starts | nothing: no status-bar row | 17 use Quick Settings tiles or `StatusBarManager` | done in build 109: the service answered in process, and `svc:statusbar` from the census's static helpers (12 call `TileService.requestListeningState`) |
 | **Activities are not recreated.** AntennaPod's theme does not apply | nothing: no row for recreation | 267 call `Activity.recreate` | done in build 109: the row `am:recreate`, a contract line, and the relaunch |
-| **Alarms are never delivered.** Chrono's timer reaches its end and counts overtime in silence | `svc:alarm` supplied | 242 schedule alarms | done in build 112: alarms delivered in process while the app runs, PendingIntents sent to the app's own components, its manifest receivers run; a contract line (`svc:alarm`). Jobs, the rest of plan gap 5, are not run (`svc:jobscheduler` fails) |
+| **Alarms are never delivered.** Chrono's timer reaches its end and counts overtime in silence | `svc:alarm` supplied | 242 schedule alarms | done in build 112: alarms delivered in process while the app runs, PendingIntents sent to the app's own components, its manifest receivers run; a contract line (`svc:alarm`). Jobs, the rest of plan gap 5, run from build 113 |
 | **A dialog's touch area is not where it is drawn.** Chrono's notice is centred, reports the top left as its position, and a tap on its OK misses | `wm:window-placement` passes (the probe's dialogs had not laid themselves out) | 333 show dialogs | done in build 110: the line relays its dialog out and checks the alert is centred, and the fix (an attached frame only for child windows) |
 
 

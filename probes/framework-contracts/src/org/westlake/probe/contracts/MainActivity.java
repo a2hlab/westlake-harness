@@ -9,6 +9,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.job.JobInfo;
 import android.app.job.JobScheduler;
+import android.app.job.JobWorkItem;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -27,6 +28,7 @@ import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.metrics.MediaMetricsManager;
 import android.media.metrics.PlaybackSession;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -46,6 +48,7 @@ import android.view.textclassifier.TextClassification;
 import android.view.textclassifier.TextClassificationManager;
 import android.view.textclassifier.TextClassifier;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -63,7 +66,10 @@ import java.util.concurrent.TimeUnit;
  *
  * then "[WL-CONTRACT] done". The package manager's queries are asked for this probe's own components,
  * declared in its manifest, so each has one right answer. Starting an activity nothing handles has
- * no row yet; it is measured as am:start-unresolved, where Android throws ActivityNotFoundException.
+ * no row of its own; it is measured as am:start-unresolved, where Android throws
+ * ActivityNotFoundException. The intent:* lines say what handles a web link, a share, the
+ * document picker and the screens of Android's own apps on the device, or that nothing does: what an
+ * app's start of one can reach.
  */
 public class MainActivity extends Activity {
     private static final String TAG = "WL-CONTRACT";
@@ -125,6 +131,8 @@ public class MainActivity extends Activity {
     private static final int RESULT_REQUEST = 4243;
     private final CountDownLatch resultArrived = new CountDownLatch(1);
     private volatile String resultSeen;
+    // The start from the main thread, made in onCreate: null once it threw ActivityNotFoundException.
+    private volatile String mainThreadStart = "not run";
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -140,15 +148,16 @@ public class MainActivity extends Activity {
         TextView view = new TextView(this);
         view.setText("Westlake framework contracts probe");
         setContentView(view);
-        // Starting an activity is checked here, on the main thread, as an app's button handler does.
-        check("am:start-unresolved", () -> {
-            try {
-                startActivity(new Intent(PREFIX + "NOTHING_HANDLES_THIS"));
-            } catch (ActivityNotFoundException e) {
-                return "ActivityNotFoundException, as on Android";
-            }
-            throw fail("startActivity returned for an intent nothing handles; Android throws ActivityNotFoundException");
-        });
+        // Starting an activity nothing handles, on the main thread as an app's button handler does.
+        // The am:start-unresolved line reports it, last, with the starts made from the worker thread.
+        try {
+            startActivity(new Intent(PREFIX + "NOTHING_HANDLES_THIS"));
+            mainThreadStart = "startActivity returned for an intent nothing handles; Android throws ActivityNotFoundException";
+        } catch (ActivityNotFoundException expected) {
+            mainThreadStart = null;
+        } catch (Throwable t) {
+            mainThreadStart = t.toString();
+        }
         new Thread(this::runAll, "framework-contracts").start();
     }
 
@@ -221,13 +230,37 @@ public class MainActivity extends Activity {
         check("svc:jobscheduler", () -> {
             JobScheduler jobs = getSystemService(JobScheduler.class);
             if (jobs == null) throw fail("no JobScheduler");
-            int result = jobs.schedule(new JobInfo.Builder(4242, new ComponentName(this, ProbeJob.class))
-                    .setOverrideDeadline(0).build());
+            ComponentName service = new ComponentName(this, ProbeJob.class);
+            int result = jobs.schedule(new JobInfo.Builder(ProbeJob.NOW, service).setOverrideDeadline(0).build());
             if (result != JobScheduler.RESULT_SUCCESS) throw fail("schedule returned " + result);
             if (!ProbeJob.RAN.await(15, TimeUnit.SECONDS)) {
-                throw fail("scheduled (pending=" + (jobs.getPendingJob(4242) != null) + ") but never ran in 15 s");
+                throw fail("scheduled (pending=" + (jobs.getPendingJob(ProbeJob.NOW) != null) + ") but never ran in 15 s");
             }
-            return "scheduled and ran";
+            // A job 1.5 s ahead that needs a network: pending until it runs, not run before its time,
+            // given the network it runs on, and no longer pending once it is done.
+            long scheduledAt = SystemClock.elapsedRealtime();
+            jobs.schedule(new JobInfo.Builder(ProbeJob.LATER, service).setMinimumLatency(1500)
+                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).build());
+            boolean pending = jobs.getPendingJob(ProbeJob.LATER) != null;
+            if (!ProbeJob.LATER_RAN.await(10, TimeUnit.SECONDS)) {
+                int reason = jobs.getPendingJobReason(ProbeJob.LATER);
+                jobs.cancel(ProbeJob.LATER);
+                throw fail("a job 1.5 s ahead that needs a network never ran in 10 s (pending reason " + reason + ")");
+            }
+            long waited = ProbeJob.laterAt - scheduledAt;
+            if (!pending) throw fail("a job scheduled 1.5 s ahead was not pending before it ran");
+            if (waited < 1500) throw fail("a job with a 1.5 s minimum latency ran after " + waited + " ms");
+            if (ProbeJob.laterNetwork == null) throw fail("a job that needs a network ran without one (getNetwork null)");
+            long until = SystemClock.elapsedRealtime() + 3000;
+            while (jobs.getPendingJob(ProbeJob.LATER) != null && SystemClock.elapsedRealtime() < until) Thread.sleep(100);
+            if (jobs.getPendingJob(ProbeJob.LATER) != null) throw fail("a job that finished is still pending");
+            // Work enqueued for a job reaches it through dequeueWork, as JobIntentService takes it.
+            jobs.enqueue(new JobInfo.Builder(ProbeJob.WORK, service).setOverrideDeadline(0).build(),
+                    new JobWorkItem(new Intent().putExtra("probe", "work-1")));
+            if (!ProbeJob.WORKED.await(10, TimeUnit.SECONDS)) throw fail("enqueued work never reached its job in 10 s");
+            if (!"work-1".equals(ProbeJob.work)) throw fail("the job dequeued " + ProbeJob.work + ", not the enqueued work");
+            return "a job ran at once; one 1.5 s ahead that needs a network ran after " + waited
+                    + " ms with its network and was then no longer pending; enqueued work reached its job";
         });
         check("svc:vibrator", () -> {
             Vibrator vibrator = getSystemService(Vibrator.class);
@@ -385,6 +418,54 @@ public class MainActivity extends Activity {
             if (!received) throw fail("the PendingIntent alarm never reached the receiver it names (the listener alarm arrived)");
             return "a listener alarm, and a PendingIntent alarm to the app's own receiver, each delivered at its time";
         });
+        // A text toast shows over this activity and goes after its duration: its callbacks hear it
+        // shown and then hidden about 2 s later (LENGTH_SHORT), and the activity keeps window focus,
+        // as a toast takes neither focus nor touches.
+        check("wm:toast", () -> {
+            ToastWatch watch = new ToastWatch();
+            boolean focusedBefore = hasWindowFocus();
+            long start = SystemClock.uptimeMillis();
+            runOnUiThread(() -> {
+                Toast toast = Toast.makeText(this, "Westlake probe toast", Toast.LENGTH_SHORT);
+                toast.addCallback(watch);
+                toast.show();
+            });
+            if (!watch.shown.await(3, TimeUnit.SECONDS)) throw fail("a text toast was not shown in 3 s (no onToastShown)");
+            Thread.sleep(300);
+            boolean focusedDuring = hasWindowFocus();
+            if (!watch.hidden.await(8, TimeUnit.SECONDS)) throw fail("the toast was shown and not hidden in 8 s (no onToastHidden)");
+            long[] at = {watch.shownAt, watch.hiddenAt};
+            long showedFor = at[1] - at[0];
+            if (focusedBefore && !focusedDuring) {
+                throw fail("this activity lost window focus while the toast showed; a toast takes neither focus nor touches");
+            }
+            if (showedFor < 1500 || showedFor > 6000) {
+                throw fail("the toast showed for " + showedFor + " ms; LENGTH_SHORT shows for about 2 s");
+            }
+            return "a text toast was shown " + (at[0] - start) + " ms after show() and hidden " + showedFor
+                    + " ms later" + (focusedBefore ? ", the activity keeping window focus" : "");
+        });
+        // What handles a web link, a share and the system document picker here. An app that opens
+        // one starts whatever does; on a device with none, its start finds nothing.
+        check("intent:view-web", () -> handlers(pm,
+                new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.example.com/")), "a web link"));
+        check("intent:share", () -> handlers(pm,
+                new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "probe"), "a text share"));
+        check("intent:pick-document", () -> handlers(pm,
+                new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),
+                "the document picker (OPEN_DOCUMENT)"));
+        // Screens of Android's own apps, which every Android device has: Settings' (its app details
+        // screen here) and the VPN consent that VpnService.prepare names.
+        check("intent:system-screen", () -> {
+            String settings = handlers(pm, new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName())), "a screen of Settings (app details)");
+            Intent consent = android.net.VpnService.prepare(this);
+            if (consent == null) return settings + "; VPN consent already given";
+            if (pm.resolveActivity(consent, 0) == null) {
+                throw absent("nothing handles the VPN consent " + consent.getComponent() + " on this device; " + settings);
+            }
+            return settings + "; VPN consent " + consent.getComponent().flattenToShortString();
+        });
         // These two bring another activity up over this one, so they come last. An activity this app
         // starts is created, started and resumed, and stays resumed while it is on top: a player
         // that pauses in onPause (mpv) stays paused after an extra pause and resume.
@@ -411,7 +492,15 @@ public class MainActivity extends Activity {
                 throw fail("the started activity set a result and finished; onActivityResult never ran in 10 s");
             }
             if (!("resultCode=" + RESULT_OK + " answer=42").equals(resultSeen)) throw fail("wrong result: " + resultSeen);
-            return "onActivityResult got " + resultSeen;
+            // A caller that finishes as soon as it has started an activity for a result, as a launcher
+            // trampoline does, gets no result, and the app goes on.
+            runOnUiThread(() -> startActivity(new Intent(this, TrampolineActivity.class)));
+            if (!TrampolineActivity.DESTROYED.await(10, TimeUnit.SECONDS)) {
+                throw fail("an activity that started another for a result and finished was not destroyed in 10 s");
+            }
+            Thread.sleep(2000);
+            if (TrampolineActivity.resultSeen) throw fail("a result reached a caller that had already finished");
+            return "onActivityResult got " + resultSeen + "; a caller that finished first got no result, and the app went on";
         });
         // An activity that calls recreate() is destroyed and a new instance brought up with the
         // state it saved, as when an app applies a new theme or language.
@@ -441,6 +530,76 @@ public class MainActivity extends Activity {
             if (!KeyboardActivity.handoffPassed) throw fail(KeyboardActivity.handoffDetail);
             return KeyboardActivity.handoffDetail;
         });
+        // Last, as on Android the chooser stays up over this one. Starting an activity nothing handles
+        // throws ActivityNotFoundException, by action from the main thread (onCreate) and from this
+        // one, and by name; Intent.createChooser over it opens the chooser and does not throw.
+        check("am:start-unresolved", () -> {
+            if (mainThreadStart != null) throw fail("from the main thread: " + mainThreadStart);
+            try {
+                startActivity(new Intent(PREFIX + "NOTHING_HANDLES_THIS"));
+                throw fail("startActivity from a worker thread returned for an intent nothing handles; "
+                        + "Android throws ActivityNotFoundException");
+            } catch (ActivityNotFoundException expected) {
+            }
+            try {
+                startActivity(new Intent().setClassName("org.westlake.probe.absent", "org.westlake.probe.absent.Main"));
+                throw fail("startActivity returned for an activity of a package that is not installed; "
+                        + "Android throws ActivityNotFoundException");
+            } catch (ActivityNotFoundException expected) {
+            }
+            try {
+                startActivity(Intent.createChooser(new Intent(PREFIX + "NOTHING_HANDLES_THIS"), "probe"));
+            } catch (ActivityNotFoundException e) {
+                throw fail("a chooser over an intent nothing handles threw ActivityNotFoundException; "
+                        + "Android's chooser opens and says that nothing does");
+            }
+            // Every Android device has these screens, and apps start them unguarded: one of Settings',
+            // the VPN consent that VpnService.prepare names, and the document picker.
+            Intent[] screens = {
+                    new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:" + getPackageName())),
+                    android.net.VpnService.prepare(this),
+                    new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),
+            };
+            for (Intent screen : screens) {
+                if (screen == null) continue; // VPN consent already given: prepare names no screen
+                try {
+                    startActivityForResult(screen, 11);
+                } catch (ActivityNotFoundException e) {
+                    throw fail("a screen every Android device has threw ActivityNotFoundException: " + screen);
+                }
+            }
+            return "ActivityNotFoundException from the main thread and a worker thread, by action and by name; "
+                    + "a chooser over the intent does not throw, nor do a screen of Settings, VPN consent "
+                    + "and the document picker";
+        });
         line("done", "", "");
+    }
+
+    /** A toast's callbacks, as the toast manager reports it shown and hidden. */
+    private static final class ToastWatch extends Toast.Callback {
+        final CountDownLatch shown = new CountDownLatch(1);
+        final CountDownLatch hidden = new CountDownLatch(1);
+        volatile long shownAt;
+        volatile long hiddenAt;
+
+        @Override
+        public void onToastShown() {
+            shownAt = SystemClock.uptimeMillis();
+            shown.countDown();
+        }
+
+        @Override
+        public void onToastHidden() {
+            hiddenAt = SystemClock.uptimeMillis();
+            hidden.countDown();
+        }
+    }
+
+    /** What handles the intent on this device, or ABSENT when nothing does. */
+    private static String handlers(PackageManager pm, Intent intent, String what) throws Outcome {
+        List<ResolveInfo> found = pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
+        if (found == null || found.isEmpty()) throw absent("nothing handles " + what + " on this device");
+        return found.size() + " handle " + what + ", " + found.get(0).activityInfo.packageName + " first";
     }
 }

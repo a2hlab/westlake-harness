@@ -71,7 +71,8 @@ def manifest_facts(path: Path) -> dict[str, Any]:
                 processes.add(process)
             components.append({
                 "kind": kind,
-                "name": _attr(element, "name"),
+                # PayPal declares a provider whose android:name androguard cannot read.
+                "name": _attr(element, "name") or "(unnamed)",
                 "exported": _attr(element, "exported"),
                 "enabled": _attr(element, "enabled"),
                 "process": process,
@@ -154,6 +155,9 @@ def pm_adapter_model(westlake_root: Path) -> dict[str, Any]:
         "semantics": {
             "direct_boot_match_defaults": _evidence(reg, r"MATCH_DIRECT_BOOT_AWARE\s*\|\s*PackageManager\.MATCH_DIRECT_BOOT_UNAWARE|MATCH_DIRECT_BOOT_UNAWARE", registry, westlake_root),
             "split_paths_populated": _evidence(splits.read_text(errors="replace") if splits.exists() else "", r"splitSourceDirs\s*=", splits, westlake_root),
+            # Android's cluster parse reads each split's own manifest after the base, and every component
+            # a split declares takes the split's name (PackageParser.parseSplitApk).
+            "split_manifests_parsed": _evidence(reg, r'getDeclaredMethod\("parseSplitApk"', registry, westlake_root),
             # PackageManager hands providers to ActivityThread sorted by descending initOrder
             # (ComputerEngine.sProviderInitOrderSorter); the bind path must sort them the same way.
             "providers_sorted_by_init_order": _evidence(
@@ -618,6 +622,21 @@ def recreate_model(westlake_root: Path) -> dict[str, Any]:
             "source": f"{registry.relative_to(westlake_root)}:{java.count(chr(10), 0, head.start()) + 1}"}
 
 
+def toast_model(westlake_root: Path) -> dict[str, Any]:
+    """Whether the provider shows toasts. Toast.show() enqueues the toast with the notification
+    service (enqueueTextToast for a text toast, enqueueToast for one with a view of its own), which
+    has SystemUI or the toast's own TN draw it. The in-process notification service answered neither,
+    so no toast was ever shown; one that answers them shows it."""
+    service = westlake_root / "framework/core/java/LocalNotifications.java"
+    if not service.exists():
+        return {"shown": None, "source": None}
+    java = _strip_java_comments(service.read_text(errors="replace"))
+    case = re.search(r'case\s+"enqueueTextToast"\s*:', java)
+    shown = bool(case) and re.search(r'case\s+"enqueueToast"\s*:', java) is not None
+    return {"shown": shown,
+            "source": f"{service.relative_to(westlake_root)}:{java.count(chr(10), 0, case.start()) + 1 if case else 1}"}
+
+
 def host_permission_model(westlake_root: Path) -> dict[str, Any]:
     """The OH permissions the host application requests, and the OH permission each Android permission
     maps to. Android apps run in the host's process, so OH checks the host's access token: what the
@@ -1001,6 +1020,13 @@ GMS_MARKERS = {
     "com.google.android.gms.version": "Google Play services client (meta-data)",
 }
 
+# Components of the store's license check: the one Play adds to an app it protects
+# (com.pairip.licensecheck, two generations), and the library a developer adds themselves (LVL).
+# Both ask the store app whether this install is licensed, so both block a launch where no store
+# answers -- unlike the GMS client rows above, where the app's own code decides what to do without
+# Play services.
+LICENSE_CHECK_COMPONENTS = ("com.pairip.licensecheck", "com.google.android.vending.licensing")
+
 
 def external_dependencies(facts: dict[str, Any], method_owners: set[str]) -> list[dict[str, Any]]:
     rows = []
@@ -1018,4 +1044,12 @@ def external_dependencies(facts: dict[str, Any], method_owners: set[str]) -> lis
     if gms_owners:
         rows.append({"dependency": "GMS client API calls", "evidence": f"{len(gms_owners)} com.google.android.gms classes called",
                      "sample": gms_owners[:10], "oh_status": "calls reach a missing Play services APK"})
+    checkers = sorted({c["name"] for c in facts.get("components", [])
+                       if c["name"] and c["name"].startswith(LICENSE_CHECK_COMPONENTS)}
+                      | {o[1:-1].replace("/", ".") for o in method_owners
+                         if o.startswith("Lcom/google/android/vending/licensing/")})
+    if checkers:
+        rows.append({"dependency": "Store license check", "evidence": ", ".join(checkers[:4]),
+                     "components": checkers,
+                     "oh_status": "binds com.android.vending's ILicensingService, which no OH package provides"})
     return rows

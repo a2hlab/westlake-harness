@@ -19,7 +19,7 @@ import re
 
 _MAP_LINE = re.compile(r"^([0-9a-f]+)-([0-9a-f]+) (\S+) ([0-9a-f]+) \S+ \d+\s*(.*)$")
 _FATAL = re.compile(r"Fatal signal (\d+) \((\w+)\)")
-_THREAD = re.compile(r'^Thread: \d+ "([^"]*)"', re.M)
+_THREAD = re.compile(r'^Thread: (\d+) "([^"]*)"', re.M)
 _REGISTER = re.compile(r"\b(pc|x30): (0x[0-9a-f]+)")
 
 
@@ -52,7 +52,7 @@ def crash_site(stderr: str, maps_text: str) -> dict | None:
     site = {"signal": fatal[2]}
     thread = _THREAD.search(block)
     if thread:
-        site["thread"] = thread[1]
+        site["thread"], site["tid"] = thread[2], int(thread[1])
     for name, key in (("pc", "pc"), ("x30", "caller")):
         if name in registers:
             placed = place(registers[name], maps)
@@ -436,6 +436,9 @@ def dlsym_failures(*texts: str | None) -> list[dict]:
 
 _RESUMED = re.compile(r"activityResumed: OnDrawListener attached[^\n]*\(token=(\S+?)\)")
 _FINISHED = re.compile(r"finishActivity: [^\n]*? for (\S+)")
+#: A touch released on the app's window (MotionEvent ACTION_UP, which the adapter logs as it reads it).
+#: The board's screen forwards real touches to the app under test; an unattended round has none.
+_TOUCH_UP = re.compile(r"MotionEvent-aosp: \[DIAG\] nativeGetAction -> 1 ")
 
 
 def self_finish(hilog: str) -> dict | None:
@@ -446,7 +449,12 @@ def self_finish(hilog: str) -> dict | None:
     device without Bluetooth, a trampoline into another app. None when another activity took over."""
     resumed: list[tuple[float | None, str]] = []
     finished: dict[str, float | None] = {}
+    touch_before: dict[str, float | None] = {}
+    last_touch: float | None = None
     for line in hilog.splitlines():
+        if _TOUCH_UP.search(line):
+            last_touch = _seconds(line)
+            continue
         match = _RESUMED.search(line)
         if match:
             resumed.append((_seconds(line), match.group(1)))
@@ -454,6 +462,7 @@ def self_finish(hilog: str) -> dict | None:
         match = _FINISHED.search(line)
         if match and match.group(1) not in finished:
             finished[match.group(1)] = _seconds(line)
+            touch_before[match.group(1)] = last_touch
     if not resumed or resumed[-1][1] not in finished:
         return None
     at, token = resumed[-1]
@@ -461,6 +470,12 @@ def self_finish(hilog: str) -> dict | None:
     out = {"token": token}
     if at is not None and gone is not None:
         out["after_ms"] = max(0, round((gone - at) * 1000))
+    # A touch released on the screen just before: someone's tap closed it (the board forwards real
+    # touches), not the app. KeeTa, Gemini and Opera "finished" so, each right after a press near a
+    # corner of the screen where a toolbar's back or close button sits.
+    touched = touch_before.get(token)
+    if touched is not None and gone is not None and 0 <= (gone - touched) % 86400 <= 2:
+        out["touched_ms_before"] = round(((gone - touched) % 86400) * 1000)
     return out
 
 
@@ -477,6 +492,56 @@ def local_service_calls(stderr: str) -> list[str]:
     return seen
 
 
+_ABORT_FRAMES = re.compile(r"\[WESTLAKE-ABORT-FRAMES\] tid=0x[0-9a-f]+([^\n]*)")
+_ABORT_FRAME = re.compile(r" #(0x[0-9a-f]+) (\S+)\+(0x[0-9a-f]+)")
+#: The C and C++ runtime an abort passes through after the code that asked for it: libc++abi's
+#: terminate handler and __cxa_throw (in the app's libc++_shared.so), the shim's abort hook, musl.
+_ABORT_RUNTIME = ("libc++_shared.so", "libc++.so", "libwebview_bionic_shim.so", "ld-musl-aarch64.so.1", "libc.so")
+
+
+def abort_frames(stderr: str) -> list[dict]:
+    """The callers the bionic shim prints when a library sets its abort message, just before it calls
+    abort() ([WESTLAKE-ABORT-FRAMES], westlake #133): the frame-pointer chain up from the shim's
+    hook, each frame placed by library and file offset. The SIGABRT that follows lists no frames.
+    For an uncaught C++ exception the chain climbs through libc++abi's terminate handler and
+    __cxa_throw to the code that threw."""
+    match = _ABORT_FRAMES.search(stderr)
+    if match is None:
+        return []
+    return [{"depth": int(frame[1], 16), "library": frame[2].rsplit("/", 1)[-1], "path": frame[2], "offset": frame[3]}
+            for frame in _ABORT_FRAME.finditer(match[1])]
+
+
+_SIGNAL_FRAMES = re.compile(r"\[WESTLAKE-SIGNAL-FRAMES\] tid=(0x[0-9a-f]+)([^\n]*)")
+#: Code a fault passes through below the caller that handed it bad input: the C library, the C++
+#: runtime, the shim and ART; and the Java code ART runs (oat, odex, vdex and image files).
+RUNTIME_CODE = _ABORT_RUNTIME + ("libart.so",)
+_JAVA_CODE = (".oat", ".odex", ".vdex", ".art")
+
+
+def first_app_frame(frames: list[dict]) -> dict | None:
+    """The first frame outside the runtime and the Java it runs: the native code whose call faulted
+    inside the C library (musl's strlen on a pointer it was handed, its loader on a library it was
+    asked to open)."""
+    return next((frame for frame in frames
+                 if frame["library"] not in RUNTIME_CODE and not frame["library"].endswith(_JAVA_CODE)), None)
+
+
+def abort_origin(frames: list[dict]) -> dict | None:
+    """The code that asked for the abort: the first frame past the abort machinery, which the chain
+    starts with. That machinery is the C and C++ runtime, and also the library of the first frame:
+    a C++ runtime linked into the app's own library (Friday Night Funkin's liblime.so carries
+    libc++abi), or a crash reporter's terminate handler (Bugsnag's, ahead of OH's libc++ and
+    Hermes in Midland's chain). For an uncaught exception this is the caller of the function that
+    threw, or of the noexcept function it escaped. When every frame is in that first library (a
+    protector's own aborts), its first frame is the answer."""
+    if not frames:
+        return None
+    host = frames[0]["library"]
+    past = next((frame for frame in frames if frame["library"] not in _ABORT_RUNTIME and frame["library"] != host), None)
+    return past or next((frame for frame in frames if frame["library"] not in _ABORT_RUNTIME), None)
+
+
 _WITNESS = re.compile(r"\[WESTLAKE-SIGNAL-WITNESS\] signal=(0x[0-9a-f]+) code=(0x[0-9a-f]+) tid=(0x[0-9a-f]+) "
                       r"thread=(.*?) pc=(0x[0-9a-f]+) x30=(0x[0-9a-f]+)")
 
@@ -484,6 +549,80 @@ _WITNESS = re.compile(r"\[WESTLAKE-SIGNAL-WITNESS\] signal=(0x[0-9a-f]+) code=(0
 _WITNESS_AT = re.compile(r" at (\S+)\+(0x[0-9a-f]+)")
 _WITNESS_FROM = re.compile(r" from (\S+)\+(0x[0-9a-f]+)")
 _WITNESS_INSN = re.compile(r" insn=(0x[0-9a-f]+) next=(0x[0-9a-f]+)")
+
+
+def final_witness(stderr: str, maps_text: str | None = None) -> dict | None:
+    """The shim's witness of the signal that ended the process, for a death nothing else reports (no
+    crash dump, no hilog line): the last witness, when it, or the frame walk the shim prints after
+    it for the same thread, is among the log's last three lines. A witnessed signal that more of the
+    app's output follows was survived (a library probing the CPU catches its own SIGILL); one that
+    is the log's last word was not. Other threads' lines can come between a witness and its frame
+    walk (libnba2km's audio thread, under its render thread's Vulkan lookups)."""
+    matches = list(_WITNESS.finditer(stderr))
+    if not matches:
+        return None
+    last = matches[-1]
+    end = stderr.find("\n", last.end())
+    end = len(stderr) if end < 0 else end
+    frames = _SIGNAL_FRAMES.search(stderr, end)
+    if frames and int(frames[1], 16) == int(last[3], 16) and frames.start() - end < 4096:
+        end = max(end, frames.end())
+    if sum(1 for line in stderr[end:].split("\n") if line.strip()) > 3:
+        return None
+    return signal_witnesses(stderr[last.start():], maps_text)[0]
+
+
+#: OH's own clean-up when a process calls exit(), from static destructors: the IPC process skeleton
+#: stopping its threads, the window manager's singleton going away. A process a signal ends runs
+#: neither -- a crash, or the harness ending each app at the close of its window.
+_EXIT_TEARDOWN = re.compile(r"ProcessSkeleton: NotifyChildThreadStop: waiting|~WindowManager: destroyed")
+_NATIVE_LOAD = re.compile(r"^\[SOURCE-NATIVE-LOAD\] path=(\S+)", re.M)
+
+
+def self_exit(hilog: str, stderr: str) -> dict | None:
+    """The process ending itself with exit(): OH's exit-time clean-up in the app's own hilog, within
+    its last two seconds of logging, with the seconds since the process started and the last native
+    library it loaded. Clash of Clans and Brawl Stars exited so half a second after starting, right
+    after their own libraries set handlers for SIGILL and SIGSYS; a bank app and an app with an
+    app-security library did the same within 2 s. Nothing else in either log says the app ended."""
+    lines = hilog.splitlines()
+    times = [t for t in map(_seconds, lines) if t is not None]
+    at = next((_seconds(line) for line in lines if _EXIT_TEARDOWN.search(line)), None)
+    if at is None or not times or (times[-1] - at) % 86400 > 2:
+        return None
+    out: dict = {"after_s": round((at - times[0]) % 86400, 1)}
+    loads = _NATIVE_LOAD.findall(stderr)
+    if loads:
+        out["last_library"] = loads[-1].rsplit("/", 1)[-1]
+    return out
+
+
+_SELF_KILL = re.compile(r"\[WESTLAKE-KILL\] the process sends itself signal 9\b")
+_JAVA_AT = re.compile(r"^\s+at ([\w$.<>-]+\([^)\n]*\))")
+
+
+def self_kill(stderr: str) -> dict | None:
+    """The first SIGKILL the process sent itself (Process.killProcess(myPid())), with the Java stack
+    that Westlake's Process.sendSignal logs before it sends one. Nothing follows such a kill, neither
+    a crash dump nor an exit status, so this is all that says the app ended itself: Didi's privacy
+    timer, Unity's kill from its native render loop, ProcessPhoenix's restart activity (meant to run
+    in a process of its own, it killed the app's). The first frame outside the platform says who
+    asked. Other threads' lines can come between the stack's lines."""
+    match = _SELF_KILL.search(stderr)
+    if not match:
+        return None
+    frames = []
+    for line in stderr[match.end():].split("\n")[1:80]:
+        at = _JAVA_AT.match(line)
+        if at:
+            frames.append(at[1])
+            if len(frames) == 24:
+                break
+        elif line.startswith(("Caused by:", "java.lang.Throwable")):
+            break
+    app = next((f for f in frames if not f.startswith(("java.", "android.", "dalvik.", "sun.", "jdk.", "libcore.",
+                                                      "com.android."))), None)
+    return {"frames": frames[:8], "first_app_frame": app}
 
 
 def signal_witnesses(stderr: str, maps_text: str | None = None) -> list[dict]:
@@ -510,5 +649,9 @@ def signal_witnesses(stderr: str, maps_text: str | None = None) -> list[dict]:
         insn = _WITNESS_INSN.search(rest)
         if insn:
             event["insn"], event["next"] = insn[1], insn[2]
+        frames = _SIGNAL_FRAMES.search(stderr, line_end if line_end >= 0 else len(stderr))
+        if frames and int(frames[1], 16) == event["tid"] and frames.start() - line_end < 4096:
+            event["frames"] = [{"depth": int(f[1], 16), "library": f[2].rsplit("/", 1)[-1], "path": f[2], "offset": f[3]}
+                               for f in _ABORT_FRAME.finditer(frames[2])]
         found.append(event)
     return found
