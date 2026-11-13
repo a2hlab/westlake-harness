@@ -80,6 +80,44 @@ class ScoreStoreTest(unittest.TestCase):
         calls, _, _, _ = self.score.score(self.logs, only={'g.two'})
         self.assertEqual(calls['in-app review'], {'g.two'})
 
+    def stderr(self, package, *lines):
+        (self.logs / f'hk-{package}.stderr').write_text('\n'.join(lines) + '\n')
+
+    def test_binder_trace_answers(self):
+        # Engage logs no callback; its answer is a call back on an interface of its own package.
+        self.stderr('k.engage',
+                    '[WL-PLAY-TRACE] out com.google.android.engage.protocol.IAppEngageService code=3 oneway x1',
+                    '[WL-PLAY-TRACE] in com.google.android.engage.protocol.IAppEngageServiceAvailableCallback '
+                    'code=1598968902  x1',
+                    '[WL-PLAY-TRACE] in com.google.android.engage.protocol.IAppEngageServiceAvailableCallback code=1  x1')
+        # A two-way call answers in its reply (exception code 0) or fails with a code; an empty reply means the
+        # store's side is one-way, and only a call back answers it. Play services' interfaces are not the store's.
+        self.stderr('l.billing',
+                    '[WL-PLAY-TRACE] out com.android.vending.billing.IInAppBillingService code=1 0 x1',
+                    '[WL-PLAY-TRACE] out com.android.vending.billing.IInAppBillingService code=11 -1 x2',
+                    '[WL-PLAY-TRACE] out com.android.vending.licensing.ILicensingService code=3 empty x1',
+                    '[WL-PLAY-TRACE] out com.google.android.gms.common.internal.IGmsServiceBroker code=46 0 x1')
+        # Only the one-way call that got a call back of its own package counts.
+        self.stderr('m.prewarm',
+                    '[WL-PLAY-TRACE] out com.google.android.play.core.prewarm.protocol.IPrewarmService code=1 oneway x1',
+                    '[WL-PLAY-TRACE] in com.google.android.engage.protocol.IAppEngageServiceAvailableCallback code=1  x1')
+        calls, replied, failed, oneway, called_back = self.score.traces(self.logs)
+        engage = 'com.google.android.engage.protocol.IAppEngageService'
+        billing = 'com.android.vending.billing.IInAppBillingService'
+        licensing = 'com.android.vending.licensing.ILicensingService'
+        prewarm = 'com.google.android.play.core.prewarm.protocol.IPrewarmService'
+        self.assertEqual(set(calls), {engage, billing, licensing, prewarm})
+        self.assertEqual(called_back[engage], {'k.engage'})
+        self.assertEqual(replied[billing], {'l.billing'})
+        self.assertEqual({c: a for c, a in failed[billing].items()}, {'-1': {'l.billing'}})
+        self.assertEqual(oneway[licensing], {'l.billing'})
+        self.assertEqual(dict(failed[licensing]), {'empty': {'l.billing'}})
+        self.assertEqual(called_back[licensing], set())
+        self.assertEqual(oneway[prewarm], {'m.prewarm'})
+        self.assertEqual(called_back[prewarm], set())
+        calls, _, _, _, _ = self.score.traces(self.logs, only={'k.engage'})
+        self.assertEqual(set(calls), {engage})
+
 
 if __name__ == '__main__':
     unittest.main()
