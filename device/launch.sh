@@ -18,6 +18,9 @@ done
 # services process's account, check-in values and guests (and the Play Store's, once it has a process). Before
 # old stages go, each one's app-data/<package> for these packages moves to $KEEP_DATA_DIR, oldest stage first
 # so the newest wins, on the same filesystem; the launcher moves it into the new stage (--carried-app-data).
+# Only from the stage that launched that package (its run.sh exports ASX_LAUNCH_PKG=<package>): a client app's
+# stage has an app-data/com.google.android.gms of its own, written there by the Play services modules it loads,
+# and moving that one replaced the Play services host's data, account included.
 # PERSIST_DATA= (set, empty) gives a fresh data directory; delete $KEEP_DATA_DIR/<package> to forget one.
 PERSIST_DATA=${PERSIST_DATA-com.google.android.gms com.android.vending}
 HOST_FILES=/data/app/el2/100/base/org.westlake.imehost/files; KEEP_DATA_DIR=$HOST_FILES/a2hlab-data
@@ -28,7 +31,7 @@ KEEP_PATTERN=$(for k in ${KEEP_STAGE:-}; do printf '*%s*|' "$k"; done); KEEP_PAT
 # (tests/test_keep_data.py runs it on a local tree).
 keep_data() {
   [ -n "$PERSIST_DATA" ] || return 0
-  echo "mkdir -p $KEEP_DATA_DIR; for d in \$(ls -dtr $HOST_FILES/a2hlab-source-* 2>/dev/null); do case \$d in $1) continue ;; esac; for p in $PERSIST_DATA; do if [ -d \$d/app-data/\$p ]; then rm -rf $KEEP_DATA_DIR/\$p && mv \$d/app-data/\$p $KEEP_DATA_DIR/\$p; fi; done; done;"
+  echo "mkdir -p $KEEP_DATA_DIR; for d in \$(ls -dtr $HOST_FILES/a2hlab-source-* 2>/dev/null); do case \$d in $1) continue ;; esac; for p in $PERSIST_DATA; do if [ -d \$d/app-data/\$p ] && grep -q \"^export ASX_LAUNCH_PKG=\$p\\\$\" \$d/run.sh 2>/dev/null; then rm -rf $KEEP_DATA_DIR/\$p && mv \$d/app-data/\$p $KEEP_DATA_DIR/\$p; fi; done; done;"
 }
 # One app at a time: drop old app stages and source runtimes (~290 MB each), or /data fills.
 if [ -n "${KEEP_RUNNING:-}" ]; then
