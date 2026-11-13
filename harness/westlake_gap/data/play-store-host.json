@@ -88,5 +88,75 @@
       "provider": "an app whose code PairIP encrypts starts in PairIP's KeyImportActivity, which binds the store's AntiTamperKeyTransferService for its key. The service is declared for the store's :background process; in the host's single process its injection fails, so the bind never connects and the app draws nothing (5 of 5 apps in round l7n; 6 of the 982 HK corpus apps use PairIP code encryption). Without a store host, Westlake answers that there is no such service, and these apps drew behind PairIP's \"check that Google Play is enabled\" dialog",
       "shim": "run the store's :background process as a second host process and route its components there; whether the store then hands a key to an app it did not install is not yet measured"
     }
+  },
+  "app_processes": {
+    "_comment": "Measured with the store's processes run as the store declares them (westlake ADR-0002, framework/activity/java/AppProcesses.java). When the Westlake checkout has them, gapmap.play_store_host_model reads these instead of the entries above, family by family.",
+    "measured": "two-host HK round l8b on framework builds 222 and 223, with the Play Store's own processes (ADR-0002): 335 of the HK corpus apps that bound a Play Store service in an earlier round. Engage, billing, licensing and the key transfer are read from the binder trace (score_store.py), since their client libraries log no callback",
+    "background_process": "The Play Store runs as com.android.vending, :background and :quick_launch, each forked from the store's own zygote under the name Android gives it, so each builds its own Dagger component. Its :background components are created there (MultiUserCoordinatorService, AgeSignalsService, AntiTamperKeyTransferService, BackgroundLicensingService, AppEngageServiceV2), and an app binds them in that process directly. The main process no longer waits on its canary-id lookup.",
+    "families": {
+      "in-app-review": {
+        "provider": "the store's InAppReviewService answers: 15 of 15 apps that asked got the review flow (onGetLaunchReviewFlowInfo)"
+      },
+      "in-app-update": {
+        "verdict": "partial",
+        "effort": "L",
+        "provider": "requestUpdateInfo is answered (44 of 53 apps; 3 more apps' binds had not connected when the capture ended). An update itself is a download and an install through the store, for an app the store installed",
+        "shim": "the install pipeline: the store acquires and installs the app for the account (PackageInstaller sessions into Westlake's app registry)"
+      },
+      "asset-delivery": {
+        "verdict": "partial",
+        "effort": "L",
+        "provider": "pack states are answered (55 of 56 apps) and a download starts (onStartDownload), but for 51 of the 56 apps the store's pack request fails (-100). Where traced, Google's server answered the store's asset-delivery request with 403, as for an app the account did not get from Play",
+        "shim": "the install pipeline: an app the store acquired and installed for the account gets its packs"
+      },
+      "split-install": {
+        "verdict": "inert",
+        "effort": "L",
+        "provider": "of 18 apps, 6 got an answer (4 install sessions started) and 5 got -15 APP_NOT_OWNED: the store installs a split only for an app in the account's library",
+        "shim": "the install pipeline: an app the store acquired and installed for the account gets its splits"
+      },
+      "integrity": {
+        "verdict": "partial",
+        "effort": "verify",
+        "provider": "170 of 173 apps got their callback (standard token requests and express warm-ups). Whether a callback carries a token or an error code is not logged",
+        "shim": "tell tokens from error codes in the answers"
+      },
+      "express-integrity": {
+        "verdict": "partial",
+        "effort": "verify",
+        "provider": "36 of the 37 apps that called the express service were called back, 27 of them logging their warm-up answer. Whether a callback carries a token is not logged",
+        "shim": "tell tokens from error codes in the answers"
+      },
+      "age-signals": {
+        "verdict": "supplied",
+        "effort": "none",
+        "provider": "the store's AgeSignalsService runs in its :background process: 23 of 23 apps got their answer (13 age-signal checks, 10 access requests)",
+        "shim": "nothing to build"
+      },
+      "engage": {
+        "verdict": "supplied",
+        "effort": "none",
+        "provider": "the store's AppEngageServiceV2 answers in its :background process: in 5 of 5 apps the availability check, cluster deletion and publish-status calls were called back",
+        "shim": "nothing to build"
+      },
+      "licensing": {
+        "verdict": "partial",
+        "effort": "verify",
+        "provider": "LVL's check (ILicensingService) is called back in 17 of 17 apps. PairIP's license client (64 apps) passes its own check and only sends the store a report, which expects no answer: 63 sent it, 52 through the background licensing service in the store's :background process and 11 through the main one. Whether the store answers an app the account owns as licensed is not measured",
+        "shim": "check the store's answer for an app the test account owns"
+      },
+      "billing": {
+        "provider": "the store's InAppBillingService answers: 189 apps' calls were answered (reply code 0), and every one of the 104 apps whose calls answer by callback was called back. The purchase flow itself, the store's own purchase screen, is untested"
+      },
+      "install-referrer": {
+        "provider": "the store's GetInstallReferrerService answers every app (286 of 286 apps' calls); apps the store did not install have no referrer to report, as on Android for an app installed from elsewhere"
+      },
+      "anti-tamper-key-transfer": {
+        "verdict": "partial",
+        "effort": "L",
+        "provider": "the store's AntiTamperKeyTransferService runs in its :background process and answers 6 of 6 apps, but gives no key to an app it did not install: PairIP then shows \"Something went wrong ... check that Google Play is enabled\" instead of the app",
+        "shim": "the install pipeline: an app the store installed gets its key"
+      }
+    }
   }
 }

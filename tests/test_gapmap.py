@@ -3462,6 +3462,23 @@ class PlayStoreHost(unittest.TestCase):
             self.assertIn(entry["effort"], gapmap.EFFORT, family)
             self.assertTrue(entry["provider"] and entry["shim"] and entry["item"], family)
 
+    def test_the_stores_own_processes_replace_the_single_process_measurements(self) -> None:
+        single = gapmap.play_store_host_model(self.with_store_host(True))
+        self.assertNotIn("app_processes", single)
+        self.assertEqual(single["families"]["age-signals"]["verdict"], "absent")
+        (self.westlake / "framework/activity/java/AppProcesses.java").write_text("class AppProcesses {}")
+        model = gapmap.play_store_host_model(self.westlake)
+        self.assertNotIn("app_processes", model)
+        self.assertEqual(model["families"]["age-signals"]["verdict"], "supplied")
+        self.assertIn("l8b", model["measured"])
+        # A family the overlay leaves partly alone keeps the rest of its single-process entry.
+        self.assertEqual(model["families"]["billing"]["shim"], single["families"]["billing"]["shim"])
+        self.assertNotEqual(model["families"]["billing"]["provider"], single["families"]["billing"]["provider"])
+        self.assertEqual(set(model["families"]), set(single["families"]))
+        for family, entry in model["families"].items():
+            self.assertIn(entry["effort"], gapmap.EFFORT, family)
+            self.assertTrue(entry["provider"] and entry["shim"] and entry["item"], family)
+
     def test_one_row_per_family_with_what_the_host_answers(self) -> None:
         model = gapmap.play_store_host_model(self.with_store_host(True))
         scan = {"inventory": {"play_store_clients": ["age-signals", "in-app-review", "licensing", "unknown"]}}

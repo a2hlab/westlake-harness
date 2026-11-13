@@ -3575,11 +3575,21 @@ PLAY_STORE_HOST = Path(__file__).parent / "data" / "play-store-host.json"
 
 def play_store_host_model(westlake_root: Path, data: Path = PLAY_STORE_HOST) -> dict[str, Any] | None:
     """What the Play Store host answers per service family, when the Westlake checkout has the host
-    (PlayServicesChannel serves WESTLAKE_PLAY_STORE_SERVE): measured on the board, in data/."""
+    (PlayServicesChannel serves WESTLAKE_PLAY_STORE_SERVE): measured on the board, in data/. When the
+    checkout also runs an app's components in the processes they are declared for (ADR-0002,
+    AppProcesses.java), the store runs its :background process too, and what was measured that way
+    (app_processes) replaces the single-process entries, family by family."""
     channel = westlake_root / "framework/activity/java/PlayServicesChannel.java"
     if not channel.exists() or "WESTLAKE_PLAY_STORE_SERVE" not in channel.read_text(errors="replace"):
         return None
-    return json.loads(data.read_text())
+    model = json.loads(data.read_text())
+    processes = model.pop("app_processes", None)
+    if processes and (westlake_root / "framework/activity/java/AppProcesses.java").exists():
+        model["measured"] = processes["measured"]
+        model["background_process"] = processes["background_process"]
+        for family, entry in processes["families"].items():
+            model["families"][family] = {**model["families"].get(family, {}), **entry}
+    return model
 
 
 def play_store_rows(scan: dict[str, Any], store_host: dict[str, Any] | None) -> list[dict[str, Any]]:
