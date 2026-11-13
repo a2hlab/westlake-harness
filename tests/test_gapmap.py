@@ -1229,6 +1229,55 @@ class ProviderInitOrder(unittest.TestCase):
         self.assertNotIn("pm:provider-init-order", rows)
 
 
+class SecondaryProcesses(unittest.TestCase):
+    SCAN = {"inventory": {"platform_method_names": {}}}
+
+    @staticmethod
+    def component(kind: str, process: str | None) -> dict:
+        return {"kind": kind, "name": f"x.{kind}", "process": process, "direct_boot_aware": False,
+                "meta_data": {}, "init_order": None}
+
+    def facts(self, *components: dict) -> dict:
+        return {"components": list(components), "splits": [],
+                "processes": sorted({c["process"] for c in components if c["process"]})}
+
+    @staticmethod
+    def model(routed: bool) -> dict:
+        return {"methods": {}, "semantics": {"components_in_declared_process": {
+            "present": routed, "source": "framework/activity/java/AppProcesses.java:46" if routed else None}}}
+
+    def row(self, facts: dict, routed: bool) -> dict:
+        return {r["id"]: r for r in gapmap.package_manager_rows(self.SCAN, facts, self.model(routed))}["pm:multiprocess"]
+
+    def test_without_app_processes_a_secondary_process_is_missing(self) -> None:
+        row = self.row(self.facts(self.component("service", ":push")), routed=False)
+        self.assertEqual((row["verdict"], row["effort"]), ("missing", "L"))
+
+    def test_services_receivers_and_providers_run_in_their_process(self) -> None:
+        row = self.row(self.facts(self.component("service", ":push"), self.component("provider", ":service"),
+                                  self.component("activity", None)), routed=True)
+        self.assertEqual((row["verdict"], row["effort"]), ("supplied", "verify"))
+        self.assertEqual(row["provider_source"], "framework/activity/java/AppProcesses.java:46")
+        self.assertIn("WESTLAKE_APP_PROCESSES=1", row["provider"])
+
+    def test_an_activity_in_another_process_still_starts_in_the_launched_one(self) -> None:
+        row = self.row(self.facts(self.component("service", ":push"), self.component("activity", ":ui")), routed=True)
+        self.assertEqual((row["verdict"], row["effort"]), ("partial", "M"))
+        self.assertIn(":ui", row["provider"])
+        self.assertNotIn(":push", row["provider"])
+
+    def test_the_model_reads_the_switch_from_westlake_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pm = root / "framework/package-manager/java"
+            _write(pm / "PackageManagerAdapter.java", "class PackageManagerAdapter {}")
+            self.assertFalse(pm_adapter_model(root)["semantics"]["components_in_declared_process"]["present"])
+            _write(root / "framework/activity/java/AppProcesses.java",
+                   'final class AppProcesses {\n    static final String ENABLE = "WESTLAKE_APP_PROCESSES";\n}')
+            check = pm_adapter_model(root)["semantics"]["components_in_declared_process"]
+            self.assertEqual(check, {"present": True, "source": "framework/activity/java/AppProcesses.java:2"})
+
+
 class SplitComponents(unittest.TestCase):
     """Chrome declares its launcher and 48 more activities in its "chrome" split's manifest."""
     FACTS = {"components": [], "splits": ["chrome", "config.en", "on_demand"], "processes": []}

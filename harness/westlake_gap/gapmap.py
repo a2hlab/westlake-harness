@@ -451,11 +451,32 @@ def package_manager_rows(scan: dict[str, Any], facts: dict[str, Any], pm: dict[s
             shim="give each authority to its first declaration, enabled or not, and skip a provider left with none",
         ))
     if facts["processes"]:
-        rows.append(_row(
-            "package-manager", "pm:multiprocess", f"Components in secondary processes: {', '.join(facts['processes'])}",
-            oh_touchpoint="appspawn (second process)", verdict="missing", shim_class="C4", effort="L", confidence=STATIC,
-            shim="spawn and route secondary Android processes",
-        ))
+        routed = semantics.get("components_in_declared_process") or {"present": False, "source": None}
+        title = f"Components in secondary processes: {', '.join(facts['processes'])}"
+        if routed["present"]:
+            # ADR-0002 routes services, jobs, receivers and providers by declared process; an activity
+            # declared for another process still starts in the launched one.
+            activities = sorted({c["process"] for c in facts["components"]
+                                 if c["process"] and c["kind"] in ("activity", "activity-alias")})
+            rows.append(_row(
+                "package-manager", "pm:multiprocess", title,
+                oh_touchpoint="appspawn-x (the app's own zygote forks the process)",
+                verdict="partial" if activities else "supplied", shim_class="C4",
+                effort="M" if activities else "verify", confidence=STATIC,
+                provider=("with WESTLAKE_APP_PROCESSES=1, a service, job, receiver or provider declared for another "
+                          "process runs in that process, which the app's own zygote forks on first use"
+                          + (f"; activities declared for {', '.join(activities)} still start in the launched process"
+                             if activities else "")),
+                provider_source=routed["source"],
+                shim=("start an activity declared for another process in that process" if activities else
+                      "nothing to build; turn the switch on for every app once a round with it on compares"),
+            ))
+        else:
+            rows.append(_row(
+                "package-manager", "pm:multiprocess", title,
+                oh_touchpoint="appspawn (second process)", verdict="missing", shim_class="C4", effort="L",
+                confidence=STATIC, shim="spawn and route secondary Android processes",
+            ))
 
     # PackageManager methods the app calls, against the adapter.
     stubbed = []
