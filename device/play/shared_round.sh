@@ -68,5 +68,15 @@ for h in "com.google.android.gms $C" "com.android.vending $SC_"; do
   grep -o -E '\[WL-PROC\] started [^ ]+ pid=[0-9]+' $PLAY_DIR/hosts/$1-$2.stderr | while read -r _ _ proc pidv; do
     save_host_log "$proc" "${pidv#pid=}"; done
 done
+# Each host's spawner logs to its stage's parent.log: the processes the host asked for and who asked, the app-id
+# registry the hosts' processes consult, and any request it refused. Its "[AppSpawnX] ..." lines go to
+# $PLAY_DIR/hosts/<package>.spawner (the stages stay until the next launch deletes them).
+for h in "com.google.android.gms ${PLAY_TAG:-play}" "com.android.vending ${PLAY_STORE_TAG:-}"; do
+  set -- $h; [ -n "${2:-}" ] || continue
+  s=$(grep -o '"stage": "[^"]*"' $WL_SC/logs/$2-hk-$1.log 2>/dev/null | head -1 | cut -d'"' -f4)
+  [ -n "$s" ] || continue
+  timeout 120 $WHDC -t $T shell "grep '^\[AppSpawnX\]' $s/parent.log" </dev/null 2>/dev/null | tr -d '\r' > $PLAY_DIR/hosts/$1.spawner
+  [ -s $PLAY_DIR/hosts/$1.spawner ] || rm -f $PLAY_DIR/hosts/$1.spawner
+done
 [ -e $PLAY_DIR/dead ] && exit 2
 exit 0
