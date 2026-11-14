@@ -43,6 +43,17 @@ host_uid() { timeout 20 $WHDC -t $T shell "ps -ef" 2>/dev/null | tr -d '\r' | aw
 # hosts' zygotes stayed on the board, childless, until the next unshared launch.
 kill_children() { local u=${1:-$(host_uid)}; [ -n "$u" ] || return 0
   timeout 30 $WHDC -t $T shell "for p in \$(ps -ef | grep '^$u ' | grep -v org.westlake.imehost | grep -v grep | sed 's/  */ /g' | cut -d' ' -f2); do kill -9 \$p; done; P=\$(pidof appspawn-x); [ -n \"\$P\" ] && kill \$P; true" >/dev/null 2>&1; }
+# Stop what a failed or repeated launch left on the board. The stop after an app's turn needs the child the
+# launcher reported: a launcher call that failed after the board had started the app (the WSL interop error
+# "UtilAcceptVsock ... failed 110") reported none, and a launch repeated after "board disconnected" reported only
+# the second app. In round l8d three such zygotes, two with their app, ran on for hours under the next apps.
+# This stops every appspawn-x zygote init has adopted, with the processes it forked and theirs, except the
+# zygotes of the Play hosts (a child named com.google.android.gms... or com.android.vending...), which a shared
+# round keeps for all its apps. The board is asked rather than the hosts' logs, which a round does not always
+# export. All Westlake processes share the host app's uid, so the zygote is what marks a launch's processes.
+# Prints "stray <zygote> <pids>" for each; STRAYS_DRY=1 only prints.
+stop_strays() {
+  timeout 40 $WHDC -t $T shell "for z in \$(pidof appspawn-x); do [ \"\$(ps -o ppid= -p \$z | tail -n 1 | grep -o '[0-9]*')\" = 1 ] || continue; P=\$(ps -A -o pid=,ppid= | grep \" \$z\$\" | grep -o '^ *[0-9]*'); host=; for p in \$P; do case \"\$(ps -o args= -p \$p | tail -n 1)\" in com.google.android.gms*|com.android.vending*) host=1 ;; esac; done; [ -n \"\$host\" ] && continue; Q=\$(for p in \$P; do ps -A -o pid=,ppid= | grep \" \$p\$\" | grep -o '^ *[0-9]*'; done); echo stray \$z \$P \$Q; ${STRAYS_DRY:+: }kill -9 \$z \$P \$Q; done; true" </dev/null 2>/dev/null | tr -d '\r' | grep '^stray '; }
 # launcher arguments for the runtime-library override every launch uses
 # WL_RUNTIME_ADD: libraries of the override build the framework stage lacks, added for this launch,
 # space-separated. Unset, it is the platform Cronet library (libmainlinecronet.<version>.so, which the

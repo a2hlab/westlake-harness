@@ -115,6 +115,8 @@ except Exception: pass" "$WL_CORPUS/${MAP:-map}/${app#hk-}/gap-map.json" 2>/dev/
   # of a round. The IME host and shared Play services keep a live parent, so they are never matched.
   PP=$(grep -o '"parent": [0-9]*' $L | head -1 | grep -o '[0-9]*')
   [ -n "$C" ] && timeout 30 $WHDC -t $T shell "U=\$(grep '^Uid:' /proc/$C/status 2>/dev/null | cut -f2); kill $C $PP; sleep 1; kill -9 $C $PP 2>/dev/null; [ -n \"\$U\" ] && ps -A -o PID,PPID,UID | while read p pp u; do [ \"\$u\" = \"\$U\" ] && [ \"\$pp\" = 1 ] && kill -9 \$p; done" >/dev/null 2>&1
+  # Then what a failed or repeated launch left, which the stop above cannot name (stop_strays, config.sh).
+  stop_strays | sed "s/^/[run_apps] $app: stopped what a launch left: /" >&2
   # The native libraries the app wrote under its data directory (<runtime>/app-data/<pkg>), for the
   # harness's scan --unpacked-libs; Westlake's own copies are left out.
   R=$(grep -o '"runtime": "[^"]*"' $L | head -1 | cut -d'"' -f4)

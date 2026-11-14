@@ -88,11 +88,22 @@ probe() {
     --hdc $WHDC --serial $T $CARRY ${EXTRA:-} --out $V/out/$out > $WL_SC/logs/$out.log 2>&1
 }
 probe; rc=$?
-# The board's hdc link drops under load: reconnect and launch again, twice at most.
+# The board's hdc link drops under load: reconnect and launch again, twice at most. A Windows hdc can also fail
+# to start at all when the WSL interop socket stops answering ("UtilAcceptVsock ... failed 110"; 6 launches of
+# round l8d): launch again once hdc_wsl.sh's two-minute cache of the socket has run out, so that it finds a
+# socket that works. Either way the first launch may have started the app, so what it left is stopped first.
 for retry in 1 2; do
-  grep -q "Device is not connected\|connect failed status" $WL_SC/logs/$out.log 2>/dev/null || break
-  echo "[launch.sh] board disconnected; reconnecting (retry $retry)" >&2
-  hdc_heal; sleep 20; probe; rc=$?
+  if grep -q "Device is not connected\|connect failed status" $WL_SC/logs/$out.log 2>/dev/null; then
+    echo "[launch.sh] board disconnected; reconnecting (retry $retry)" >&2
+    hdc_heal; sleep 20
+  elif grep -q "UtilAcceptVsock" $WL_SC/logs/$out.log 2>/dev/null; then
+    echo "[launch.sh] WSL could not start hdc; launching again in 130 s (retry $retry)" >&2
+    sleep 130
+  else
+    break
+  fi
+  stop_strays | sed "s/^/[launch.sh] stopped what the launch left: /" >&2
+  probe; rc=$?
 done
 C=$(grep -o '"child": [0-9]*' $WL_SC/logs/$out.log | head -1 | grep -o '[0-9]*')
 sleep ${LAUNCH_SETTLE:-12}   # run_apps.sh sets this low: it waits for the app itself
