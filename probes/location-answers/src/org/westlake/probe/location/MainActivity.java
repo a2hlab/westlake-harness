@@ -18,12 +18,12 @@ import java.util.List;
  * Location answers on Westlake (ADR-0009), one line each: [WL-LOC-PROBE] <name> = <value>.
  *
  * The device's location switch and providers; what a runtime permission request is answered; the last known
- * location; a one-shot getCurrentLocation; and a listener on the fused provider for 60 seconds, counting fixes.
+ * location; a one-shot getCurrentLocation; and a listener on the gps provider (GNSS) for 180 seconds, counting fixes.
  * Coordinates are never logged: only whether a fix came, its provider and its accuracy.
  */
 public class MainActivity extends Activity {
     private static final String TAG = "WL-LOC-PROBE";
-    private static final long LISTEN_MS = 60_000;
+    private static final long LISTEN_MS = 180_000;
     private final Handler main = new Handler(Looper.getMainLooper());
     private LocationManager lm;
     int fixes;
@@ -84,8 +84,8 @@ public class MainActivity extends Activity {
         }
         final LocationListener listener = new Fixes();
         try {
-            lm.requestLocationUpdates(LocationManager.FUSED_PROVIDER, 1000L, 0f, listener, Looper.getMainLooper());
-            line("listener", "registered on fused, every 1 s");
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, listener, Looper.getMainLooper());
+            line("listener", "registered on gps, every 1 s");
         } catch (RuntimeException e) {
             line("listener", "threw " + e);
         }
