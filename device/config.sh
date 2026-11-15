@@ -35,14 +35,17 @@ hdc_reconnect() { timeout 60 $WHDC tconn $T >/dev/null 2>&1; }
 # beside other transfers left it at 100% CPU). Restart it when the board does not answer.
 hdc_heal() { timeout 20 $WHDC -t $T shell echo ok 2>/dev/null | grep -q ok && return 0
   timeout 20 $WHDC kill -r >/dev/null 2>&1; sleep 3; hdc_reconnect; return 1; }
-# The host app's uid on the board: every Westlake process runs under it.
-host_uid() { timeout 20 $WHDC -t $T shell "ps -ef" 2>/dev/null | tr -d '\r' | awk '$8=="org.westlake.imehost" {print $1; exit}'; }
+# A host bundle's uid on the board (default the window host's, which every app runs under; the Play hosts may run
+# under org.westlake.playhost): the uid of its ability process.
+host_uid() { timeout 20 $WHDC -t $T shell "ps -ef" 2>/dev/null | tr -d '\r' | awk -v b="${1:-org.westlake.imehost}" '$8==b {print $1; exit}'; }
+# A bundle's uid from the bundle manager, whether or not any of its processes runs.
+bundle_uid() { timeout 20 $WHDC -t $T shell "bm dump -n $1" 2>/dev/null | tr -d '\r' | grep -m1 -o '"uid": [0-9][0-9]*' | grep -o '[0-9]*$'; }
 # Stop every Westlake process but the host app. The board has no awk: grep, sed and cut only.
 # The appspawn-x zygotes the processes were forked from run as root, not under the host's uid, and go too.
 # A launch that keeps running (KEEP_RUNNING: the Play hosts) leaves its zygote, so after a shared round both
 # hosts' zygotes stayed on the board, childless, until the next unshared launch.
 kill_children() { local u=${1:-$(host_uid)}; [ -n "$u" ] || return 0
-  timeout 30 $WHDC -t $T shell "for p in \$(ps -ef | grep '^$u ' | grep -v org.westlake.imehost | grep -v grep | sed 's/  */ /g' | cut -d' ' -f2); do kill -9 \$p; done; P=\$(pidof appspawn-x); [ -n \"\$P\" ] && kill \$P; true" >/dev/null 2>&1; }
+  timeout 30 $WHDC -t $T shell "for p in \$(ps -ef | grep '^$u ' | grep -v -e org.westlake.imehost -e org.westlake.playhost | grep -v grep | sed 's/  */ /g' | cut -d' ' -f2); do kill -9 \$p; done; P=\$(pidof appspawn-x); [ -n \"\$P\" ] && kill \$P; true" >/dev/null 2>&1; }
 # Stop what a failed or repeated launch left on the board. The stop after an app's turn needs the child the
 # launcher reported: a launcher call that failed after the board had started the app (the WSL interop error
 # "UtilAcceptVsock ... failed 110") reported none, and a launch repeated after "board disconnected" reported only

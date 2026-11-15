@@ -23,7 +23,11 @@ done
 # and moving that one replaced the Play services host's data, account included.
 # PERSIST_DATA= (set, empty) gives a fresh data directory; delete $KEEP_DATA_DIR/<package> to forget one.
 PERSIST_DATA=${PERSIST_DATA-com.google.android.gms com.android.vending}
-HOST_FILES=/data/app/el2/100/base/org.westlake.imehost/files; KEEP_DATA_DIR=$HOST_FILES/a2hlab-data
+# HOST_BUNDLE: the OH bundle the app runs under (its uid, access token and files directory). Apps run under the
+# window host's; the Play hosts can run under their own (ADR-0003 stage 2: HOST_BUNDLE=org.westlake.playhost),
+# which keeps their data, the account store included, from every app.
+WINDOW_HOST=org.westlake.imehost; HOST_BUNDLE=${HOST_BUNDLE:-$WINDOW_HOST}
+HOST_FILES=/data/app/el2/100/base/$HOST_BUNDLE/files; KEEP_DATA_DIR=$HOST_FILES/a2hlab-data
 # The stages a KEEP_RUNNING launch leaves alone, as one case pattern (*<hash>*|*<hash>*); @none@ matches none.
 KEEP_PATTERN=$(for k in ${KEEP_STAGE:-}; do printf '*%s*|' "$k"; done); KEEP_PATTERN=${KEEP_PATTERN%|}
 [ -n "$KEEP_PATTERN" ] || KEEP_PATTERN=@none@
@@ -35,14 +39,21 @@ keep_data() {
 }
 # One app at a time: drop old app stages and source runtimes (~290 MB each), or /data fills.
 if [ -n "${KEEP_RUNNING:-}" ]; then
-  timeout 120 $WHDC -t $T shell "$(keep_data "$KEEP_PATTERN") for d in /data/local/tmp/a2hlab-app-* /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-*; do case \$d in $KEEP_PATTERN) ;; *) rm -rf \$d ;; esac; done" >/dev/null 2>&1
+  timeout 120 $WHDC -t $T shell "$(keep_data "$KEEP_PATTERN") for d in /data/local/tmp/a2hlab-app-* $HOST_FILES/a2hlab-source-*; do case \$d in $KEEP_PATTERN) ;; *) rm -rf \$d ;; esac; done" >/dev/null 2>&1
 else
-  timeout 300 $WHDC -t $T shell 'P=$(pidof appspawn-x); [ -n "$P" ] && kill $P; sleep 1; '"$(keep_data @none@)"' for d in /data/local/tmp/a2hlab-app-* /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-*; do [ -e "$d" ] && rm -rf "$d"; done' >/dev/null 2>&1; sleep 1
+  timeout 300 $WHDC -t $T shell 'P=$(pidof appspawn-x); [ -n "$P" ] && kill $P; sleep 1; '"$(keep_data @none@)"' for d in /data/local/tmp/a2hlab-app-* '"$HOST_FILES"'/a2hlab-source-*; do [ -e "$d" ] && rm -rf "$d"; done' >/dev/null 2>&1; sleep 1
 fi
 # A launcher that knows the option moves the kept data in; an older one gets a fresh directory, and the kept
 # data waits for a launcher that does.
 CARRY=""
 [ -n "$PERSIST_DATA" ] && grep -q -- '--carried-app-data' $M/probe_source_app.py 2>/dev/null && CARRY="--carried-app-data $KEEP_DATA_DIR"
+# A host bundle other than the window host's serves apps under another uid: they reach its code by path, and its
+# data stays private (the launcher's --private-data).
+HOSTING="--host $HOST_BUNDLE"
+if [ "$HOST_BUNDLE" != "$WINDOW_HOST" ]; then
+  grep -q -- '--private-data' $M/probe_source_app.py 2>/dev/null || { echo "$app: the launcher has no --private-data" >&2; exit 2; }
+  HOSTING="$HOSTING --private-data"
+fi
 # Disk guard: a launch needs ~2 GB on the board. Prune stale framework stages if low, and refuse to
 # launch (exit 3) rather than fill either disk. LOCAL_DISKS: local filesystems that must keep
 # MIN_LOCAL_GB free (under WSL add the Windows drive holding the virtual disk, e.g. /mnt/c).
@@ -85,7 +96,7 @@ probe() {
     --framework-report $V/out/$fw/device-report.json \
     --app-input $IN/prep-$app --app $app --webview-input $IN/webview-input \
     --bionic-shim-build $V/out/$shim --touch-mode ${WL_TOUCH_MODE:-tap} \
-    --hdc $WHDC --serial $T $CARRY ${EXTRA:-} --out $V/out/$out > $WL_SC/logs/$out.log 2>&1
+    --hdc $WHDC --serial $T $CARRY $HOSTING ${EXTRA:-} --out $V/out/$out > $WL_SC/logs/$out.log 2>&1
 }
 probe; rc=$?
 # The board's hdc link drops under load: reconnect and launch again, twice at most. A Windows hdc can also fail

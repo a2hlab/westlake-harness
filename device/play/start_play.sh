@@ -11,6 +11,9 @@ PLAY_DIR=${PLAY_DIR:-$IN/play-runs}; PLAY_SOCKET=${PLAY_SOCKET:-wl.play.m1}; mkd
 app=hk-com.google.android.gms; tag=${PLAY_TAG:-play}; OUT=$PLAY_DIR/play.log
 python3 $DEVICE/prep_apps.py com.google.android.gms | tail -1
 kill_children
+# The Play hosts may run under their own bundle (HOST_BUNDLE, ADR-0003 stage 2): stop that uid's processes too, or
+# hosts left from before keep the socket names.
+[ -n "${HOST_BUNDLE:-}" ] && [ "$HOST_BUNDLE" != org.westlake.imehost ] && kill_children "$(bundle_uid $HOST_BUNDLE)"
 PROBE_TIMEOUT=${PROBE_TIMEOUT:-300} EXTRA="--android-native-net-app-libraries $(override_args) --guest-build $V/out/$WL_PLAY_GUESTS --input-cache --runtime-env WESTLAKE_PLAY_SERVICES_SERVE=$PLAY_SOCKET --runtime-env WESTLAKE_NO_ACTIVITY=1 ${PLAY_EXTRA:-}" $DEVICE/launch.sh $app $tag-$app
 C=$(grep -o '"child": [0-9]*' $WL_SC/logs/$tag-$app.log | head -1 | grep -o '[0-9]*')
 if [ -z "$C" ]; then
