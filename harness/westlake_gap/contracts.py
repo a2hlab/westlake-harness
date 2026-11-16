@@ -149,6 +149,7 @@ def pm_adapter_model(westlake_root: Path) -> dict[str, Any]:
     reg = registry.read_text(errors="replace") if registry.exists() else ""
     splits = westlake_root / "framework/package-manager/java/SplitApkResolver.java"
     bridge = westlake_root / "framework/activity/java/AppSchedulerBridge.java"
+    processes = westlake_root / "framework/activity/java/AppProcesses.java"
     return {
         "methods": methods,
         # Semantics the source-app path must reproduce from PackageManagerService, checked in source.
@@ -166,6 +167,12 @@ def pm_adapter_model(westlake_root: Path) -> dict[str, Any]:
             # Each provider authority goes to its first declaration, enabled or not; a provider left
             # with none is not installed (ComponentResolver.addProvidersLocked).
             "provider_authority_claims": _evidence(text, r"claimed\.add\(authority\)", path, westlake_root),
+            # A service, job, receiver or provider declared for another of the app's processes runs in that
+            # process, forked from the app's own zygote on first use (westlake ADR-0002), when the launch
+            # sets WESTLAKE_APP_PROCESSES=1.
+            "components_in_declared_process": _evidence(
+                processes.read_text(errors="replace") if processes.exists() else "",
+                r'"WESTLAKE_APP_PROCESSES"', processes, westlake_root),
         },
         "provenance": git_state(westlake_root),
     }
