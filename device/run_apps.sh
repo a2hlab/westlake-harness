@@ -80,6 +80,17 @@ except Exception: pass" "$WL_CORPUS/${MAP:-map}/${app#hk-}/gap-map.json" 2>/dev/
   [ -n "$C" ] && timeout 60 $WHDC -t $T shell "cat /data/service/el1/public/appspawnx/adapter_child_$C.stderr" 2>/dev/null | tr -d '\r' > logs/$tag/$app.stderr
   # The board keeps every child's stderr (it once filled /data): drop its copy after this last read.
   [ -n "$C" ] && [ -s logs/$tag/$app.stderr ] && timeout 60 $WHDC -t $T shell "rm -f /data/service/el1/public/appspawnx/adapter_child_$C.stderr" >/dev/null 2>&1
+  # The app's other processes (westlake ADR-0002) have logs of their own. The launched process names each one
+  # it started ("[WL-PROC] started <process> pid=<n>"); each gets the same thread dump and lands in
+  # <app>.processes/<process>.stderr, so that a crash or stall there is the app's evidence too.
+  if [ -n "$C" ] && [ -s logs/$tag/$app.stderr ]; then
+    grep -o -E '\[WL-PROC\] started [^ ]+ pid=[0-9]+' logs/$tag/$app.stderr | while read -r _ _ proc pidv; do
+      p=${pidv#pid=}; d=logs/$tag/$app.processes; mkdir -p $d
+      [ "${DUMP:-1}" = 1 ] && timeout 20 $WHDC -t $T shell "[ -d /proc/$p ] && kill -3 $p" >/dev/null 2>&1 && sleep 2
+      timeout 60 $WHDC -t $T shell "cat /data/service/el1/public/appspawnx/adapter_child_$p.stderr" 2>/dev/null | tr -d '\r' > "$d/$proc.stderr"
+      [ -s "$d/$proc.stderr" ] && timeout 60 $WHDC -t $T shell "rm -f /data/service/el1/public/appspawnx/adapter_child_$p.stderr" >/dev/null 2>&1
+    done
+  fi
   timeout 30 $WHDC -t $T shell "ls -t /data/log/faultlog/faultlogger/ | head -3" 2>/dev/null | tr -d '\r' > logs/$tag/$app.faultlogs
   # The process's own crash dump: faultloggerd writes faultlog/temp/cppcrash-<pid>-<ms>, and hiview
   # may or may not move it to faultlogger/. Pids repeat, so only a dump written since the launch counts.
