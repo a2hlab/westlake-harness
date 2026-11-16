@@ -18,9 +18,16 @@ done
 # services process's account, check-in values and guests (and the Play Store's, once it has a process). Before
 # old stages go, each one's app-data/<package> for these packages moves to $KEEP_DATA_DIR, oldest stage first
 # so the newest wins, on the same filesystem; the launcher moves it into the new stage (--carried-app-data).
+# Only from the stage that launched that package (its run.sh exports ASX_LAUNCH_PKG=<package>): a client app's
+# stage has an app-data/com.google.android.gms of its own, written there by the Play services modules it loads,
+# and moving that one replaced the Play services host's data, account included.
 # PERSIST_DATA= (set, empty) gives a fresh data directory; delete $KEEP_DATA_DIR/<package> to forget one.
 PERSIST_DATA=${PERSIST_DATA-com.google.android.gms com.android.vending}
-HOST_FILES=/data/app/el2/100/base/org.westlake.imehost/files; KEEP_DATA_DIR=$HOST_FILES/a2hlab-data
+# HOST_BUNDLE: the OH bundle the app runs under (its uid, access token and files directory). Apps run under the
+# window host's; the Play hosts can run under their own (ADR-0003 stage 2: HOST_BUNDLE=org.westlake.playhost),
+# which keeps their data, the account store included, from every app.
+WINDOW_HOST=org.westlake.imehost; HOST_BUNDLE=${HOST_BUNDLE:-$WINDOW_HOST}
+HOST_FILES=/data/app/el2/100/base/$HOST_BUNDLE/files; KEEP_DATA_DIR=$HOST_FILES/a2hlab-data
 # The stages a KEEP_RUNNING launch leaves alone, as one case pattern (*<hash>*|*<hash>*); @none@ matches none.
 KEEP_PATTERN=$(for k in ${KEEP_STAGE:-}; do printf '*%s*|' "$k"; done); KEEP_PATTERN=${KEEP_PATTERN%|}
 [ -n "$KEEP_PATTERN" ] || KEEP_PATTERN=@none@
@@ -28,18 +35,25 @@ KEEP_PATTERN=$(for k in ${KEEP_STAGE:-}; do printf '*%s*|' "$k"; done); KEEP_PAT
 # (tests/test_keep_data.py runs it on a local tree).
 keep_data() {
   [ -n "$PERSIST_DATA" ] || return 0
-  echo "mkdir -p $KEEP_DATA_DIR; for d in \$(ls -dtr $HOST_FILES/a2hlab-source-* 2>/dev/null); do case \$d in $1) continue ;; esac; for p in $PERSIST_DATA; do if [ -d \$d/app-data/\$p ]; then rm -rf $KEEP_DATA_DIR/\$p && mv \$d/app-data/\$p $KEEP_DATA_DIR/\$p; fi; done; done;"
+  echo "mkdir -p $KEEP_DATA_DIR; for d in \$(ls -dtr $HOST_FILES/a2hlab-source-* 2>/dev/null); do case \$d in $1) continue ;; esac; for p in $PERSIST_DATA; do if [ -d \$d/app-data/\$p ] && grep -q \"^export ASX_LAUNCH_PKG=\$p\\\$\" \$d/run.sh 2>/dev/null; then rm -rf $KEEP_DATA_DIR/\$p && mv \$d/app-data/\$p $KEEP_DATA_DIR/\$p; fi; done; done;"
 }
 # One app at a time: drop old app stages and source runtimes (~290 MB each), or /data fills.
 if [ -n "${KEEP_RUNNING:-}" ]; then
-  timeout 120 $WHDC -t $T shell "$(keep_data "$KEEP_PATTERN") for d in /data/local/tmp/a2hlab-app-* /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-*; do case \$d in $KEEP_PATTERN) ;; *) rm -rf \$d ;; esac; done" >/dev/null 2>&1
+  timeout 120 $WHDC -t $T shell "$(keep_data "$KEEP_PATTERN") for d in /data/local/tmp/a2hlab-app-* $HOST_FILES/a2hlab-source-*; do case \$d in $KEEP_PATTERN) ;; *) rm -rf \$d ;; esac; done" >/dev/null 2>&1
 else
-  timeout 300 $WHDC -t $T shell 'P=$(pidof appspawn-x); [ -n "$P" ] && kill $P; sleep 1; '"$(keep_data @none@)"' for d in /data/local/tmp/a2hlab-app-* /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-*; do [ -e "$d" ] && rm -rf "$d"; done' >/dev/null 2>&1; sleep 1
+  timeout 300 $WHDC -t $T shell 'P=$(pidof appspawn-x); [ -n "$P" ] && kill $P; sleep 1; '"$(keep_data @none@)"' for d in /data/local/tmp/a2hlab-app-* '"$HOST_FILES"'/a2hlab-source-*; do [ -e "$d" ] && rm -rf "$d"; done' >/dev/null 2>&1; sleep 1
 fi
 # A launcher that knows the option moves the kept data in; an older one gets a fresh directory, and the kept
 # data waits for a launcher that does.
 CARRY=""
 [ -n "$PERSIST_DATA" ] && grep -q -- '--carried-app-data' $M/probe_source_app.py 2>/dev/null && CARRY="--carried-app-data $KEEP_DATA_DIR"
+# A host bundle other than the window host's serves apps under another uid: they reach its code by path, and its
+# data stays private (the launcher's --private-data).
+HOSTING="--host $HOST_BUNDLE"
+if [ "$HOST_BUNDLE" != "$WINDOW_HOST" ]; then
+  grep -q -- '--private-data' $M/probe_source_app.py 2>/dev/null || { echo "$app: the launcher has no --private-data" >&2; exit 2; }
+  HOSTING="$HOSTING --private-data"
+fi
 # Disk guard: a launch needs ~2 GB on the board. Prune stale framework stages if low, and refuse to
 # launch (exit 3) rather than fill either disk. LOCAL_DISKS: local filesystems that must keep
 # MIN_LOCAL_GB free (under WSL add the Windows drive holding the virtual disk, e.g. /mnt/c).
@@ -82,14 +96,25 @@ probe() {
     --framework-report $V/out/$fw/device-report.json \
     --app-input $IN/prep-$app --app $app --webview-input $IN/webview-input \
     --bionic-shim-build $V/out/$shim --touch-mode ${WL_TOUCH_MODE:-tap} \
-    --hdc $WHDC --serial $T $CARRY ${EXTRA:-} --out $V/out/$out > $WL_SC/logs/$out.log 2>&1
+    --hdc $WHDC --serial $T $CARRY $HOSTING ${EXTRA:-} --out $V/out/$out > $WL_SC/logs/$out.log 2>&1
 }
 probe; rc=$?
-# The board's hdc link drops under load: reconnect and launch again, twice at most.
+# The board's hdc link drops under load: reconnect and launch again, twice at most. A Windows hdc can also fail
+# to start at all when the WSL interop socket stops answering ("UtilAcceptVsock ... failed 110"; 6 launches of
+# round l8d): launch again once hdc_wsl.sh's two-minute cache of the socket has run out, so that it finds a
+# socket that works. Either way the first launch may have started the app, so what it left is stopped first.
 for retry in 1 2; do
-  grep -q "Device is not connected\|connect failed status" $WL_SC/logs/$out.log 2>/dev/null || break
-  echo "[launch.sh] board disconnected; reconnecting (retry $retry)" >&2
-  hdc_heal; sleep 20; probe; rc=$?
+  if grep -q "Device is not connected\|connect failed status" $WL_SC/logs/$out.log 2>/dev/null; then
+    echo "[launch.sh] board disconnected; reconnecting (retry $retry)" >&2
+    hdc_heal; sleep 20
+  elif grep -q "UtilAcceptVsock" $WL_SC/logs/$out.log 2>/dev/null; then
+    echo "[launch.sh] WSL could not start hdc; launching again in 130 s (retry $retry)" >&2
+    sleep 130
+  else
+    break
+  fi
+  stop_strays | sed "s/^/[launch.sh] stopped what the launch left: /" >&2
+  probe; rc=$?
 done
 C=$(grep -o '"child": [0-9]*' $WL_SC/logs/$out.log | head -1 | grep -o '[0-9]*')
 sleep ${LAUNCH_SETTLE:-12}   # run_apps.sh sets this low: it waits for the app itself

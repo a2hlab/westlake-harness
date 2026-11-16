@@ -115,6 +115,14 @@ except Exception: pass" "$WL_CORPUS/${MAP:-map}/${app#hk-}/gap-map.json" 2>/dev/
   # of a round. The IME host and shared Play services keep a live parent, so they are never matched.
   PP=$(grep -o '"parent": [0-9]*' $L | head -1 | grep -o '[0-9]*')
   [ -n "$C" ] && timeout 30 $WHDC -t $T shell "U=\$(grep '^Uid:' /proc/$C/status 2>/dev/null | cut -f2); kill $C $PP; sleep 1; kill -9 $C $PP 2>/dev/null; [ -n \"\$U\" ] && ps -A -o PID,PPID,UID | while read p pp u; do [ \"\$u\" = \"\$U\" ] && [ \"\$pp\" = 1 ] && kill -9 \$p; done" >/dev/null 2>&1
+  # Then what a failed or repeated launch left, which the stop above cannot name (stop_strays, config.sh).
+  stop_strays | sed "s/^/[run_apps] $app: stopped what a launch left: /" >&2
+  # The app's spawner logs to its stage's parent.log, which the next launch deletes with the stage: the processes the
+  # app asked for, the requests it refused and why, the app-id registry ("[AppSpawnX] ..." lines only; the rest is
+  # the zygote's preload). Saved as <app>.spawner for SP/spawn-analysis-style reports.
+  S=$(grep -o '"stage": "[^"]*"' $L | head -1 | cut -d'"' -f4)
+  [ -n "$S" ] && timeout 60 $WHDC -t $T shell "grep '^\[AppSpawnX\]' $S/parent.log" </dev/null 2>/dev/null | tr -d '\r' > logs/$tag/$app.spawner
+  [ -s logs/$tag/$app.spawner ] || rm -f logs/$tag/$app.spawner
   # The native libraries the app wrote under its data directory (<runtime>/app-data/<pkg>), for the
   # harness's scan --unpacked-libs; Westlake's own copies are left out.
   R=$(grep -o '"runtime": "[^"]*"' $L | head -1 | cut -d'"' -f4)
