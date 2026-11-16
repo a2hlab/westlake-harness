@@ -13,7 +13,8 @@ Not every client library logs there: the Engage SDK and Play Core's prewarm log 
 binder trace in each app's stderr (WESTLAKE_PLAY_TRACE, "[WL-PLAY-TRACE] out <descriptor> code=<n> <reply>"), per
 Play Store interface: the apps whose two-way calls got a reply without an exception (or with one, by code), and the
 apps whose one-way calls (or two-way calls the store answered with an empty reply) were followed by a call back on
-an interface of the same package (its callback).
+an interface of the same package (its callback). When an interface's one-way calls use several codes (methods), each
+code gets a line: one method may be called back and another expect no answer.
 Only counts, callback names and package names are printed: requests carry nonces and tokens, which never leave
 the logs. LIST=<file> limits it to those packages."""
 import collections
@@ -132,6 +133,40 @@ def traces(logs, only=None):
     return calls, replied, failed, oneway, called_back
 
 
+def oneway_codes(logs, only=None):
+    """Per Play Store interface, per app, the codes of its one-way calls (and of its two-way calls the store answered
+    with an empty reply). Methods of one interface can answer differently: licensing's checkLicense (code 1) is
+    called back, while the report PairIP's license client sends (code 3) expects no answer."""
+    codes = collections.defaultdict(lambda: collections.defaultdict(set))
+    for path in sorted(Path(logs).glob('hk-*.stderr')):
+        app = path.name[len('hk-'):-len('.stderr')]
+        if only is not None and app not in only:
+            continue
+        for line in path.read_text(errors='replace').splitlines():
+            if '[WL-PLAY-TRACE] out ' not in line:
+                continue
+            m = TRACE.search(line)
+            if m and m.group(2).startswith(STORE) and m.group(4) in ('oneway', 'empty'):
+                codes[m.group(2)][app].add(m.group(3))
+    return codes
+
+
+def code_lines(by_app, called_back, show_apps=False):
+    """When an interface's one-way calls use more than one code: per code, the apps that sent it and, of those that
+    sent it alone, how many were called back. An app that sent several codes cannot say which one its call back
+    answered, so it counts for none."""
+    found = {code for sent in by_app.values() for code in sent}
+    if len(found) < 2:
+        return []
+    lines = []
+    for code in sorted(found, key=lambda c: (-sum(c in sent for sent in by_app.values()), int(c))):
+        senders = {app for app, sent in by_app.items() if code in sent}
+        alone = {app for app in senders if by_app[app] == {code}}
+        lines.append(f'    code {code}: {len(senders)} apps; of the {len(alone)} that sent no other one-way code, '
+                     f'{len(alone & called_back)} called back' + (f'  {" ".join(sorted(senders))}' if show_apps else ''))
+    return lines
+
+
 def main():
     tag = sys.argv[1]
     show_apps = '--apps' in sys.argv[2:]
@@ -151,6 +186,7 @@ def main():
         for code, apps in sorted(errors[service].items(), key=lambda kv: -len(kv[1])):
             print(f'  error {code}: {len(apps)}' + (f'  {" ".join(sorted(apps))}' if show_apps else ''))
     calls, replied, failed, oneway, called_back = traces(logs, only)
+    codes = oneway_codes(logs, only)
     if calls:
         print('Play Store interfaces in the binder trace:')
     for descriptor in sorted(calls, key=lambda d: -len(calls[d])):
@@ -160,6 +196,8 @@ def main():
         if oneway[descriptor]:
             said.append(f'{len(oneway[descriptor])} one-way or empty reply, {len(called_back[descriptor])} called back')
         print(f'  {descriptor}: {len(calls[descriptor])} apps; ' + ', '.join(said))
+        for text in code_lines(codes.get(descriptor, {}), called_back[descriptor], show_apps):
+            print(text)
         for name, apps in (('answered', replied[descriptor]), ('called back', called_back[descriptor])):
             if show_apps and apps:
                 print(f'    {name}: {" ".join(sorted(apps))}')

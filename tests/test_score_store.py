@@ -118,6 +118,31 @@ class ScoreStoreTest(unittest.TestCase):
         calls, _, _, _, _ = self.score.traces(self.logs, only={'k.engage'})
         self.assertEqual(set(calls), {engage})
 
+    def test_one_way_codes_apart(self):
+        # Licensing's checkLicense (code 1) is called back; PairIP's report (code 3) expects no answer. An app that
+        # sent both cannot say which one its call back answered.
+        licensing = 'com.android.vending.licensing.ILicensingService'
+        out = f'[WL-PLAY-TRACE] out {licensing}'
+        back = '[WL-PLAY-TRACE] in com.android.vending.licensing.ILicenseResultListener code=1  x1'
+        self.stderr('n.lvl', f'{out} code=1 oneway x1', back)
+        self.stderr('o.pairip', f'{out} code=3 empty x1')
+        self.stderr('p.pairip', f'{out} code=3 empty x2')
+        self.stderr('q.both', f'{out} code=3 empty x1', f'{out} code=1 oneway x1', back)
+        # A reply is not a one-way call; Play services' interfaces are not the store's.
+        self.stderr('r.billing', '[WL-PLAY-TRACE] out com.android.vending.billing.IInAppBillingService code=1 0 x1',
+                    '[WL-PLAY-TRACE] out com.google.android.gms.common.internal.IGmsServiceBroker code=46 oneway x1')
+        codes = self.score.oneway_codes(self.logs)
+        self.assertEqual(set(codes), {licensing})
+        self.assertEqual(dict(codes[licensing]), {'n.lvl': {'1'}, 'o.pairip': {'3'}, 'p.pairip': {'3'},
+                                                  'q.both': {'1', '3'}})
+        _, _, _, _, called_back = self.score.traces(self.logs)
+        self.assertEqual(self.score.code_lines(codes[licensing], called_back[licensing]), [
+            '    code 3: 3 apps; of the 2 that sent no other one-way code, 0 called back',
+            '    code 1: 2 apps; of the 1 that sent no other one-way code, 1 called back'])
+        # One code: the interface's own line says it all.
+        self.assertEqual(self.score.code_lines({'n.lvl': {'1'}}, {'n.lvl'}), [])
+        self.assertEqual(self.score.oneway_codes(self.logs, only={'o.pairip'})[licensing], {'o.pairip': {'3'}})
+
 
 if __name__ == '__main__':
     unittest.main()

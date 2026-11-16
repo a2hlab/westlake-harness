@@ -7,6 +7,7 @@
 # Exit 3: the launcher refused to start Play services for a reason a retry cannot change.
 # PLAY_STORE_SOCKET: also start Google's Play Store host beside it (start_store.sh, tag ${tag}store, data in
 # $PLAY_DIR/store), connect every app to it, keep its stage, and stop the same way if it dies.
+# When the round stops, the hosts' logs (and those of the processes they started) go to $PLAY_DIR/hosts.
 . "$(dirname "$0")/../config.sh"
 PLAY_DIR=${PLAY_DIR:-$IN/play-runs}; PLAY_SOCKET=${PLAY_SOCKET:-wl.play.m1}; mkdir -p $PLAY_DIR
 A=$1; O=$PLAY_DIR/round.log; : > $O; rm -f $PLAY_DIR/dead $PLAY_DIR/config-error
@@ -48,6 +49,24 @@ KEEP_STAGE=$ST PLAY=$PLAY_SOCKET ROUND_EXTRA="${ROUND_EXTRA:-} $STORE_ARGS" WAIT
     sleep 30; done ) &
 W=$!
 wait $R; kill $W 2>/dev/null
-[ -e $PLAY_DIR/dead ] && exit 2
-echo "shared done $(date +%H:%M); $(tail -1 $PLAY_DIR/play.log | cut -c1-50)" >> $O
+[ -e $PLAY_DIR/dead ] || echo "shared done $(date +%H:%M); $(tail -1 $PLAY_DIR/play.log | cut -c1-50)" >> $O
 kill $(cat $PLAY_DIR/play.pid) 2>/dev/null; [ -n "$SC_" ] && kill $(cat $PLAY_DIR/store/store.pid) 2>/dev/null; kill_children
+# The hosts' logs leave the board as each app's do (run_apps.sh), into $PLAY_DIR/hosts/<process>-<pid>.stderr: Play
+# services, the Play Store and each process they started for their own components ("[WL-PROC] started <process>
+# pid=<pid>" in their logs). They record what the hosts did for the apps (each client's uid, the calls served, why a
+# host died); left on the board they fill /data round after round. Each hdc call reads /dev/null: a Windows hdc reads
+# its standard input, which in the loop is the rest of the list.
+save_host_log() { local f=$PLAY_DIR/hosts/$1-$2.stderr
+  timeout 300 $WHDC -t $T shell "cat /data/service/el1/public/appspawnx/adapter_child_$2.stderr" </dev/null 2>/dev/null | tr -d '\r' > "$f"
+  if [ -s "$f" ]; then timeout 60 $WHDC -t $T shell "rm -f /data/service/el1/public/appspawnx/adapter_child_$2.stderr" </dev/null >/dev/null 2>&1
+  else rm -f "$f"; fi; }
+mkdir -p $PLAY_DIR/hosts
+for h in "com.google.android.gms $C" "com.android.vending $SC_"; do
+  set -- $h; [ -n "${2:-}" ] || continue
+  save_host_log $1 $2
+  [ -s $PLAY_DIR/hosts/$1-$2.stderr ] || continue
+  grep -o -E '\[WL-PROC\] started [^ ]+ pid=[0-9]+' $PLAY_DIR/hosts/$1-$2.stderr | while read -r _ _ proc pidv; do
+    save_host_log "$proc" "${pidv#pid=}"; done
+done
+[ -e $PLAY_DIR/dead ] && exit 2
+exit 0
