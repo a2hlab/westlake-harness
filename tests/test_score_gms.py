@@ -76,6 +76,21 @@ class ScoreGmsTest(unittest.TestCase):
         self.assertEqual(registered, {'f.app'})
         self.assertIsNone(self.score.push(self.logs / 'missing'))
 
+    def test_widened_exceptions_from_the_host_logs(self):
+        play = self.logs / 'play'
+        self.assertIsNone(self.score.widened_exceptions(play))          # no host logs: unknown
+        hosts = play / 'hosts'
+        hosts.mkdir(parents=True)
+        (hosts / 'com.google.android.gms-100.stderr').write_text('[WL-PROC] started x pid=1\n')
+        self.assertEqual(self.score.widened_exceptions(play), set())     # logs, and no widening
+        (hosts / 'com.google.android.gms-100.stderr').write_text(
+            'x [WL-GOOGLE-POLICY] identity_service_compat=true services=212,213 store=phenotype\n')
+        (hosts / 'com.google.android.gms.ui-101.stderr').write_text(
+            '[WL-GOOGLE-POLICY] identity_service_compat=true services=212,213,91,44,5,29 store=phenotype\n')
+        (hosts / 'com.android.vending-102.stderr').write_text(
+            '[WL-GOOGLE-POLICY] identity_service_compat=false restored=true\n')
+        self.assertEqual(self.score.widened_exceptions(play), {212, 213, 91, 44, 5, 29})
+
 
 if __name__ == '__main__':
     unittest.main()
