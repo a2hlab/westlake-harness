@@ -12,6 +12,10 @@ as score_store.py reads the Play Store's: the apps whose two-way calls were answ
 calls were followed by a call back on an interface of the same package.
 With PLAY_DIR (the round's Play services directory), it also counts the apps with an FCM registration, from the
 token counts the round recorded (play-tokens.log: counts only, no token leaves the board).
+Also with PLAY_DIR, it reads the hosts' logs ($PLAY_DIR/hosts) and says first if Play services ran with Westlake's
+widened uncertified-device exception list (WESTLAKE_GOOGLE_IDENTITY_SERVICE_COMPAT): those services then pass Play
+services' uncertified-device check, so the round's answers for them are not what an unmodified uncertified device
+gets, and the round has to say so.
 Only counts, service names and package names are printed. LIST=<file> limits it to those packages."""
 
 import collections
@@ -129,6 +133,26 @@ def interfaces(logs, only=None):
     return calls, replied, failed, oneway, called_back
 
 
+# Westlake's GoogleIdentityServiceConfig, in Play services' log, when it widened (true) or restored (false) the
+# uncertified-device exception list before Play services started.
+EXCEPTIONS = re.compile(r'\[WL-GOOGLE-POLICY\] identity_service_compat=(true|false)(?: services=([0-9,]+))?')
+
+
+def widened_exceptions(play_dir):
+    """The service ids the round's Play services hosts added to Play services' uncertified-device exception list
+    ($PLAY_DIR/hosts/*.stderr), or an empty set if no host log says it did. None if there are no host logs."""
+    hosts = Path(play_dir) / 'hosts'
+    logs = sorted(hosts.glob('*.stderr')) if hosts.is_dir() else []
+    if not logs:
+        return None
+    services = set()
+    for path in logs:
+        for m in EXCEPTIONS.finditer(path.read_text(errors='replace')):
+            if m.group(1) == 'true' and m.group(2):
+                services.update(int(x) for x in m.group(2).split(',') if x)
+    return services
+
+
 def push(play_dir, only=None):
     """The apps with an FCM token file and those with at least one registration, from the last count the round
     recorded per app (play-tokens.log lines "T <package> <registrations> <messengers>")."""
@@ -153,6 +177,15 @@ def main():
         only = {x.strip() for x in open(os.environ['LIST']) if x.strip()}
     listed = (lambda apps: f'  {" ".join(sorted(apps))}') if show_apps else (lambda apps: '')
     names = service_names()
+    if os.environ.get('PLAY_DIR'):
+        added = widened_exceptions(os.environ['PLAY_DIR'])
+        if added:
+            print("NOTE: Play services ran with Westlake's widened uncertified-device exception list "
+                  "(WESTLAKE_GOOGLE_IDENTITY_SERVICE_COMPAT). These services passed its uncertified-device check "
+                  "only because of it: " + ', '.join(f'{names.get(s, "service")} ({s})' for s in sorted(added)))
+        elif added is None:
+            print("NOTE: no Play services host logs in $PLAY_DIR/hosts, so whether its uncertified-device exception "
+                  "list was widened is unknown")
     asked, answered, refused = broker(logs, only)
     results = connections(logs, only)
     if asked:
