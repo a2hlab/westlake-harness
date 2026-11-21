@@ -3,8 +3,11 @@
 # launcher (probe_source_app.py). Prints the child pid; pulls its stderr to inputs/logs/<outname>.stderr.
 # EXTRA: more launcher arguments. KEEP_RUNNING=1 leaves other Westlake processes alone (a client beside
 # the shared Play services process); KEEP_STAGE names the app stages to keep then, space-separated (the Play
-# services host's, and the Play Store host's beside it). Exit 3: disk guard.
+# services host's, and the Play Store host's beside it). Exit 3: disk guard. A shared board (HDC_SHARED=1, see
+# config.sh) needs PROTECT_LIST, and its stages and PROTECT_UIDS' zygotes stay; the board is never rebooted.
 . "$(dirname "$0")/config.sh"; need WL_FW WL_SHIM
+# Without the list, every stage on a shared board would be deleted, another agent's running launches' too.
+[ "${HDC_SHARED:-0}" = 1 ] && [ -z "${PROTECT_LIST:-}" ] && { echo "$1: HDC_SHARED=1 needs PROTECT_LIST (see device/config.sh)" >&2; exit 2; }
 app=$1; out=$2; fw=$WL_FW; shim=$WL_SHIM; cd $WL_SC
 # Free space on the board's /data in GB, empty when the board did not answer: hdc's error line is not
 # a df line, and read as one it gave 0 GB, which stopped a test while the board was only out of reach.
@@ -39,9 +42,9 @@ keep_data() {
 }
 # One app at a time: drop old app stages and source runtimes (~290 MB each), or /data fills.
 if [ -n "${KEEP_RUNNING:-}" ]; then
-  timeout 120 $WHDC -t $T shell "$(keep_data "$KEEP_PATTERN") for d in /data/local/tmp/a2hlab-app-* $HOST_FILES/a2hlab-source-*; do case \$d in $KEEP_PATTERN) ;; *) rm -rf \$d ;; esac; done" >/dev/null 2>&1
+  timeout 120 $WHDC -t $T shell "$(keep_data "$KEEP_PATTERN") for d in /data/local/tmp/a2hlab-app-* $HOST_FILES/a2hlab-source-*; do $(protect_test) case \$d in $KEEP_PATTERN) ;; *) rm -rf \$d ;; esac; done" >/dev/null 2>&1
 else
-  timeout 300 $WHDC -t $T shell 'P=$(pidof appspawn-x); [ -n "$P" ] && kill $P; sleep 1; '"$(keep_data @none@)"' for d in /data/local/tmp/a2hlab-app-* '"$HOST_FILES"'/a2hlab-source-*; do [ -e "$d" ] && rm -rf "$d"; done' >/dev/null 2>&1; sleep 1
+  timeout 300 $WHDC -t $T shell "$(zygote_kill)"' sleep 1; '"$(keep_data @none@)"' for d in /data/local/tmp/a2hlab-app-* '"$HOST_FILES"'/a2hlab-source-*; do '"$(protect_test)"' [ -e "$d" ] && rm -rf "$d"; done' >/dev/null 2>&1; sleep 1
 fi
 # A launcher that knows the option moves the kept data in; an older one gets a fresh directory, and the kept
 # data waits for a launcher that does.
@@ -60,7 +63,7 @@ fi
 MIN_BOARD_GB=${MIN_BOARD_GB:-8}; MIN_LOCAL_GB=${MIN_LOCAL_GB:-30}
 if [ -n "$FREE" ] && [ "$FREE" -lt "$MIN_BOARD_GB" ]; then
   KEEP=$(python3 -c "import json;print(json.load(open('$V/out/$fw/device-report.json'))['stage'])" 2>/dev/null)
-  timeout 600 $WHDC -t $T shell "for d in /data/local/tmp/a2hlab-framework-*; do [ \"\$d\" = \"$KEEP\" ] || rm -rf \"\$d\"; done" >/dev/null 2>&1
+  timeout 600 $WHDC -t $T shell "for d in /data/local/tmp/a2hlab-framework-*; do $(protect_test) [ \"\$d\" = \"$KEEP\" ] || rm -rf \"\$d\"; done" >/dev/null 2>&1
   FREE=$(board_free)
 fi
 LOCAL=$(df -k $WL_SC ${LOCAL_DISKS:-} 2>/dev/null | tail -n +2 | awk '{print int($4/1048576)}' | sort -n | head -1)
@@ -70,7 +73,8 @@ if [ -z "$FREE" ] || [ "$FREE" -lt "$MIN_BOARD_GB" ] || [ "$LOCAL" -lt "$MIN_LOC
 fi
 # Link gate (on while inputs/LINK-GATE exists; it holds the minimum MB/s, default 0.5): over a slow
 # wireless spell the launcher's file sends time out and the app is lost. A board reboot ended
-# slow spells that hours of waiting did not, so two slow tests in a row reboot it.
+# slow spells that hours of waiting did not, so two slow tests in a row reboot it. Not a shared board
+# (HDC_SHARED=1): a reboot ends the other work on it (and drops parameters set until reboot), so it waits.
 link_rate() {
   F=$(mktemp); head -c 10000000 /dev/urandom > $F; s=$(date +%s.%N)
   if timeout 60 $WHDC -t $T file send $F /data/local/tmp/link10m.bin >/dev/null 2>&1; then
@@ -83,7 +87,7 @@ while [ -f $IN/LINK-GATE ]; do
   min=$(head -c 8 $IN/LINK-GATE | tr -dc '0-9.'); rate=$(link_rate)
   [ "$(echo "$rate >= ${min:-0.5}" | bc -l)" = 1 ] && break
   slow=$((slow + 1))
-  if [ $slow -ge 2 ]; then
+  if [ $slow -ge 2 ] && [ "${HDC_SHARED:-0}" != 1 ]; then
     echo "[launch.sh] $(date +%H:%M) link ${rate:0:5} MB/s < ${min:-0.5}: rebooting the board" >&2
     timeout 30 $WHDC -t $T shell reboot >/dev/null 2>&1; slow=0; sleep 90; hdc_reconnect; sleep 30
   else

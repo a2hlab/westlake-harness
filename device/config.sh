@@ -32,9 +32,24 @@ RECV=$IN/.recv; mkdir -p "$RECV" "$IN/logs" "$WL_SC/logs"
 recv_to() { (cd "$RECV" && timeout "${3:-60}" $WHDC -t $T file recv "$1" "$2" >/dev/null 2>&1); }
 hdc_reconnect() { timeout 60 $WHDC tconn $T >/dev/null 2>&1; }
 # A hung local hdc server still lists the board but times out every shell call (a big file send
-# beside other transfers left it at 100% CPU). Restart it when the board does not answer.
+# beside other transfers left it at 100% CPU). Restart it when the board does not answer: returns 1.
+# A shared board (HDC_SHARED=1) is one other work also uses at the same time: a second agent's launches on this
+# board, or another board on this hdc server. A restart ends their hdc sessions, so then the server is left
+# running: wait, reconnect, and return 2. The round also never reboots a shared board (launch.sh), and leaves the
+# stages in PROTECT_LIST and the zygotes of PROTECT_UIDS alone (below).
 hdc_heal() { timeout 20 $WHDC -t $T shell echo ok 2>/dev/null | grep -q ok && return 0
+  if [ "${HDC_SHARED:-0}" = 1 ]; then sleep 30; hdc_reconnect; return 2; fi
   timeout 20 $WHDC kill -r >/dev/null 2>&1; sleep 3; hdc_reconnect; return 1; }
+# PROTECT_LIST: a file on the board naming stage directories (one per line) that are not this round's, e.g. the
+# stages of another agent's running launches. No launch deletes them. When the file is missing on the board,
+# nothing is deleted (grep's exit 2 counts as listed). Prints the board-side test for a loop over $d.
+protect_test() { [ -n "${PROTECT_LIST:-}" ] && echo "grep -qxF \"\$d\" $PROTECT_LIST; [ \$? = 1 ] || continue;"; }
+# PROTECT_UIDS: uids (space-separated) of launches that are not this round's, e.g. apps another agent runs under
+# their own host bundles. No zygote with a child under one of them is stopped. Prints a board-side function:
+# "spared <zygote>" is true for such a zygote. Empty, no zygote is spared (as before).
+spare_fn() { echo "spared() { for c in \$(ps -A -o pid=,ppid= | grep \" \$1\$\" | grep -o '^ *[0-9]*'); do u=\$(ps -o uid= -p \$c | tail -n 1 | grep -o '[0-9]*'); [ -n \"\$u\" ] || continue; case \" ${PROTECT_UIDS:-} \" in *\" \$u \"*) return 0 ;; esac; done; return 1; };"; }
+# Board-side: stop the appspawn-x zygotes, except PROTECT_UIDS' (see spare_fn).
+zygote_kill() { echo "$(spare_fn) for z in \$(pidof appspawn-x); do spared \$z && continue; kill \$z; done;"; }
 # A host bundle's uid on the board (default the window host's, which every app runs under; the Play hosts may run
 # under org.westlake.playhost): the uid of its ability process.
 host_uid() { timeout 20 $WHDC -t $T shell "ps -ef" 2>/dev/null | tr -d '\r' | awk -v b="${1:-org.westlake.imehost}" '$8==b {print $1; exit}'; }
@@ -45,7 +60,7 @@ bundle_uid() { timeout 20 $WHDC -t $T shell "bm dump -n $1" 2>/dev/null | tr -d 
 # A launch that keeps running (KEEP_RUNNING: the Play hosts) leaves its zygote, so after a shared round both
 # hosts' zygotes stayed on the board, childless, until the next unshared launch.
 kill_children() { local u=${1:-$(host_uid)}; [ -n "$u" ] || return 0
-  timeout 30 $WHDC -t $T shell "for p in \$(ps -ef | grep '^$u ' | grep -v -e org.westlake.imehost -e org.westlake.playhost | grep -v grep | sed 's/  */ /g' | cut -d' ' -f2); do kill -9 \$p; done; P=\$(pidof appspawn-x); [ -n \"\$P\" ] && kill \$P; true" >/dev/null 2>&1; }
+  timeout 30 $WHDC -t $T shell "for p in \$(ps -ef | grep '^$u ' | grep -v -e org.westlake.imehost -e org.westlake.playhost | grep -v grep | sed 's/  */ /g' | cut -d' ' -f2); do kill -9 \$p; done; $(zygote_kill) true" >/dev/null 2>&1; }
 # Stop what a failed or repeated launch left on the board. The stop after an app's turn needs the child the
 # launcher reported: a launcher call that failed after the board had started the app (the WSL interop error
 # "UtilAcceptVsock ... failed 110") reported none, and a launch repeated after "board disconnected" reported only
@@ -54,9 +69,9 @@ kill_children() { local u=${1:-$(host_uid)}; [ -n "$u" ] || return 0
 # zygotes of the Play hosts (a child named com.google.android.gms... or com.android.vending...), which a shared
 # round keeps for all its apps. The board is asked rather than the hosts' logs, which a round does not always
 # export. All Westlake processes share the host app's uid, so the zygote is what marks a launch's processes.
-# Prints "stray <zygote> <pids>" for each; STRAYS_DRY=1 only prints.
+# Prints "stray <zygote> <pids>" for each; STRAYS_DRY=1 only prints. PROTECT_UIDS' zygotes are not strays.
 stop_strays() {
-  timeout 40 $WHDC -t $T shell "for z in \$(pidof appspawn-x); do [ \"\$(ps -o ppid= -p \$z | tail -n 1 | grep -o '[0-9]*')\" = 1 ] || continue; P=\$(ps -A -o pid=,ppid= | grep \" \$z\$\" | grep -o '^ *[0-9]*'); host=; for p in \$P; do case \"\$(ps -o args= -p \$p | tail -n 1)\" in com.google.android.gms*|com.android.vending*) host=1 ;; esac; done; [ -n \"\$host\" ] && continue; Q=\$(for p in \$P; do ps -A -o pid=,ppid= | grep \" \$p\$\" | grep -o '^ *[0-9]*'; done); echo stray \$z \$P \$Q; ${STRAYS_DRY:+: }kill -9 \$z \$P \$Q; done; true" </dev/null 2>/dev/null | tr -d '\r' | grep '^stray '; }
+  timeout 40 $WHDC -t $T shell "$(spare_fn) for z in \$(pidof appspawn-x); do [ \"\$(ps -o ppid= -p \$z | tail -n 1 | grep -o '[0-9]*')\" = 1 ] || continue; spared \$z && continue; P=\$(ps -A -o pid=,ppid= | grep \" \$z\$\" | grep -o '^ *[0-9]*'); host=; for p in \$P; do case \"\$(ps -o args= -p \$p | tail -n 1)\" in com.google.android.gms*|com.android.vending*) host=1 ;; esac; done; [ -n \"\$host\" ] && continue; Q=\$(for p in \$P; do ps -A -o pid=,ppid= | grep \" \$p\$\" | grep -o '^ *[0-9]*'; done); echo stray \$z \$P \$Q; ${STRAYS_DRY:+: }kill -9 \$z \$P \$Q; done; true" </dev/null 2>/dev/null | tr -d '\r' | grep '^stray '; }
 # launcher arguments for the runtime-library override every launch uses
 # WL_RUNTIME_ADD: libraries of the override build the framework stage lacks, added for this launch,
 # space-separated. Unset, it is the platform Cronet library (libmainlinecronet.<version>.so, which the

@@ -15,7 +15,8 @@ netprobe() { [ "${NETPROBE:-1}" = 0 ] && return 0; mkdir -p $IN/logs/$TAG
   echo "$(date +%H:%M) $1 $($DEVICE/netprobe.sh $IN/logs/$TAG/netprobe-$1.json 2>&1 | tail -1)" >> $L; }
 for try in $(seq 1 ${TRIES:-40}); do
   for p in $(pgrep -fx "/bin/bash $DEVICE/play/start_play.sh") $(pgrep -fx "/bin/bash $DEVICE/play/start_store.sh"); do pkill -P $p; kill $p; done 2>/dev/null
-  hdc_heal || echo "$(date +%H:%M) hdc server restarted" >> $L
+  hdc_heal; case $? in 1) echo "$(date +%H:%M) hdc server restarted" >> $L ;;
+    2) echo "$(date +%H:%M) board did not answer; shared hdc server left running" >> $L ;; esac
   kill_children
   echo "$(date +%H:%M) try $try" >> $L
   # The board's state, to read the round's results against. After three days up, its swap was full and its WiFi
