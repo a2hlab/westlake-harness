@@ -1932,6 +1932,67 @@ def is_unpacked(record: dict[str, Any]) -> bool:
     return record.get("origin") == "unpacked"
 
 
+# A packaged library larger than this is not read whole: readelf, the symbol tables and the JNI
+# registration scan would take minutes and gigabytes. Its dynamic segment still is, for the SONAME
+# and DT_NEEDED the routing rows need: Delta Force's 545 MiB libUE4.so needs the APK's
+# libc++_shared.so, and without its DT_NEEDED the launch args did not route it, so it bound the
+# board's copy and stopped on a std::__ndk1 symbol the board's libc++ does not have.
+OVERSIZED_ELF_BYTES = 512 * 1024 * 1024
+
+
+def _elf_dynamic_names(member: Any) -> tuple[str | None, list[str]] | None:
+    """The SONAME and DT_NEEDED names of a 64-bit little-endian ELF, read from its dynamic segment
+    through a seekable file object; None for anything else or a segment that does not parse."""
+
+    def read(offset: int, size: int) -> bytes:
+        member.seek(offset)
+        return member.read(size)
+
+    header = read(0, 64)
+    if len(header) < 64 or header[:4] != b"\x7fELF" or header[4] != 2 or header[5] != 1:
+        return None
+    phoff = struct.unpack_from("<Q", header, 0x20)[0]
+    phentsize, phnum = struct.unpack_from("<HH", header, 0x36)
+    if phentsize < 56 or phnum == 0:
+        return None
+    table = read(phoff, phentsize * phnum)
+    if len(table) < phentsize * phnum:
+        return None
+    loads: list[tuple[int, int, int]] = []
+    dynamic: tuple[int, int] | None = None
+    for index in range(phnum):
+        p_type, _flags, p_offset, p_vaddr, _paddr, p_filesz = struct.unpack_from("<IIQQQQ", table, index * phentsize)
+        if p_type == 1:
+            loads.append((p_vaddr, p_offset, p_filesz))
+        elif p_type == 2:
+            dynamic = (p_offset, p_filesz)
+    if dynamic is None:
+        return None
+    entries = read(*dynamic)
+    strtab: int | None = None
+    soname: int | None = None
+    needed: list[int] = []
+    for offset in range(0, len(entries) - 15, 16):
+        tag, value = struct.unpack_from("<qQ", entries, offset)
+        if tag == 0:
+            break
+        if tag == 1:
+            needed.append(value)
+        elif tag == 5:
+            strtab = value
+        elif tag == 14:
+            soname = value
+    base = next((offset + strtab - vaddr for vaddr, offset, size in loads
+                 if strtab is not None and vaddr <= strtab < vaddr + size), None)
+    if base is None:
+        return None
+
+    def string(index: int) -> str:
+        return read(base + index, 4096).split(b"\0", 1)[0].decode("utf-8", "replace")
+
+    return (string(soname) if soname is not None else None), sorted({string(index) for index in needed})
+
+
 def _append_elf_records(
     archive: zipfile.ZipFile, prefix: str, records: list[dict[str, Any]]
 ) -> None:
@@ -1939,16 +2000,22 @@ def _append_elf_records(
         if not (name.startswith("lib/") and name.endswith(".so")):
             continue
         info = archive.getinfo(name)
-        if info.file_size > 512 * 1024 * 1024:
-            records.append(
-                {
-                    "name": prefix + name,
-                    "archive_entry": name,
-                    "split_apk": prefix.removesuffix("!") or None,
-                    "abi": abi_from_archive_name(name),
-                    "error": "oversized ELF entry",
-                }
-            )
+        if info.file_size > OVERSIZED_ELF_BYTES:
+            record = {
+                "name": prefix + name,
+                "archive_entry": name,
+                "split_apk": prefix.removesuffix("!") or None,
+                "abi": abi_from_archive_name(name),
+                "error": "oversized ELF entry",
+            }
+            try:
+                with archive.open(name) as member:
+                    names = _elf_dynamic_names(member)
+            except (OSError, ValueError, EOFError, struct.error, zipfile.BadZipFile):
+                names = None
+            if names is not None:
+                record["soname"], record["needed"] = names
+            records.append(record)
             continue
         try:
             record = read_elf(
