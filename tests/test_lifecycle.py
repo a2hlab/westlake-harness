@@ -184,6 +184,21 @@ class FlatScreens(unittest.TestCase):
                 s = lifecycle.score_paths([log])[0]
             self.assertEqual((s.screen, s.rung_name), ("app", "drawing"))
 
+    def test_a_secure_window_is_not_read_from_the_screenshot(self) -> None:
+        """Prime Video: FLAG_SECURE made its window an OH security layer, which the screenshot leaves
+        out; the host shows where it draws."""
+        import tempfile
+        from unittest import mock
+        from westlake_gap import lifecycle
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp) / "avod.stderr"
+            log.write_text("kRegJNI loop done\nsBindAppDone=true\nDecorView\n[OH_WSA-relayout] x\n"
+                           "[OH_WSA] session 2842 FLAG_SECURE=true -> OH security layer rc=0\n")
+            with mock.patch.object(lifecycle, "run_host_screens", return_value=[]), \
+                    mock.patch.object(lifecycle, "screen_state", return_value="host"):
+                s = lifecycle.score_paths([log])[0]
+            self.assertEqual((s.screen, s.rung_name, s.anomaly), ("secure", "drawing", None))
+
 
 class FirstBlocker(unittest.TestCase):
     def test_survived_upcall_miss_is_not_the_blocker(self) -> None:

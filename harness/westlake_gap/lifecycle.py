@@ -302,6 +302,9 @@ def _against(pixels: list[int], page: list[int]) -> str:
     return "partial" if sum(1 for d in diffs if d > 32) >= 8 else "host"
 
 
+# The bridge's line for a window the app marked FLAG_SECURE (WindowSessionAdapter.nativeSetWindowSecure).
+_SECURE_WINDOW = re.compile(r"FLAG_SECURE=true -> OH security layer rc=0")
+
 # A screenshot whose app area is this much one colour shows nothing: no text, no icon, no edge. An
 # app's own screen, even a near-empty one, carries something (a 100-pixel logo is 0.4% of the area).
 FLAT_SHARE = 0.999
@@ -569,6 +572,10 @@ def score_paths(paths: list[Path]) -> list[Score]:
         text = path.read_text(errors="replace")
         s = score(path.stem, text)
         s.screen = screen_state(path.with_suffix(".jpeg"), hosts)
+        if s.screen in ("host", "flat", "app") and _SECURE_WINDOW.search(text):
+            # FLAG_SECURE made its window an OH security layer, which screenshots leave out, as Android's
+            # do: what the screenshot shows says nothing about the app (Prime Video drew 38 frames).
+            s.screen = "secure"
         flat = flat_colour(path.with_suffix(".jpeg")) if s.screen == "app" else None
         if flat is not None:
             # A window is up and shows nothing: not the app's content, whatever the log reached.
