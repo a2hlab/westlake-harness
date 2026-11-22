@@ -239,6 +239,26 @@ class Evidence(unittest.TestCase):
         lifecycle.add_evidence(s, "kRegJNI loop done\n" + self.CRASH, self.MAPS)
         self.assertEqual(s.blocker, "SIGSEGV on thread EGLThread in libGLES_mali.z.so+0x34de28")
 
+    def test_without_a_process_map_the_shims_witness_places_the_crash(self) -> None:
+        """Round hkid1: 25 PairIP crashes read only "SIGSEGV on thread <pre-initialize" because the run sampled
+        no process map. The shim's witness of the same signal on the same thread names the library itself."""
+        from westlake_gap import evidence, lifecycle
+        lib = "/data/local/tmp/asx/lib/arm64-v8a/libpairipcore.so"
+        stderr = ("kRegJNI loop done\n"
+                  "[WESTLAKE-SIGNAL-WITNESS] signal=0xb code=0x1 tid=0x4bca thread=<pre-initialize pc=0x7efa8760a4 "
+                  "x30=0x7efa8a1e40 at " + lib + "+0x360a4 insn=0x38ae69b1 next=0x93407dee from " + lib + "+0x61e40\n"
+                  "Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR) fault addr 0x7f09a6d000\n"
+                  "Thread: 19402 \"<pre-initialize\"\nRegisters:\n    x30: 0x0000007efa8a1e40\n    pc: 0x0000007efa8760a4\n")
+        site = evidence.crash_site(stderr, "")
+        self.assertEqual((site["pc"]["library"], site["pc"]["offset"], site["caller"]["offset"], site["from_witness"]),
+                         ("libpairipcore.so", "0x360a4", "0x61e40", True))
+        s = lifecycle.score("app", stderr)
+        lifecycle.add_evidence(s, stderr, "")
+        self.assertTrue(s.blocker.endswith(" in libpairipcore.so+0x360a4"), s.blocker)
+        # Another thread's witness does not place it.
+        other = stderr.replace("tid=0x4bca", "tid=0x4bcb")
+        self.assertIsNone(evidence.crash_site(other, ""))
+
     def test_a_fault_in_the_runtime_is_named_by_its_caller(self) -> None:
         """A SIGSEGV in musl's strlen says only that a pointer was bad. The shim's frame walk for the
         same thread names the game library that passed it; ART and Java frames are passed over."""

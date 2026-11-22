@@ -42,23 +42,38 @@ def place(address: int, maps: list[tuple[int, int, int, str]]) -> tuple[str, int
 
 
 def crash_site(stderr: str, maps_text: str) -> dict | None:
-    """Where the first fatal signal in the log happened, by library and file offset."""
+    """Where the first fatal signal in the log happened, by library and file offset.
+
+    Without a process map (the run sampled none: 25 of round hkid1's PairIP crashes), the shim's witness of
+    the same signal on the same thread places it: the shim reads /proc/self/maps at the signal and prints
+    library and file offset itself. Such a site says "from_witness"."""
     fatal = _FATAL.search(stderr)
-    if fatal is None or not maps_text:
+    if fatal is None:
         return None
     block = stderr[fatal.start():fatal.start() + 4000]
     registers = {name: int(value, 16) for name, value in _REGISTER.findall(block)}
-    maps = parse_maps(maps_text)
     site = {"signal": fatal[2]}
     thread = _THREAD.search(block)
     if thread:
         site["thread"], site["tid"] = thread[2], int(thread[1])
-    for name, key in (("pc", "pc"), ("x30", "caller")):
-        if name in registers:
-            placed = place(registers[name], maps)
-            if placed:
-                site[key] = {"library": placed[0].rsplit("/", 1)[-1], "path": placed[0], "offset": hex(placed[1])}
-    return site if "pc" in site else None
+    if maps_text:
+        maps = parse_maps(maps_text)
+        for name, key in (("pc", "pc"), ("x30", "caller")):
+            if name in registers:
+                placed = place(registers[name], maps)
+                if placed:
+                    site[key] = {"library": placed[0].rsplit("/", 1)[-1], "path": placed[0], "offset": hex(placed[1])}
+        return site if "pc" in site else None
+    witness = next((w for w in signal_witnesses(stderr)
+                    if w["signal"] == site["signal"] and w["tid"] == site.get("tid", w["tid"])
+                    and "library" in w["pc"]), None)
+    if witness is None:
+        return None
+    site["pc"] = witness["pc"]
+    if "library" in witness["caller"]:
+        site["caller"] = witness["caller"]
+    site["from_witness"] = True
+    return site
 
 
 _DUMP = re.compile(r"DALVIK THREADS \(\d+\):\n")

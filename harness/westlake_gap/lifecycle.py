@@ -473,8 +473,8 @@ def add_evidence(s: Score, text: str, maps_text: str | None, cppcrash_text: str 
         # SIGABRT itself lands, is the same for every abort.
         if aborted and origin:
             s.blocker += " (from %s+%s)" % (origin["library"], origin["offset"])
-    if maps_text and s.fatal:
-        s.crash_site = evidence.crash_site(text, maps_text)
+    if s.fatal:
+        s.crash_site = evidence.crash_site(text, maps_text or "")
         if s.crash_site and s.blocker_category == "native-crash" and not (aborted and frames):
             pc = s.crash_site["pc"]
             s.blocker += " in %s+%s" % (pc["library"], pc["offset"])
