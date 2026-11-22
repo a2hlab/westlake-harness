@@ -3588,6 +3588,11 @@ _PROTECTED_SDKS = [
      ["of the 69 HK corpus apps packaging it that ran in the 1000-app round (build 179), 58 crashed "
       "at start right after loading it (the last library loaded each time; the fault frame names it "
       "in 30, the others have no backtrace), 5 hung in VMRunner.executeVM, 6 drew"]),
+    ("libdexprotector.so", "DexProtector",
+     "Licel's app protection: its JNI_OnLoad checks the environment and, refusing it, returns an error code "
+     "(-500) instead of a JNI version, so ART reports \"Bad JNI version returned from JNI_OnLoad\" and the "
+     "app's Application cannot be created",
+     ["round hkid1 (D600, 327 apps): com.flashget.parentalcontrol and com.sand.airdroidkidp, both -500 at bind"]),
 ]
 
 
