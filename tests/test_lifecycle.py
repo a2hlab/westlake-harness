@@ -129,6 +129,62 @@ class ScreenshotConfirms(unittest.TestCase):
                 self.assertEqual(lifecycle.score_paths([log])[0].rung_name, "bound", "the host screen: nothing drew")
 
 
+class FlatScreens(unittest.TestCase):
+    def _shot(self, path: Path, fill, logo=None) -> Path:
+        from PIL import Image, ImageDraw
+        shot = Image.new("RGB", (1200, 1920), fill)
+        draw = ImageDraw.Draw(shot)
+        draw.rectangle((40, 20, 300, 70), fill=(30, 30, 30))       # the status bar's clock
+        draw.rectangle((470, 1890, 730, 1905), fill=(170, 170, 170))  # the navigation handle
+        if logo:
+            draw.rectangle(logo, fill=(10, 100, 60))
+        shot.save(path, quality=90)
+        return path
+
+    def test_one_colour_under_the_bars_is_flat(self) -> None:
+        """bestmirror (hkid1): a white window with only the status bar and the handle over it."""
+        try:
+            import PIL  # noqa: F401
+        except ImportError:
+            self.skipTest("Pillow is required")
+        import tempfile
+        from westlake_gap import lifecycle
+        with tempfile.TemporaryDirectory() as temp:
+            white = self._shot(Path(temp) / "white.jpeg", (255, 255, 255))
+            colour = lifecycle.flat_colour(white)
+            self.assertIsNotNone(colour)
+            self.assertTrue(all(c >= 240 for c in colour), colour)
+            grey = self._shot(Path(temp) / "grey.jpeg", (50, 50, 50))
+            self.assertIsNotNone(lifecycle.flat_colour(grey))
+            # A splash with a logo, or any screen with text, is not flat: a 100-pixel square is enough.
+            logo = self._shot(Path(temp) / "logo.jpeg", (255, 255, 255), logo=(550, 910, 650, 1010))
+            self.assertIsNone(lifecycle.flat_colour(logo))
+
+    def test_a_flat_screen_after_drawing_is_not_the_app(self) -> None:
+        try:
+            import PIL  # noqa: F401
+        except ImportError:
+            self.skipTest("Pillow is required")
+        import tempfile
+        from unittest import mock
+        from westlake_gap import lifecycle
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp) / "bestmirror.stderr"
+            log.write_text("kRegJNI loop done\nsBindAppDone=true\nDecorView\n[OH_WSA-relayout] x\n")
+            self._shot(Path(temp) / "bestmirror.jpeg", (255, 255, 255))
+            with mock.patch.object(lifecycle, "run_host_screens", return_value=[]), \
+                    mock.patch.object(lifecycle, "screen_state", return_value="app"):
+                s = lifecycle.score_paths([log])[0]
+            self.assertEqual((s.screen, s.rung_name, s.blocking), ("flat", "view", True))
+            self.assertIn("one flat colour", s.anomaly)
+            # The same log over the app's own screen stays drawing.
+            self._shot(Path(temp) / "bestmirror.jpeg", (255, 255, 255), logo=(100, 300, 1100, 900))
+            with mock.patch.object(lifecycle, "run_host_screens", return_value=[]), \
+                    mock.patch.object(lifecycle, "screen_state", return_value="app"):
+                s = lifecycle.score_paths([log])[0]
+            self.assertEqual((s.screen, s.rung_name), ("app", "drawing"))
+
+
 class FirstBlocker(unittest.TestCase):
     def test_survived_upcall_miss_is_not_the_blocker(self) -> None:
         from westlake_gap import lifecycle

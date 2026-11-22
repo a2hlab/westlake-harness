@@ -302,6 +302,37 @@ def _against(pixels: list[int], page: list[int]) -> str:
     return "partial" if sum(1 for d in diffs if d > 32) >= 8 else "host"
 
 
+# A screenshot whose app area is this much one colour shows nothing: no text, no icon, no edge. An
+# app's own screen, even a near-empty one, carries something (a 100-pixel logo is 0.4% of the area).
+FLAT_SHARE = 0.999
+
+
+def flat_colour(image: Path) -> tuple[int, int, int] | None:
+    """The colour of a screenshot whose app area (below the status bar, above the navigation handle)
+    is one flat colour, else None. On the D600 the host page is black, so a plain white or grey window
+    read as the app: 13 of hkid1's 124 clean apps showed nothing at all, 10 of them PremiumHelper apps
+    waiting on a splash-screen hand-off Westlake never made. The phone's host page is white, which
+    caught the white ones there as the host screen."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+    if not image.exists():
+        return None
+    shot = Image.open(image).convert("RGB")
+    width, height = shot.size
+    area = shot.crop((0, int(height * 0.05), width, int(height * 0.97))).resize((120, 200))
+    pixels = list(getattr(area, "get_flattened_data", area.getdata)())
+    counts: dict[tuple[int, int, int], int] = {}
+    for r, g, b in pixels:
+        key = (r >> 3, g >> 3, b >> 3)
+        counts[key] = counts.get(key, 0) + 1
+    colour, count = max(counts.items(), key=lambda item: item[1])
+    if count / len(pixels) < FLAT_SHARE:
+        return None
+    return (colour[0] << 3, colour[1] << 3, colour[2] << 3)
+
+
 def run_host_screens(images: list[Path]) -> list[Path]:
     """The host page a run's screenshots were taken over: the one that most of them show bare. A dark
     app is close to the black page (spacebeam's screen differs from it by 0.15 on average), so on the
@@ -538,6 +569,14 @@ def score_paths(paths: list[Path]) -> list[Score]:
         text = path.read_text(errors="replace")
         s = score(path.stem, text)
         s.screen = screen_state(path.with_suffix(".jpeg"), hosts)
+        flat = flat_colour(path.with_suffix(".jpeg")) if s.screen == "app" else None
+        if flat is not None:
+            # A window is up and shows nothing: not the app's content, whatever the log reached.
+            s.screen = "flat"
+            if s.rung_name == "drawing":
+                s.rung, s.rung_name, s.blocking = RUNGS.index("view"), "view", True
+                s.anomaly = ("drew, but the screenshot is one flat colour (rgb %d,%d,%d) where the app should "
+                             "show: a blank window, such as a splash screen that never ended" % flat)
         if s.screen == "host" and s.rung_name == "drawing":
             # The screenshot decides: it drew, and is no longer on screen.
             s.rung, s.rung_name, s.blocking = RUNGS.index("view"), "view", True
