@@ -52,6 +52,26 @@ child_log() {
   [ "${4:-}" = drop ] && timeout 60 $WHDC -t $T shell "rm -f /data/service/el1/public/appspawnx/adapter_child_$1.stderr" </dev/null >/dev/null 2>&1
   return 0
 }
+# other_dumps <main log> <dir>: the crash dumps of the app's other processes (the main log names each one it
+# started: "[WL-PROC] started <process> pid=<n>") into <dir>/<process>-<pid>.cppcrash. faultloggerd files every
+# dump under the host bundle's name and pids repeat, so a dump counts when it was written since the launch and its
+# Pid and "Process name" are that process's. Without it a secondary process's crash left nothing in the round (a
+# messenger's push process died on its network thread, every time, with no dump kept).
+other_dumps() {
+  local proc pidv p f
+  grep -o -E '\[WL-PROC\] started [^ ]+ pid=[0-9]+' "$1" 2>/dev/null | while read -r _ _ proc pidv; do
+    p=${pidv#pid=}
+    f=$(timeout 30 $WHDC -t $T shell "for f in \$(find /data/log/faultlog/temp /data/log/faultlog/faultlogger -name 'cppcrash-*' -newer /data/local/tmp/ev-launch.mark 2>/dev/null); do grep -q '^Pid:$p\$' \$f && grep -q '^Process name:$proc\$' \$f && echo \$f; done" </dev/null 2>/dev/null | tr -d '\r' | head -1)
+    [ -n "$f" ] || continue
+    mkdir -p "$2"
+    timeout 60 $WHDC -t $T shell "cat $f" </dev/null 2>/dev/null | tr -d '\r' > "$2/$proc-$p.cppcrash.part"
+    if [ -s "$2/$proc-$p.cppcrash.part" ]; then
+      mv -f "$2/$proc-$p.cppcrash.part" "$2/$proc-$p.cppcrash"
+    else
+      rm -f "$2/$proc-$p.cppcrash.part"
+    fi
+  done
+}
 hdc_reconnect() { timeout 60 $WHDC tconn $T >/dev/null 2>&1; }
 # A hung local hdc server still lists the board but times out every shell call (a big file send
 # beside other transfers left it at 100% CPU). Restart it when the board does not answer.

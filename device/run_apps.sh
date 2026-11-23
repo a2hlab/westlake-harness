@@ -94,12 +94,14 @@ except Exception: pass" "$WL_CORPUS/${MAP:-map}/${app#hk-}/gap-map.json" 2>/dev/
       child_log $p "$f" 60 drop || : >> "$f"
     done
   fi
-  timeout 30 $WHDC -t $T shell "ls -t /data/log/faultlog/faultlogger/ | head -3" 2>/dev/null | tr -d '\r' > logs/$tag/$app.faultlogs
+  # The dumps written while the app ran, any process's (the board's three newest were listed before, whoever's).
+  timeout 30 $WHDC -t $T shell "find /data/log/faultlog/temp /data/log/faultlog/faultlogger -name 'cppcrash-*' -newer /data/local/tmp/ev-launch.mark 2>/dev/null" </dev/null 2>/dev/null | tr -d '\r' | sed 's#.*/##' > logs/$tag/$app.faultlogs
   # The process's own crash dump: faultloggerd writes faultlog/temp/cppcrash-<pid>-<ms>, and hiview
   # may or may not move it to faultlogger/. Pids repeat, so only a dump written since the launch counts.
   if [ -n "$C" ]; then
     F=$(timeout 30 $WHDC -t $T shell "for f in \$(find /data/log/faultlog/temp /data/log/faultlog/faultlogger -name 'cppcrash-*' -newer /data/local/tmp/ev-launch.mark 2>/dev/null); do grep -q '^Pid:$C\$' \$f && echo \$f; done" 2>/dev/null | tr -d '\r' | head -1)
     if [ -n "$F" ]; then rm -f $RECV/ev.cppcrash; recv_to "$F" ev.cppcrash; [ -s $RECV/ev.cppcrash ] && cp $RECV/ev.cppcrash logs/$tag/$app.cppcrash; fi
+    other_dumps logs/$tag/$app.stderr logs/$tag/$app.processes   # its other processes' (config.sh)
     P=$(timeout 30 $WHDC -t $T shell "ps -ef" 2>/dev/null | tr -d '\r' | awk -v c="$C" '($0 ~ ("hilog -P " c "( |$)") || $0 ~ ("/proc/" c " ")) && !/awk/ {print $2}' | tr '\n' ' ')
     [ -n "$P" ] && timeout 30 $WHDC -t $T shell "kill $P" >/dev/null 2>&1
     for k in maps hilog; do
