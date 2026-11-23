@@ -702,6 +702,29 @@ class AppStorageExec(unittest.TestCase):
         self.assertEqual(rows["load:app-storage-exec"]["verdict"], "supplied")
         self.assertEqual(rows["load:app-storage-exec"]["launch_args"], ["--android-native-net-app-libraries"])
 
+    def test_routing_is_closed_over_packaged_needs(self) -> None:
+        """WeChat: libwechatmm (routed) NEEDs libcronet.119...so, which Java loaded unrouted in the default
+        namespace: the routed library loaded a second copy whose JNI_OnLoad never ran. A routed library's
+        packaged DT_NEEDED closure is routed too; a system library it needs is not touched."""
+        elf = {"abi": "arm64-v8a", "abi_matches_machine": True}
+        scan = {"apk": {"target_abi": "arm64-v8a"}, "inventory": {"elfs": [
+            {**elf, "name": "lib/arm64-v8a/libwechatmm.so", "soname": "libwechatmm.so",
+             "needed": ["libcronet_wrapper.so", "libc.so"]},
+            {**elf, "name": "lib/arm64-v8a/libcronet_wrapper.so", "soname": "libcronet_wrapper.so",
+             "needed": ["libcronet.119.0.6045.214.so", "liblog.so"]},
+            {**elf, "name": "lib/arm64-v8a/libcronet.119.0.6045.214.so", "soname": "libcronet.119.0.6045.214.so",
+             "needed": ["libc.so"]},
+            {**elf, "name": "lib/arm64-v8a/libunrelated.so", "soname": "libunrelated.so", "needed": ["libc.so"]}]}}
+        args = ["--android-native-target", "libwechatmm.so", "--android-native-net-target", "libcronet.119.0.6045.214.so"]
+        closed, added = gapmap.close_routing(args, scan)
+        self.assertEqual(added, ["libcronet.119.0.6045.214.so", "libcronet_wrapper.so"])
+        self.assertEqual(closed[:4], args)
+        self.assertIn("libcronet_wrapper.so", closed)
+        self.assertNotIn("libunrelated.so", closed)
+        # Nothing routed, nothing added; a closure already complete adds nothing.
+        self.assertEqual(gapmap.close_routing(["--input-cache"], scan), (["--input-cache"], []))
+        self.assertEqual(gapmap.close_routing(closed, scan)[1], [])
+
     def test_a_java_loaded_library_needing_a_sibling(self) -> None:
         """econverter: Chaquopy loads libpython3.11.so by path, then libchaquopy_java.so, whose
         DT_NEEDED found no short name to match and loaded Python a second time."""

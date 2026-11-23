@@ -1709,6 +1709,38 @@ def packaged_dependents(scan: dict[str, Any], names: list[str]) -> list[str]:
     return sorted(reach)
 
 
+def packaged_needs(scan: dict[str, Any], names: list[str]) -> list[str]:
+    """The packaged libraries among names, and every packaged library their DT_NEEDED graph reaches,
+    as file names: the other direction from packaged_dependents."""
+    _, needed = packaged_graph(scan)
+    reach = {name for name in names if name in needed}
+    stack = list(reach)
+    while stack:
+        for dep in needed.get(stack.pop(), ()):
+            if dep in needed and dep not in reach:
+                reach.add(dep)
+                stack.append(dep)
+    return sorted(reach)
+
+
+def close_routing(args: list[str], scan: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """The launch args with every packaged library a routed one needs routed too, and the names it adds.
+
+    A routed library (--android-native-target) loads its packaged DT_NEEDED in the Android namespace.
+    Java loads an unrouted library in the default namespace, by path, where OH's loader gives it no
+    shortname to share across namespaces: the two make two copies, and only Java's ran JNI_OnLoad.
+    WeChat routes libwechatmm and seven more that need libcronet.119...so; Java loaded libcronet itself,
+    the routed ones loaded it again, and its :push process died on a mars thread in
+    AttachCurrentThread, whose JavaVM only JNI_OnLoad sets (phones; one copy once both were routed).
+    Which names Java loads is mostly computed at run time (WeChat's are), so the whole closure is routed.
+    """
+    targets = [value for flag, value in zip(args[0::2], args[1::2]) if flag == "--android-native-target"]
+    if not targets:
+        return args, []
+    added = [name for name in packaged_needs(scan, targets) if name not in targets]
+    return args + [arg for name in added for arg in ("--android-native-target", name)], added
+
+
 def interposition_rows(scan: dict[str, Any], runtime: dict[str, Any] | None,
                        rows: list[dict[str, Any]],
                        namespace_option: dict[str, Any] | None = None) -> list[dict[str, Any]]:
@@ -4549,6 +4581,9 @@ def build_map(
         # launcher can close is closed on the app's first launch.
         "launch_args": launch_args(rows),
     }
+    gap_map["launch_args"], closed = close_routing(gap_map["launch_args"], scan)
+    if closed:
+        gap_map["notes"]["routing_closure"] = closed
     bad_targets = unpackaged_launch_targets(gap_map["launch_args"], scan)
     if bad_targets:
         gap_map["checks"] = {"unpackaged_launch_targets": bad_targets}
