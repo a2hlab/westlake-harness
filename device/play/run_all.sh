@@ -4,7 +4,8 @@
 # resumes. Before each try: stop leftover starters here and app processes on the board, and restart
 # the local hdc server if the board does not answer. Up to TRIES (40) tries; none after a launcher
 # refusal (shared_round.sh exit 3), which every try would repeat. Log: $PLAY_DIR/run_all.log, with the
-# board's uptime, load, available memory and free swap at each try, and its network at the start and end. When
+# board's uptime, load, available memory and free swap at each try, its network and its identity (with Google's
+# device status) at the start and end. When
 # the round is done, each app is set against its earlier rounds (history-<tag>.txt beside the round log).
 . "$(dirname "$0")/../config.sh"
 PLAY_DIR=${PLAY_DIR:-$IN/play-runs}; mkdir -p $PLAY_DIR; TAG=$1; L=$PLAY_DIR/run_all.log
@@ -13,6 +14,15 @@ PLAY_DIR=${PLAY_DIR:-$IN/play-runs}; mkdir -p $PLAY_DIR; TAG=$1; L=$PLAY_DIR/run
 # on the network, not on Westlake. NETPROBE=0 skips it.
 netprobe() { [ "${NETPROBE:-1}" = 0 ] && return 0; mkdir -p $IN/logs/$TAG
   echo "$(date +%H:%M) $1 $($DEVICE/netprobe.sh $IN/logs/$TAG/netprobe-$1.json 2>&1 | tail -1)" >> $L; }
+# What the board tells apps it is, and Google's device status for it, at the round's first try and at its end
+# (identity.sh, identity-<when>.json beside the round's logs): rounds under another identity or another Google status
+# are not comparable. WL_IDENTITY_EXPECT ("KEY=VALUE ...", e.g. "ro.build.version.sdk=35 ro.soc.model=UMS9620"):
+# the round does not start when the board answers otherwise, since the identity parameters vanish on a reboot.
+# IDENTITY=0 skips it. Exit 3: not the expected device; 1: the board did not answer (the round goes on).
+identity() { [ "${IDENTITY:-1}" = 0 ] && return 0; mkdir -p $IN/logs/$TAG
+  local o=$IN/logs/$TAG/identity-$1.out rc
+  $DEVICE/identity.sh $IN/logs/$TAG/identity-$1.json ${2:-} > $o 2>&1; rc=$?
+  echo "$(date +%H:%M) $1 $(tail -1 $o)" >> $L; rm -f $o; return $rc; }
 for try in $(seq 1 ${TRIES:-40}); do
   for p in $(pgrep -fx "/bin/bash $DEVICE/play/start_play.sh") $(pgrep -fx "/bin/bash $DEVICE/play/start_store.sh"); do pkill -P $p; kill $p; done 2>/dev/null
   hdc_heal || echo "$(date +%H:%M) hdc server restarted" >> $L
@@ -21,7 +31,11 @@ for try in $(seq 1 ${TRIES:-40}); do
   # The board's state, to read the round's results against. After three days up, its swap was full and its WiFi
   # chip in an interrupt storm (load ~12 from threads in D state) while apps that had drawn stopped drawing.
   echo "$(date +%H:%M) board: $(timeout 20 $WHDC -t $T shell 'cat /proc/uptime /proc/loadavg; grep -E "^(MemAvailable|SwapFree):" /proc/meminfo' 2>/dev/null | tr -d '\r' | tr -s ' \n' ' ' | cut -c1-160)" >> $L
-  [ $try = 1 ] && netprobe start
+  if [ $try = 1 ]; then
+    identity start "${WL_IDENTITY_EXPECT:-}"
+    [ $? = 3 ] && { echo "$(date +%H:%M) stopped: the board is not the expected device (WL_IDENTITY_EXPECT, identity-start.json)" >> $L; exit 3; }
+    netprobe start
+  fi
   $DEVICE/play/shared_round.sh $TAG > $PLAY_DIR/shared_round.out 2>&1; rc=$?
   cat $PLAY_DIR/round.log >> $L
   echo "$(date +%H:%M) rc=$rc captured=$(ls $IN/logs/$TAG/*.stderr 2>/dev/null | wc -l)" >> $L
@@ -31,6 +45,7 @@ for try in $(seq 1 ${TRIES:-40}); do
 done
 echo "$(date +%H:%M) finished" >> $L
 netprobe end
+identity end
 # Each app against its own earlier rounds (westlake_gap.history): what regressed, what improved and what is
 # flaky, in $WL_CORPUS/history-<tag>.txt (and history.json beside the round's logs), its first line in the log.
 if tail -1 $WL_CORPUS/round-$TAG.log 2>/dev/null | grep -q "$TAG done"; then
