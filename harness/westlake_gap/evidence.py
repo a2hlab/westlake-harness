@@ -566,6 +566,23 @@ _WITNESS_FROM = re.compile(r" from (\S+)\+(0x[0-9a-f]+)")
 _WITNESS_INSN = re.compile(r" insn=(0x[0-9a-f]+) next=(0x[0-9a-f]+)")
 
 
+#: Witness lines that are not the app's own death. A command-line tool the app runs is a child process that
+#: inherits the shim (LD_PRELOAD), and its witness lands in the app's log under the tool's name; OpenSSL's
+#: CPU-feature probes run an instruction the CPU may lack (the SHA512 probe, 0xcec08000) and catch the SIGILL.
+#: Star Utopia's child "rm" ran that probe on a phone as the app's log ended, and scored as a SIGILL crash.
+_CHILD_TOOLS = frozenset("rm sh toybox toolbox cat cp mv ls ln mkdir rmdir chmod chown ps grep sed id getprop setprop "
+                         "logcat ping su which uname df du mount kill sleep dumpsys pm am cmd hilog param".split())
+_CPU_PROBE_LIBRARY = re.compile(r"/lib(?:crypto|ssl)[\w.-]*\.so$")
+
+
+def _not_the_apps(match: re.Match, rest: str) -> bool:
+    """Whether a witness line is a child tool's, or an OpenSSL SIGILL probe (see _CHILD_TOOLS)."""
+    if match[4].strip() in _CHILD_TOOLS:
+        return True
+    at = _WITNESS_AT.search(rest)
+    return int(match[1], 16) == 4 and bool(at and _CPU_PROBE_LIBRARY.search(at[1]))
+
+
 def final_witness(stderr: str, maps_text: str | None = None) -> dict | None:
     """The shim's witness of the signal that ended the process, for a death nothing else reports (no
     crash dump, no hilog line): the last witness, when it, or the frame walk the shim prints after
@@ -573,7 +590,13 @@ def final_witness(stderr: str, maps_text: str | None = None) -> dict | None:
     app's output follows was survived (a library probing the CPU catches its own SIGILL); one that
     is the log's last word was not. Other threads' lines can come between a witness and its frame
     walk (libnba2km's audio thread, under its render thread's Vulkan lookups)."""
-    matches = list(_WITNESS.finditer(stderr))
+    matches, noise = [], set()
+    for match in _WITNESS.finditer(stderr):
+        line_end = stderr.find("\n", match.end())
+        if _not_the_apps(match, stderr[match.end():line_end if line_end >= 0 else len(stderr)]):
+            noise.add(int(match[3], 16))
+        else:
+            matches.append(match)
     if not matches:
         return None
     last = matches[-1]
@@ -582,7 +605,14 @@ def final_witness(stderr: str, maps_text: str | None = None) -> dict | None:
     frames = _SIGNAL_FRAMES.search(stderr, end)
     if frames and int(frames[1], 16) == int(last[3], 16) and frames.start() - end < 4096:
         end = max(end, frames.end())
-    if sum(1 for line in stderr[end:].split("\n") if line.strip()) > 3:
+
+    def app_output(line: str) -> bool:
+        # A child tool's or a probe's witness and its frame walk are not the app going on.
+        witness = _WITNESS.search(line)
+        walk = _SIGNAL_FRAMES.search(line)
+        return bool(line.strip()) and not (witness and int(witness[3], 16) in noise) \
+            and not (walk and int(walk[1], 16) in noise)
+    if sum(1 for line in stderr[end:].split("\n") if app_output(line)) > 3:
         return None
     return signal_witnesses(stderr[last.start():], maps_text)[0]
 

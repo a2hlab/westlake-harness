@@ -711,6 +711,30 @@ class Evidence(unittest.TestCase):
         other = text.replace("tid=0x4cad #0x1", "tid=0x1234 #0x1") + "a\nb\nc\n"
         self.assertIsNone(evidence.final_witness(other))
 
+    def test_a_child_tools_cpu_probe_is_not_the_apps_death(self) -> None:
+        """Star Utopia (phone, o80y): the app ran "rm", a child process with the shim; OpenSSL's CPU probe in
+        it ran the SHA512 instruction (0xcec08000) and caught the SIGILL. Its witness and frame walk were the
+        app log's last lines, and the app, clean otherwise, scored as a SIGILL crash."""
+        from westlake_gap import evidence, lifecycle
+        lib = "/system/lib64/chipset-sdk-sp/libcrypto_openssl.z.so"
+        probe = ("[WESTLAKE-SIGNAL-WITNESS] signal=0x4 code=0x1 tid=0x22eb thread=rm pc=0x4000277e7790 "
+                 "x30=0x4000279ae460 at %s+0x166790 insn=0xcec08000 next=0xd65f03c0 from %s+0x32d460\n"
+                 "[WESTLAKE-SIGNAL-FRAMES] tid=0x22eb #0x1 /system/lib/ld-musl-aarch64.so.1+0x810ac\n" % (lib, lib))
+        text = "kRegJNI loop done\nsBindAppDone=true\nDecorView\n[OH_WSA-relayout] x\n" + probe
+        self.assertIsNone(evidence.final_witness(text))
+        s = lifecycle.score("starutopia", text)
+        lifecycle.add_evidence(s, text, None)
+        self.assertNotEqual(s.blocker_category, "native-crash")
+        # The same probe under an app thread's name, in libcrypto, is still a probe.
+        self.assertIsNone(evidence.final_witness(text.replace("thread=rm", "thread=OkHttp")))
+        # An app thread's SIGILL elsewhere, as the log's last word, is still its death.
+        real = text.replace("thread=rm", "thread=GLThread").replace("%s+0x166790" % lib, "/data/app/libgame.so+0x10")
+        self.assertEqual(evidence.final_witness(real)["thread"], "GLThread")
+        # A real death followed by a child's probe lines is still the log's last word.
+        death = ("[WESTLAKE-SIGNAL-WITNESS] signal=0x7 code=0x2 tid=0x100 thread=Render pc=0x1 x30=0x2 "
+                 "at /data/app/libgame.so+0x20 from /data/app/libgame.so+0x30\n")
+        self.assertEqual(evidence.final_witness("kRegJNI loop done\n" + death + probe)["thread"], "Render")
+
     def test_a_process_that_killed_itself(self) -> None:
         """Didi: its privacy module's timer called Process.killProcess(myPid()); Westlake logs the
         Java stack before the SIGKILL, and nothing else reports the death."""
