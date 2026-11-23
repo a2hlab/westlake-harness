@@ -594,6 +594,17 @@ _EXIT_TEARDOWN = re.compile(r"ProcessSkeleton: NotifyChildThreadStop: waiting|~W
 _NATIVE_LOAD = re.compile(r"^\[SOURCE-NATIVE-LOAD\] path=(\S+)", re.M)
 
 
+#: OH 7.0: when a process calls exit(), an exit-time destructor (a static sptr in libsurface released after
+#: its target) can crash in OHOS::RefBase::DecStrongRef. The phones' BOCHK, Hang Seng, HSBC and Octopus did,
+#: right after loading their protection library; the D600's OH 6.1 exits cleanly in the same place.
+_EXIT_DESTRUCTOR = re.compile(r"^#00 pc [0-9a-f]+ \S*libutils\.z\.so\(OHOS::RefBase::DecStrongRef", re.M)
+
+
+def exit_destructor_crash(cppcrash_text: str | None) -> bool:
+    """Whether OH's crash dump puts the crash in OH's exit-time RefBase release (see _EXIT_DESTRUCTOR)."""
+    return bool(cppcrash_text and _EXIT_DESTRUCTOR.search(cppcrash_text))
+
+
 def self_exit(hilog: str, stderr: str) -> dict | None:
     """The process ending itself with exit(): OH's exit-time clean-up in the app's own hilog, within
     its last two seconds of logging, with the seconds since the process started and the last native

@@ -777,6 +777,30 @@ class Evidence(unittest.TestCase):
         wrapped = hilog.replace("01:41:45.827", "23:59:59.827").replace("01:41:46", "00:00:00")
         self.assertEqual(evidence.self_exit(wrapped, text)["after_s"], 0.5)
 
+    def test_a_crash_in_ohs_exit_time_cleanup_is_still_a_self_exit(self):
+        """OH 7.0 (the phones): after exit(), a static sptr's release crashes in RefBase::DecStrongRef. With
+        OH's exit clean-up in the hilog, the app exited; the crash is the clean-up's (BOCHK, HSBC)."""
+        from westlake_gap import lifecycle
+        text = ("kRegJNI loop done\n"
+                "[SOURCE-NATIVE-LOAD] path=/data/local/tmp/asx/lib/arm64-v8a/libbank.so search=x\n"
+                "Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x4000020e39e8 in tid 3510 (Signal Catcher)\n")
+        hilog = ("11-22 13:38:57.100 3410 3410 I C00f00/AppSpawnX: Child process started, pid=3410\n"
+                 "11-22 13:38:57.700 3410 3510 I C057c1/ProcessSkeleton: NotifyChildThreadStop: waiting 3 child "
+                 "threads to exit\n")
+        dump = ("Reason:Signal:SIGSEGV(SEGV_MAPERR)@0x00004000020e39e8 \nTid:3510, Name:Signal Catcher\n"
+                "#00 pc 000000000001f1ac /system/lib64/chipset-sdk-sp/libutils.z.so"
+                "(OHOS::RefBase::DecStrongRef(void const*)+16)(0123456789abcdef)\n"
+                "#01 pc 0000000001a00000 Not mapped\n")
+        s = lifecycle.score("bank", text)
+        lifecycle.add_evidence(s, text, None, dump, hilog)
+        self.assertEqual(s.blocker_category, "self-exit")
+        self.assertIn("exit-time clean-up then crashed", s.blocker)
+        self.assertIn("libbank.so", s.blocker)
+        # The same crash without OH's exit clean-up is the app's crash.
+        s = lifecycle.score("bank", text)
+        lifecycle.add_evidence(s, text, None, dump, hilog.split("\n")[0] + "\n")
+        self.assertEqual(s.blocker_category, "native-crash")
+
     def test_touch_before_finish_is_not_the_app(self):
         """The board forwards real touches: a release just before the last activity finished means a tap
         closed it, and the row is marked disturbed instead of the app finishing itself."""

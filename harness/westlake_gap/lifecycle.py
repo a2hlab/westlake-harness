@@ -406,6 +406,12 @@ def add_evidence(s: Score, text: str, maps_text: str | None, cppcrash_text: str 
     dump = evidence.cppcrash(cppcrash_text) if cppcrash_text else None
     if dump and hilog_text and evidence.dump_predates_process(cppcrash_text, hilog_text):
         dump = None  # an earlier process's, with the same pid
+    # The app called exit() and OH 7.0's exit-time clean-up crashed after it (the dump's top frame is OH's
+    # RefBase release, the hilog has OH's exit clean-up): the exit is the app's, the crash is OH's.
+    exit_crash = bool(dump and hilog_text and evidence.exit_destructor_crash(cppcrash_text)
+                      and evidence.self_exit(hilog_text, text))
+    if exit_crash:
+        dump = None
     if dump:
         s.crash_dump = dump
         s.fatal = max(s.fatal, 1)
@@ -473,7 +479,7 @@ def add_evidence(s: Score, text: str, maps_text: str | None, cppcrash_text: str 
             s.blocker_category, s.blocking = "native-symbols", True
             s.blocker = "dlsym found no %s in %s" % (lookups[0]["symbol"], lookups[0]["library"]) + (
                 " (%d names)" % len(lookups) if len(lookups) > 1 else "")
-    signal = evidence.hilog_signal(hilog_text) if hilog_text and not dump else None
+    signal = evidence.hilog_signal(hilog_text) if hilog_text and not dump and not exit_crash else None
     if signal:
         s.hilog_signal = signal
         s.fatal = max(s.fatal, 1)
@@ -558,11 +564,14 @@ def add_evidence(s: Score, text: str, maps_text: str | None, cppcrash_text: str 
     exited = evidence.self_exit(hilog_text, text) if hilog_text and not dump and not signal and not final else None
     if exited:
         s.self_exit = exited
-        if s.blocker is None or s.blocker_category in ("stall", "no-frame") or not s.blocking:
+        # With the exit-time crash, the log's own native crash is that same crash (ART's handler saw it).
+        if s.blocker is None or s.blocker_category in ("stall", "no-frame") or not s.blocking \
+                or (exit_crash and s.blocker_category == "native-crash"):
             s.blocker_category, s.blocking = "self-exit", True
-            s.blocker = "it exited by itself %.1f s after starting, with no crash%s" % (
-                exited["after_s"],
-                "; the last library it loaded was " + exited["last_library"] if "last_library" in exited else "")
+            s.blocker = "it exited by itself %.1f s after starting%s%s%s" % (
+                exited["after_s"], "" if exit_crash else ", with no crash",
+                "; the last library it loaded was " + exited["last_library"] if "last_library" in exited else "",
+                "; OH's exit-time clean-up then crashed (RefBase::DecStrongRef in libutils)" if exit_crash else "")
 
 
 def score_paths(paths: list[Path]) -> list[Score]:
