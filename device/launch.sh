@@ -118,5 +118,6 @@ for retry in 1 2; do
 done
 C=$(grep -o '"child": [0-9]*' $WL_SC/logs/$out.log | head -1 | grep -o '[0-9]*')
 sleep ${LAUNCH_SETTLE:-12}   # run_apps.sh sets this low: it waits for the app itself
-[ -n "$C" ] && timeout 60 $WHDC -t $T shell "cat /data/service/el1/public/appspawnx/adapter_child_$C.stderr" 2>/dev/null | tr -d '\r' > $IN/logs/$out.stderr
+# A fresh file for this launch even when no copy arrives (config.sh child_log keeps what a file holds).
+[ -n "$C" ] && { child_log $C $IN/logs/$out.stderr 60 || : > $IN/logs/$out.stderr; }
 echo "$app EXIT=$rc child=${C:-NONE} lines=$(wc -l < $IN/logs/$out.stderr 2>/dev/null)"

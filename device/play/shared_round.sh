@@ -56,10 +56,7 @@ kill $(cat $PLAY_DIR/play.pid) 2>/dev/null; [ -n "$SC_" ] && kill $(cat $PLAY_DI
 # pid=<pid>" in their logs). They record what the hosts did for the apps (each client's uid, the calls served, why a
 # host died); left on the board they fill /data round after round. Each hdc call reads /dev/null: a Windows hdc reads
 # its standard input, which in the loop is the rest of the list.
-save_host_log() { local f=$PLAY_DIR/hosts/$1-$2.stderr
-  timeout 300 $WHDC -t $T shell "cat /data/service/el1/public/appspawnx/adapter_child_$2.stderr" </dev/null 2>/dev/null | tr -d '\r' > "$f"
-  if [ -s "$f" ]; then timeout 60 $WHDC -t $T shell "rm -f /data/service/el1/public/appspawnx/adapter_child_$2.stderr" </dev/null >/dev/null 2>&1
-  else rm -f "$f"; fi; }
+save_host_log() { child_log $2 "$PLAY_DIR/hosts/$1-$2.stderr" 300 drop; }
 mkdir -p $PLAY_DIR/hosts
 for h in "com.google.android.gms $C" "com.android.vending $SC_"; do
   set -- $h; [ -n "${2:-}" ] || continue

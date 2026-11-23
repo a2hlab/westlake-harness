@@ -77,9 +77,9 @@ except Exception: pass" "$WL_CORPUS/${MAP:-map}/${app#hk-}/gap-map.json" 2>/dev/
   cp $RECV/rg.jpeg logs/$tag/$app.jpeg 2>/dev/null
   # After the screenshot: ART dumps every thread into the log, which shows what a stalled main thread waits on.
   [ -n "$C" ] && [ "${DUMP:-1}" = 1 ] && timeout 20 $WHDC -t $T shell "[ -d /proc/$C ] && kill -3 $C" >/dev/null 2>&1 && sleep 3
-  [ -n "$C" ] && timeout 60 $WHDC -t $T shell "cat /data/service/el1/public/appspawnx/adapter_child_$C.stderr" 2>/dev/null | tr -d '\r' > logs/$tag/$app.stderr
-  # The board keeps every child's stderr (it once filled /data): drop its copy after this last read.
-  [ -n "$C" ] && [ -s logs/$tag/$app.stderr ] && timeout 60 $WHDC -t $T shell "rm -f /data/service/el1/public/appspawnx/adapter_child_$C.stderr" >/dev/null 2>&1
+  # The last read: the board's copy goes once it arrived (the board keeps every child's stderr otherwise); when
+  # none arrives, launch.sh's early copy stays (config.sh child_log).
+  [ -n "$C" ] && { child_log $C logs/$tag/$app.stderr 60 drop || : >> logs/$tag/$app.stderr; }
   # The app's other processes (westlake ADR-0002) have logs of their own. The launched process names each one
   # it started ("[WL-PROC] started <process> pid=<n>"); each gets the same thread dump and lands in
   # <app>.processes/<process>.stderr, so that a crash or stall there is the app's evidence too. A process that
@@ -91,8 +91,7 @@ except Exception: pass" "$WL_CORPUS/${MAP:-map}/${app#hk-}/gap-map.json" 2>/dev/
       p=${pidv#pid=}; d=logs/$tag/$app.processes; mkdir -p $d
       f=$d/$proc.stderr; [ -e "$f" ] && f=$d/$proc-$p.stderr
       [ "${DUMP:-1}" = 1 ] && timeout 20 $WHDC -t $T shell "[ \"\$(ps -o args= -p $p | tail -n 1)\" = '$proc' ] && kill -3 $p" </dev/null >/dev/null 2>&1 && sleep 2
-      timeout 60 $WHDC -t $T shell "cat /data/service/el1/public/appspawnx/adapter_child_$p.stderr" </dev/null 2>/dev/null | tr -d '\r' > "$f"
-      [ -s "$f" ] && timeout 60 $WHDC -t $T shell "rm -f /data/service/el1/public/appspawnx/adapter_child_$p.stderr" </dev/null >/dev/null 2>&1
+      child_log $p "$f" 60 drop || : >> "$f"
     done
   fi
   timeout 30 $WHDC -t $T shell "ls -t /data/log/faultlog/faultlogger/ | head -3" 2>/dev/null | tr -d '\r' > logs/$tag/$app.faultlogs

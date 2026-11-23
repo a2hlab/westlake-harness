@@ -18,6 +18,6 @@ KEEP_STAGE=${KEEP_STAGE:-$ST} KEEP_RUNNING=1 PROBE_TIMEOUT=${PROBE_TIMEOUT:-300}
 find "$IN/prep-$app" -mindepth 1 ! -name app-input.json -delete 2>/dev/null
 C=$(grep -o '"child": [0-9]*' $WL_SC/logs/$tag-$app.log | head -1 | grep -o '[0-9]*'); echo "$pkg child $C"
 sleep ${WAIT:-60}
-timeout 90 $WHDC -t $T shell "cat /data/service/el1/public/appspawnx/adapter_child_$C.stderr" 2>/dev/null | tr -d '\r' > $IN/logs/$tag/$app.stderr
+child_log $C $IN/logs/$tag/$app.stderr 90 || : > $IN/logs/$tag/$app.stderr
 grep -nE "WL-PLAY\]|FATAL" $IN/logs/$tag/$app.stderr | cut -c1-170 | head -20
 [ "${KEEP:-}" = 1 ] || timeout 15 $WHDC -t $T shell "kill -9 $C" >/dev/null 2>&1

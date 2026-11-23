@@ -30,6 +30,28 @@ WS=${WL_WESTLAKE_SOURCE:-$WL_SC/workspace/westlake}
 RECV=$IN/.recv; mkdir -p "$RECV" "$IN/logs" "$WL_SC/logs"
 # From inside $RECV with a relative name, so a Windows hdc (the board on USB under WSL) works too.
 recv_to() { (cd "$RECV" && timeout "${3:-60}" $WHDC -t $T file recv "$1" "$2" >/dev/null 2>&1); }
+# child_log <pid> <file> <seconds> [drop]: the board's log of child process <pid> into <file>. An hdc call can
+# return nothing at a moment when the link works again a minute later (a round lost two apps' logs that way, and
+# with them their other processes' logs, which run_apps.sh finds through the main one), so an empty copy is made
+# again, three times in all, the last with twice as long. An empty copy never replaces what <file> holds
+# (launch.sh's early copy of the same launch). With drop, the board's copy goes once this copy arrived: the board
+# keeps every child's stderr otherwise (it once filled /data). Fails, leaving <file> as it was, when none arrived.
+# Each hdc call reads /dev/null: a Windows hdc reads its standard input, in a caller's loop the rest of a list.
+child_log() {
+  local n part=$2.part
+  for n in 1 2 3; do
+    [ $n -gt 1 ] && sleep "${CHILD_LOG_PAUSE:-5}"
+    timeout $(($3 * (n / 3 + 1))) $WHDC -t $T shell "cat /data/service/el1/public/appspawnx/adapter_child_$1.stderr" </dev/null 2>/dev/null | tr -d '\r' > "$part"
+    [ -s "$part" ] && break
+  done
+  if [ ! -s "$part" ]; then
+    rm -f "$part"
+    return 1
+  fi
+  mv -f "$part" "$2"
+  [ "${4:-}" = drop ] && timeout 60 $WHDC -t $T shell "rm -f /data/service/el1/public/appspawnx/adapter_child_$1.stderr" </dev/null >/dev/null 2>&1
+  return 0
+}
 hdc_reconnect() { timeout 60 $WHDC tconn $T >/dev/null 2>&1; }
 # A hung local hdc server still lists the board but times out every shell call (a big file send
 # beside other transfers left it at 100% CPU). Restart it when the board does not answer.
