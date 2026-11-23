@@ -952,3 +952,34 @@ class ProcessDeaths(unittest.TestCase):
                                         "com.example.app:push-4242.maps": maps})
         self.assertEqual(deaths[0]["summary"], "SIGSEGV on thread mars::585 at libcronet.so+0x1234 (from libcronet.so+0x10)")
 
+
+
+class GoogleRefusals(unittest.TestCase):
+    """What Play services refused the app, apart from Westlake's gaps: its device status comes from Google."""
+
+    def test_an_api_play_services_reports_unavailable_is_googles_refusal(self) -> None:
+        """MyRadar (D600, Google status restricted): its location call died on API_UNAVAILABLE."""
+        from westlake_gap import lifecycle
+        text = ("kRegJNI loop done\nsBindAppDone=true\nDecorView\n[OH_WSA-relayout] x\n"
+                "[UNCAUGHT] thread='DefaultDispatcher-worker-9' com.google.android.gms.common.api.ApiException: 17: "
+                "API: LocationServices.API is not available on this device. Connection failed with: "
+                "ConnectionResult{statusCode=API_UNAVAILABLE, resolution=null, message=null}\n")
+        s = lifecycle.score("myradar", text)
+        self.assertEqual(s.blocker_category, "google-refused")
+        self.assertIn("LocationServices.API", s.blocker)
+        self.assertEqual(s.google_refusals, ["API LocationServices.API unavailable"])
+
+    def test_a_module_offered_at_no_version_is_evidence_not_the_blocker(self) -> None:
+        """NYTimes (D600 hkc1): no cast framework module, then its application failed to start."""
+        from westlake_gap import lifecycle
+        missing = ("No acceptable module com.google.android.gms.cast.framework.dynamite found. Local version is 0 and "
+                   "remote version is 0.\n")
+        text = ("kRegJNI loop done\n" + missing * 3 + "ensureBindApplication FAILED phase=x cause[1]="
+                "java.lang.RuntimeException: Unable to create application com.nytimes.android.NYTApplication\n")
+        s = lifecycle.score("nytimes", text)
+        self.assertEqual(s.blocker_category, "app-framework")
+        self.assertEqual(s.google_refusals, ["module com.google.android.gms.cast.framework.dynamite: none offered"])
+
+    def test_an_app_play_services_refused_nothing(self) -> None:
+        from westlake_gap import lifecycle
+        self.assertIsNone(lifecycle.score("clean", "kRegJNI loop done\nsBindAppDone=true\n").google_refusals)

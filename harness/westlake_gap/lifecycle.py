@@ -163,6 +163,7 @@ class Score:
     service_failures: list | None = None
     abort_frames: list | None = None
     process_deaths: list | None = None
+    google_refusals: list | None = None
 
     def as_dict(self) -> dict:
         return {k: v for k, v in self.__dict__.items()
@@ -237,6 +238,27 @@ def first_blocker(text: str) -> tuple[str, str] | tuple[None, None]:
     return (best[1], best[2]) if best else (None, None)
 
 
+#: What Play services refused the app: an API it reports unavailable on this device (ApiException 17,
+#: API_UNAVAILABLE), and a Dynamite module it offered at no version at all. Google's servers set the device's
+#: status from the identity it reports at check-in, and while that status says restricted, Play services
+#: refuses most of its APIs and modules: MyRadar died of LocationServices.API unavailable, and NYTimes got no
+#: cast framework module. Nothing in Westlake fixes those; a module at version 0 while Google allows the device
+#: is Westlake's module provider instead. The round's identity record says which (device/identity.sh).
+_API_UNAVAILABLE = re.compile(r"ApiException: 17: API: ([\w.$]+?)\.? is not available")
+_MODULE_VERSION_0 = re.compile(r"No acceptable module ([\w.]+) found\. Local version is 0 and remote version is 0")
+
+
+def google_refusals(text: str) -> list[str] | None:
+    """What Play services refused the app, each once, in the order the log first shows it."""
+    found = sorted([(m.start(), "API %s unavailable" % m.group(1)) for m in _API_UNAVAILABLE.finditer(text)]
+                   + [(m.start(), "module %s: none offered" % m.group(1)) for m in _MODULE_VERSION_0.finditer(text)])
+    seen: list[str] = []
+    for _, refusal in found:
+        if refusal not in seen:
+            seen.append(refusal)
+    return seen or None
+
+
 def score(app: str, text: str) -> Score:
     lines = text.count("\n")
     counts = {
@@ -266,6 +288,9 @@ def score(app: str, text: str) -> Score:
     skipped = [name for name in RUNGS[:rung] if not passed[name]]
     anomaly = ("reached %s without %s" % (RUNGS[rung], ", ".join(skipped))) if skipped else None
     category, blocker = first_blocker(text)
+    if blocker and "ApiException: 17: API: " in blocker:   # (the blocker's text is cut at 80 characters)
+        # What stopped the app is Play services refusing an API: Google's answer for this device, not Westlake.
+        category = "google-refused"
     # An app on the top rung with no fatal signal got where it was going. Anything matched in its
     # log is a finding, not the reason it stopped -- AntennaPod draws fine while reporting a
     # missing nPurgePendingResources. Calling that a blocker would put a non-issue at the top of
@@ -274,7 +299,7 @@ def score(app: str, text: str) -> Score:
     return Score(app=app, rung=rung, rung_name=RUNGS[rung], lines=lines,
                  fatal=len(_FATAL.findall(text)), relayouts=relayouts, held_back=held,
                  blocker_category=category, blocker=blocker, blocking=blocking,
-                 markers=counts, anomaly=anomaly, root_cause=root_cause(text))
+                 markers=counts, anomaly=anomaly, root_cause=root_cause(text), google_refusals=google_refusals(text))
 
 
 _HOST_SCREEN = Path(__file__).parent / "data" / "host-screen.png"
