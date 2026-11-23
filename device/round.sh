@@ -24,6 +24,7 @@ while read -r rank pkg; do
 done < <(nl -ba -w1 -s' ' apps.csv)
 # A resumed tag's log holds the guard line of the run it resumes: look only at this run's lines.
 start=$(($(cat round-$tag.log 2>/dev/null | wc -l) + 1))
+start_watchdog $WL_CORPUS/round-$tag.log   # a process storm on the board stops the round (board_watchdog.sh)
 echo "$(date) $tag ranks $first-$last: ${#todo[@]} to launch" >> round-$tag.log
 pf=""
 for ((i = 0; i < ${#todo[@]}; i += 5)); do

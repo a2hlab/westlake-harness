@@ -8,6 +8,7 @@
 # the round is done, each app is set against its earlier rounds (history-<tag>.txt beside the round log).
 . "$(dirname "$0")/../config.sh"
 PLAY_DIR=${PLAY_DIR:-$IN/play-runs}; mkdir -p $PLAY_DIR; TAG=$1; L=$PLAY_DIR/run_all.log
+start_watchdog $L   # a process storm on the board stops every try (board_watchdog.sh)
 # The board's network at the round's first try and at its end (netprobe.sh, netprobe-<when>.json beside the
 # round's logs): an online app judged while names it needs did not resolve or connect from the board was judged
 # on the network, not on Westlake. NETPROBE=0 skips it.

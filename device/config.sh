@@ -48,6 +48,11 @@ protect_test() { [ -n "${PROTECT_LIST:-}" ] && echo "grep -qxF \"\$d\" $PROTECT_
 # their own host bundles. No zygote with a child under one of them is stopped. Prints a board-side function:
 # "spared <zygote>" is true for such a zygote. Empty, no zygote is spared (as before).
 spare_fn() { echo "spared() { for c in \$(ps -A -o pid=,ppid= | grep \" \$1\$\" | grep -o '^ *[0-9]*'); do u=\$(ps -o uid= -p \$c | tail -n 1 | grep -o '[0-9]*'); [ -n \"\$u\" ] || continue; case \" ${PROTECT_UIDS:-} \" in *\" \$u \"*) return 0 ;; esac; done; return 1; };"; }
+# The board's thread count (/proc/loadavg: running/total), empty when the board does not answer (board_watchdog.sh).
+board_threads() { timeout 20 $WHDC -t $T shell 'cat /proc/loadavg' </dev/null 2>/dev/null | tr -d '\r' | cut -d' ' -f4 | cut -d/ -f2; }
+# Starts board_watchdog.sh for this script's process group, once per round (WL_WATCHDOG=0 turns it off).
+start_watchdog() { [ -n "${WL_WATCHDOG_ON:-}" ] || [ "${WL_WATCHDOG:-1}" = 0 ] && return 0; export WL_WATCHDOG_ON=1
+  setsid $DEVICE/board_watchdog.sh "$(ps -o pgid= -p $$ | tr -d ' ')" "$1" </dev/null >/dev/null 2>&1 & }
 # Board-side: stop the appspawn-x zygotes, except PROTECT_UIDS' (see spare_fn).
 zygote_kill() { echo "$(spare_fn) for z in \$(pidof appspawn-x); do spared \$z && continue; kill \$z; done;"; }
 # A host bundle's uid on the board (default the window host's, which every app runs under; the Play hosts may run
