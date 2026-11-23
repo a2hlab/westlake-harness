@@ -853,3 +853,102 @@ class Evidence(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProcessDeaths(unittest.TestCase):
+    """The app's other processes that died, from the logs and dumps the round keeps beside the app's log."""
+
+    APP = ("[WL-PROC] started com.example.app:push pid=4242\n"
+           "[WL-PLAY] process com.example.app:push unavailable: java.io.IOException: com.example.app:push (pid 4242) "
+           "ended before it served\n")
+    FAULT = ("[WESTLAKE-SIGNAL-WITNESS] signal=0xb code=0x1 tid=0x249 thread=mars::585 pc=0x7e8794e8fc x30=0x7e87838398 "
+             "at /data/local/tmp/asx/lib/arm64-v8a/libcronet.so+0x1ce8fc insn=0xf9400008 next=0xf9400d08 "
+             "from /data/local/tmp/asx/lib/arm64-v8a/libcronet.so+0xb8398\n"
+             "[WESTLAKE-SIGNAL-FRAMES] tid=0x249 #0x1 0xffffffffffffff\n")
+
+    def deaths(self, app_text: str, files: dict) -> list | None:
+        import tempfile
+        from westlake_gap import lifecycle
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp) / "hk-com.example.app.stderr"
+            log.write_text(app_text)
+            folder = Path(temp) / "hk-com.example.app.processes"
+            folder.mkdir()
+            for name, text in files.items():
+                (folder / name).write_text(text)
+            return lifecycle.process_deaths(log, app_text)
+
+    def test_a_process_the_app_gave_up_on_names_its_last_fatal_witness(self) -> None:
+        """WeChat's :push (D600, every run): a SIGSEGV on a mars thread in libcronet, then a dozen lines from its
+        crash handler and other threads, which the log's-last-word rule alone would not see past."""
+        after = "[WESTLAKE-WEBVIEW-SIGNAL] sigaction #19 signal=11 flags=0 callback=0 rc=0 errno=9\n" + \
+            "[OHServiceManager] getService(\"isub\") -> null\n" * 10
+        deaths = self.deaths(self.APP, {"com.example.app:push.stderr": "startReg exiting (ok)\n" + self.FAULT + after})
+        self.assertEqual([(d["process"], d["pid"], d["ended_before_serving"]) for d in deaths],
+                         [("com.example.app:push", 4242, True)])
+        self.assertEqual(deaths[0]["summary"], "SIGSEGV on thread mars::585 at libcronet.so+0x1ce8fc "
+                                               "(from libcronet.so+0xb8398)")
+
+    def test_a_process_that_killed_itself_is_named_so(self) -> None:
+        """Alipay HK's :push: OpenSSL's SHA512 probe (0xcec08000, in Alipay's own libopenssl.so) caught its SIGILL,
+        then the privacy gate killed the process, as on Android."""
+        probe = ("[WESTLAKE-SIGNAL-WITNESS] signal=0x4 code=0x1 tid=0x6843 thread=hk.alipay.walle pc=0x7ef2243a50 "
+                 "x30=0x7ef2242080 at /data/local/tmp/asx/lib/arm64-v8a/libopenssl.so+0x203a50 insn=0xcec08000 "
+                 "next=0xd65f03c0 from /data/local/tmp/asx/lib/arm64-v8a/libopenssl.so+0x202080\n")
+        kill = ("java.lang.Throwable: [WESTLAKE-KILL] the process sends itself signal 9\n"
+                "\tat android.os.Process.sendSignal(Native Method)\n"
+                "\tat android.os.Process.killProcess(Unknown Source:2)\n"
+                "\tat com.example.privacy.Gate.killSelf(SourceFile:93)\n")
+        deaths = self.deaths(self.APP, {"com.example.app:push.stderr": probe + "more\n" * 30 + kill})
+        self.assertEqual(deaths[0]["summary"], "killed itself (signal 9) from com.example.privacy.Gate.killSelf(SourceFile:93)")
+        # Without the kill, the probe is still not the death: nothing in the log names one.
+        deaths = self.deaths(self.APP, {"com.example.app:push.stderr": probe + "more\n" * 30})
+        self.assertEqual(deaths[0]["summary"], "ended before it served; nothing in its log names a signal")
+
+    def test_a_crash_dump_of_that_pid_names_the_death(self) -> None:
+        dump = ("Pid:4242\nUid:20010054\nProcess name:com.example.app:push\n"
+                "Reason:Signal:SIGSEGV(SEGV_MAPERR)@0x0000000000000000\n"
+                "Fault thread info:\nTid:4300, Name:mars::4300\n"
+                "#00 pc 00000000001ce8fc /data/local/tmp/asx/lib/arm64-v8a/libcronet.so\n")
+        deaths = self.deaths(self.APP, {"com.example.app:push.stderr": "startReg exiting (ok)\n",
+                                        "com.example.app:push-4242.cppcrash": dump})
+        self.assertTrue(deaths[0]["summary"].startswith("SIGSEGV on thread mars::4300: in libcronet.so+0x1ce8fc"),
+                        deaths[0]["summary"])
+
+    def test_a_process_that_served_is_not_a_death(self) -> None:
+        """A witness the process lived on past, in a process the app never gave up on, is not its death."""
+        app = "[WL-PROC] started com.example.app:push pid=4242\n[WL-PROC] com.example.app:push (pid 4242) serves on x\n"
+        served = "[WL-PLAY] serving on /dev/socket/wl.example\n"
+        self.assertIsNone(self.deaths(app, {"com.example.app:push.stderr": served + self.FAULT + "more\n" * 10}))
+        self.assertIsNone(self.deaths(app, {}))
+
+    def test_a_process_started_again_reads_its_own_log(self) -> None:
+        """run_apps.sh names a second start's log <process>-<pid>.stderr; the first start's stays <process>.stderr."""
+        app = ("[WL-PROC] started com.example.app:push pid=4242\n[WL-PROC] started com.example.app:push pid=5151\n"
+               "java.io.IOException: com.example.app:push (pid 5151) ended before it served\n")
+        deaths = self.deaths(app, {"com.example.app:push.stderr": "[WL-PLAY] serving on /dev/socket/wl.example\n",
+                                   "com.example.app:push-5151.stderr": self.FAULT + "more\n" * 10})
+        self.assertEqual([(d["pid"], d["summary"].split(" at ")[0]) for d in deaths],
+                         [(5151, "SIGSEGV on thread mars::585")])
+
+    def test_a_process_that_never_served_names_its_last_fatal_witness(self) -> None:
+        """WeChat (D600 hkid1): the launched process printed no verdict for its :push, whose log never said it
+        served and ends 14 lines after the witnessed fault."""
+        app = "[WL-PROC] started com.example.app:push pid=4242\n"
+        deaths = self.deaths(app, {"com.example.app:push.stderr": self.FAULT + "more\n" * 14})
+        self.assertEqual([(d["pid"], d.get("never_served"), d.get("ended_before_serving")) for d in deaths],
+                         [(4242, True, None)])
+        self.assertTrue(deaths[0]["summary"].startswith("SIGSEGV on thread mars::585"), deaths[0]["summary"])
+        deaths = self.deaths(app, {"com.example.app:push.stderr": "startReg exiting (ok)\n"})
+        self.assertEqual(deaths[0]["summary"], "never served; nothing in its log names a signal")
+
+    def test_the_processs_own_map_places_a_witness_the_shim_did_not(self) -> None:
+        """The phones' rounds keep <process>-<pid>.maps taken with the thread dump; a witness without the shim's
+        own placement is placed from it."""
+        bare = ("[WESTLAKE-SIGNAL-WITNESS] signal=0xb code=0x1 tid=0x249 thread=mars::585 pc=0x7000001234 "
+                "x30=0x7000000010\n")
+        maps = "7000000000-7000100000 r-xp 00000000 fd:00 123 /data/local/tmp/asx/lib/arm64-v8a/libcronet.so\n"
+        deaths = self.deaths(self.APP, {"com.example.app:push.stderr": bare + "more\n" * 10,
+                                        "com.example.app:push-4242.maps": maps})
+        self.assertEqual(deaths[0]["summary"], "SIGSEGV on thread mars::585 at libcronet.so+0x1234 (from libcronet.so+0x10)")
+

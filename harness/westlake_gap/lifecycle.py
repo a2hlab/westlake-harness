@@ -162,6 +162,7 @@ class Score:
     service_refusals: list | None = None
     service_failures: list | None = None
     abort_frames: list | None = None
+    process_deaths: list | None = None
 
     def as_dict(self) -> dict:
         return {k: v for k, v in self.__dict__.items()
@@ -574,6 +575,79 @@ def add_evidence(s: Score, text: str, maps_text: str | None, cppcrash_text: str 
                 "; OH's exit-time clean-up then crashed (RefBase::DecStrongRef in libutils)" if exit_crash else "")
 
 
+_STARTED = re.compile(r"\[WL-PROC\] started (\S+) pid=(\d+)")
+_FATAL_SIGNALS = ("SIGSEGV", "SIGBUS", "SIGILL", "SIGABRT", "SIGTRAP", "SIGFPE")
+
+
+def _fatal_witness(witness: dict) -> bool:
+    """A witnessed signal that may have ended a process whose log goes on past it: not a child tool's, and not
+    OpenSSL's SHA512 probe (0xcec08000, the same word wherever OpenSSL is linked in: Akamai's libakamaibap.so,
+    Alipay's libopenssl.so and NBA 2K's libnba2km.so carry it), which the probe catches."""
+    from . import evidence
+    if witness["signal"] not in _FATAL_SIGNALS or witness["thread"].strip() in evidence._CHILD_TOOLS:
+        return False
+    return not (witness["signal"] == "SIGILL" and (witness.get("insn") == "0xcec08000"
+                or evidence._CPU_PROBE_LIBRARY.search(witness["pc"].get("path", ""))))
+
+
+def process_deaths(path: Path, text: str) -> list[dict] | None:
+    """The app's other processes that died (ADR-0002), from what the round keeps beside the app's log: each
+    one's own log (<app>.processes/<process>.stderr, <process>-<pid>.stderr when it started again), crash dump
+    (<process>-<pid>.cppcrash) and process map (<process>-<pid>.maps, which places a witness the shim could not
+    place itself). A death is a dump of that pid, or the shim's witness of the signal that
+    ended the process's log, or the process killing itself (Alipay's :push before privacy consent, as on
+    Android). For a process that never served (no "[WL-PLAY] serving on" in its log: in hkid1 that was 4 of 64
+    process logs, each one that died early) or that the launched process gave up on ("ended before it served"),
+    the last fatal witness counts even with lines after it: WeChat's :push logged a dozen lines from its crash
+    handler and other threads after the fault. The app's own verdict stays the main process's; this is
+    evidence beside it. WeChat's :push died on a network thread, in a second copy of libcronet that never had
+    JNI_OnLoad, in every run; WeChat then ran :push's services in its main process, which died of that, and the
+    main process's verdict did not name :push."""
+    from . import evidence
+    folder = path.with_suffix(".processes")
+    if not folder.is_dir():
+        return None
+    deaths, seen, starts = [], set(), {}
+    for process, pid in _STARTED.findall(text):
+        if (process, pid) in seen:
+            continue
+        seen.add((process, pid))
+        starts[process] = starts.get(process, 0) + 1
+        log = folder / ("%s.stderr" % process if starts[process] == 1 else "%s-%s.stderr" % (process, pid))
+        dump_path = folder / ("%s-%s.cppcrash" % (process, pid))
+        maps_path = folder / ("%s-%s.maps" % (process, pid))
+        maps_text = maps_path.read_text(errors="replace") if maps_path.exists() else None
+        log_text = log.read_text(errors="replace") if log.exists() else ""
+        death: dict = {"process": process, "pid": int(pid)}
+        if log_text and "[WL-PLAY] serving on" not in log_text:
+            death["never_served"] = True
+        if re.search(r"%s \(pid %s\) ended before it served" % (re.escape(process), pid), text):
+            death["ended_before_serving"] = True
+        dump = evidence.cppcrash(dump_path.read_text(errors="replace")) if dump_path.exists() else None
+        if dump:
+            death["dump"] = dump
+            death["summary"] = "%s on thread %s: %s" % (dump["signal"], dump.get("thread", "?"), dump["summary"])
+        elif log_text and evidence.self_kill(log_text):
+            death["self_kill"] = killed = evidence.self_kill(log_text)
+            death["summary"] = "killed itself (signal 9)" + (" from " + killed["first_app_frame"]
+                                                           if killed.get("first_app_frame") else "")
+        elif log_text:
+            witness = evidence.final_witness(log_text, maps_text)
+            if witness is None and (death.get("ended_before_serving") or death.get("never_served")):
+                witness = next((w for w in reversed(evidence.signal_witnesses(log_text, maps_text))
+                                if _fatal_witness(w)), None)
+            if witness:
+                death["witness"] = witness
+                death["summary"] = "%s on thread %s%s" % (witness["signal"], witness["thread"], _witness_where(witness))
+        if "summary" not in death and death.get("ended_before_serving"):
+            death["summary"] = "ended before it served; nothing in its log names a signal"
+        elif "summary" not in death and death.get("never_served"):
+            death["summary"] = "never served; nothing in its log names a signal"
+        if "summary" in death:
+            deaths.append(death)
+    return deaths or None
+
+
 def score_paths(paths: list[Path]) -> list[Score]:
     scores = []
     hosts = run_host_screens([path.with_suffix(".jpeg") for path in paths])
@@ -604,6 +678,7 @@ def score_paths(paths: list[Path]) -> list[Score]:
         add_evidence(s, text, maps.read_text(errors="replace") if maps.exists() else None,
                      dump.read_text(errors="replace") if dump.exists() else None,
                      hilog.read_text(errors="replace") if hilog.exists() else None)
+        s.process_deaths = process_deaths(path, text)
         if s.screen in ("app", "partial") and s.rung_name != "drawing" and (s.blocker is None or not s.blocking):
             # The screenshot shows the app's content and nothing stopped it: it drew, and its logs fell
             # short of saying so. aaaaxy's Go runtime sends its output to hilog, and in r88 its hilog
@@ -629,6 +704,9 @@ def table(scores: list[Score]) -> str:
                                s.blocker_category, s.blocker)))
         if s.anomaly:
             rows.append("%-*s  !! %s" % (width, "", s.anomaly))
+        for death in s.process_deaths or []:
+            rows.append("%-*s  process %s (pid %d) died: %s" % (width, "", death["process"], death["pid"],
+                                                            death["summary"]))
     return "\n".join(rows)
 
 
