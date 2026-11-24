@@ -49,7 +49,14 @@ fi
 # A launcher that knows the option moves the kept data in; an older one gets a fresh directory, and the kept
 # data waits for a launcher that does.
 CARRY=""
-[ -n "$PERSIST_DATA" ] && grep -q -- '--carried-app-data' $M/probe_source_app.py 2>/dev/null && CARRY="--carried-app-data $KEEP_DATA_DIR"
+# Only for a package whose data is kept, and only once there is some: the launcher refuses a requested carry that
+# finds nothing (an update must never silently become a fresh install), so a first launch, or an app outside
+# PERSIST_DATA, gets a fresh directory.
+case " $PERSIST_DATA " in
+  *" $app "*) grep -q -- '--carried-app-data' $M/probe_source_app.py 2>/dev/null &&
+    timeout 30 $WHDC -t $T shell "[ -d $KEEP_DATA_DIR/$app ] && echo __KEPT__" </dev/null 2>/dev/null | grep -q __KEPT__ &&
+    CARRY="--carried-app-data $KEEP_DATA_DIR" ;;
+esac
 # A host bundle other than the window host's serves apps under another uid: they reach its code by path, and its
 # data stays private (the launcher's --private-data).
 HOSTING="--host $HOST_BUNDLE"
