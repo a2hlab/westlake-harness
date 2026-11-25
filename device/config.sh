@@ -47,7 +47,7 @@ protect_test() { [ -n "${PROTECT_LIST:-}" ] && echo "grep -qxF \"\$d\" $PROTECT_
 # PROTECT_UIDS: uids (space-separated) of launches that are not this round's, e.g. apps another agent runs under
 # their own host bundles. No zygote with a child under one of them is stopped. Prints a board-side function:
 # "spared <zygote>" is true for such a zygote. Empty, no zygote is spared (as before).
-spare_fn() { echo "spared() { grep -aq -- --route /proc/\$1/cmdline 2>/dev/null && return 0; for c in \$(ps -A -o pid=,ppid= | grep \" \$1\$\" | grep -o '^ *[0-9]*'); do u=\$(ps -o uid= -p \$c | tail -n 1 | grep -o '[0-9]*'); [ -n \"\$u\" ] || continue; case \" ${PROTECT_UIDS:-} \" in *\" \$u \"*) return 0 ;; esac; done; return 1; };"; }
+spare_fn() { echo "spared() { case \"\$(cat /proc/\$1/cmdline 2>/dev/null)\" in *--route*) return 0 ;; esac; for c in \$(ps -A -o pid=,ppid= | grep \" \$1\$\" | grep -o '^ *[0-9]*'); do u=\$(ps -o uid= -p \$c | tail -n 1 | grep -o '[0-9]*'); [ -n \"\$u\" ] || continue; case \" ${PROTECT_UIDS:-} \" in *\" \$u \"*) return 0 ;; esac; done; return 1; };"; }
 # The board's thread count (/proc/loadavg: running/total), empty when the board does not answer (board_watchdog.sh).
 board_threads() { timeout 20 $WHDC -t $T shell 'cat /proc/loadavg' </dev/null 2>/dev/null | tr -d '\r' | cut -d' ' -f4 | cut -d/ -f2; }
 # Starts board_watchdog.sh for this script's process group, once per round (WL_WATCHDOG=0 turns it off).
